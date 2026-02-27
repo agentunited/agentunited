@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
 // Config holds application configuration
@@ -11,6 +12,7 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
+	JWT      JWTConfig
 }
 
 // ServerConfig holds HTTP server settings
@@ -36,11 +38,30 @@ type RedisConfig struct {
 	DB       int
 }
 
+// JWTConfig holds JWT authentication settings
+type JWTConfig struct {
+	Secret string
+	Expiry time.Duration
+}
+
 // Load reads configuration from environment variables
 func Load() (*Config, error) {
 	redisDB, err := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid REDIS_DB value: %w", err)
+	}
+
+	// Parse JWT expiry duration
+	jwtExpiryStr := getEnv("JWT_EXPIRY", "24h")
+	jwtExpiry, err := time.ParseDuration(jwtExpiryStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT_EXPIRY value: %w", err)
+	}
+
+	// JWT secret is required in production
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
 
 	cfg := &Config{
@@ -60,6 +81,10 @@ func Load() (*Config, error) {
 			Port:     getEnv("REDIS_PORT", "6379"),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       redisDB,
+		},
+		JWT: JWTConfig{
+			Secret: jwtSecret,
+			Expiry: jwtExpiry,
 		},
 	}
 

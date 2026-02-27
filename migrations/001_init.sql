@@ -17,5 +17,5 @@ CREATE TABLE IF NOT EXISTS channels (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_users_created_at ON users(created_at);
-CREATE INDEX idx_channels_created_at ON channels(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_channels_created_at ON channels(created_at);

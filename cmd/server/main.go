@@ -53,7 +53,7 @@ func main() {
 	defer cache.Close()
 
 	// Setup router
-	router := api.NewRouter(db, cache)
+	router := api.NewRouter(db, cache, cfg.JWT.Secret)
 
 	// HTTP server
 	server := &http.Server{
