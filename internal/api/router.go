@@ -30,12 +30,15 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	channelRepo := repository.NewChannelRepository(db)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, jwtSecret)
+	channelService := service.NewChannelService(channelRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	channelHandler := handlers.NewChannelHandler(channelService)
 
 	// Authentication routes (public)
 	r.Route("/api/v1/auth", func(r chi.Router) {
@@ -46,7 +49,13 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	// Protected routes (require JWT)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(mw.JWTAuth(jwtSecret))
-		// Add protected endpoints here (e.g., /me, /users, etc.)
+		
+		// Channel routes
+		r.Route("/channels", func(r chi.Router) {
+			r.Post("/", channelHandler.Create)
+			r.Get("/", channelHandler.List)
+			r.Get("/{id}", channelHandler.Get)
+		})
 	})
 
 	return r

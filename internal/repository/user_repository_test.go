@@ -40,7 +40,8 @@ func setupTestDB(t *testing.T) *DB {
 // cleanupTestDB cleans up test database
 func cleanupTestDB(t *testing.T, db *DB) {
 	ctx := context.Background()
-	_, err := db.Pool.Exec(ctx, "TRUNCATE TABLE users CASCADE")
+	// Truncate all tables in dependency order
+	_, err := db.Pool.Exec(ctx, "TRUNCATE TABLE channel_members, channels, users CASCADE")
 	require.NoError(t, err, "Failed to truncate tables")
 	db.Close()
 }
