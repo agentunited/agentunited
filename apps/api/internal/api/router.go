@@ -34,6 +34,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	messageRepo := repository.NewMessageRepository(db)
 	agentRepo := repository.NewAgentRepository(db)
 	apiKeyRepo := repository.NewAPIKeyRepository(db)
+	webhookRepo := repository.NewWebhookRepository(db)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, jwtSecret)
@@ -41,6 +42,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	messageService := service.NewMessageService(messageRepo, channelRepo)
 	agentService := service.NewAgentService(agentRepo)
 	apiKeyService := service.NewAPIKeyService(apiKeyRepo, agentRepo)
+	webhookService := service.NewWebhookService(webhookRepo, agentRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -48,6 +50,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	messageHandler := handlers.NewMessageHandler(messageService)
 	agentHandler := handlers.NewAgentHandler(agentService)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeyService)
+	webhookHandler := handlers.NewWebhookHandler(webhookService)
 	
 	// Initialize WebSocket hub and handler
 	hub := handlers.NewHub()
@@ -78,6 +81,12 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 			r.Post("/{agent_id}/keys", apiKeyHandler.Create)
 			r.Get("/{agent_id}/keys", apiKeyHandler.List)
 			r.Delete("/{agent_id}/keys/{key_id}", apiKeyHandler.Delete)
+			
+			// Webhook routes (nested under agents)
+			r.Post("/{agent_id}/webhooks", webhookHandler.Create)
+			r.Get("/{agent_id}/webhooks", webhookHandler.List)
+			r.Delete("/{agent_id}/webhooks/{webhook_id}", webhookHandler.Delete)
+			r.Get("/{agent_id}/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
 		})
 		
 		// Channel routes
