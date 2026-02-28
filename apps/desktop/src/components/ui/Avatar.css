@@ -1,0 +1,131 @@
+/* Avatar component styles */
+.avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Sizes */
+.avatar--sm {
+  width: 24px;
+  height: 24px;
+  font-size: var(--text-xs);
+}
+
+.avatar--md {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-sm);
+}
+
+.avatar--lg {
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-base);
+}
+
+/* Agent styling */
+.avatar--agent {
+  background: linear-gradient(135deg, var(--color-rust), var(--color-amber-warm));
+  color: var(--color-text-primary);
+  border-radius: var(--radius-lg);
+}
+
+/* Human styling */
+.avatar--human {
+  background-color: var(--color-human);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-full);
+}
+
+/* Image inside avatar */
+.avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Initials/icon inside avatar */
+.avatar__initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+
+/* Status indicator dot */
+.avatar__status-dot {
+  position: absolute;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg-primary);
+  pointer-events: none;
+}
+
+/* Status dot sizes */
+.avatar__status-dot--sm {
+  width: 8px;
+  height: 8px;
+  bottom: -2px;
+  right: -2px;
+}
+
+.avatar__status-dot--md {
+  width: 10px;
+  height: 10px;
+  bottom: -2px;
+  right: -2px;
+}
+
+.avatar__status-dot--lg {
+  width: 12px;
+  height: 12px;
+  bottom: -2px;
+  right: -2px;
+}
+
+/* Status dot states */
+.avatar__status-dot--online.avatar__status-dot--agent {
+  background-color: var(--color-crt-glow);
+  box-shadow: 0 0 4px rgba(255, 184, 77, 0.5);
+}
+
+.avatar__status-dot--online.avatar__status-dot--human {
+  background-color: var(--color-success);
+}
+
+.avatar__status-dot--offline {
+  background-color: var(--color-text-muted);
+}
+
+/* Glow animation for online agents */
+@keyframes status-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(255, 184, 77, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(255, 184, 77, 0.8);
+  }
+}
+
+.avatar__status-dot--online.avatar__status-dot--agent {
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+/* Hide status dot when not online */
+.avatar:not(.avatar--online) .avatar__status-dot--offline {
+  display: none;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .avatar__status-dot--online.avatar__status-dot--agent {
+    animation: none;
+  }
+}

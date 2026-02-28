@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from 'react';
+import { ChannelListItem, Input, Button } from './ui';
+import type { ChannelData } from './ui';
 import '../styles/sidebar.css';
 
 interface SidebarProps {
@@ -8,6 +10,68 @@ interface SidebarProps {
 
 function Sidebar({ width, onWidthChange }: SidebarProps) {
   const [isResizing, setIsResizing] = useState(false);
+  const [activeChannelId, setActiveChannelId] = useState('general');
+
+  // Sample data for Phase 2 demonstration
+  const channels: ChannelData[] = [
+    {
+      id: 'general',
+      name: 'general',
+      type: 'channel',
+      unreadCount: 3,
+      lastMessage: 'Data analysis complete',
+      lastActivity: '2m ago'
+    },
+    {
+      id: 'crypto',
+      name: 'crypto',
+      type: 'channel',
+      unreadCount: 1,
+      lastMessage: 'BTC price update',
+      lastActivity: '5m ago'
+    },
+    {
+      id: 'research',
+      name: 'research',
+      type: 'channel',
+      lastMessage: 'Meeting scheduled',
+      lastActivity: '1h ago'
+    }
+  ];
+
+  const directMessages: ChannelData[] = [
+    {
+      id: 'dm-agent1',
+      name: 'Agent Alpha',
+      type: 'dm',
+      memberName: 'Agent Alpha',
+      memberType: 'agent',
+      memberOnline: true,
+      unreadCount: 2,
+      lastMessage: 'Analysis ready for review',
+      lastActivity: '1m ago'
+    },
+    {
+      id: 'dm-human1',
+      name: 'Dr. Smith',
+      type: 'dm',
+      memberName: 'Dr. Smith',
+      memberType: 'human',
+      memberOnline: true,
+      lastMessage: 'Thanks for the update',
+      lastActivity: '10m ago'
+    },
+    {
+      id: 'dm-agent2',
+      name: 'AnalystBot',
+      type: 'dm',
+      memberName: 'AnalystBot',
+      memberType: 'agent',
+      memberOnline: false,
+      lastMessage: 'Processing complete',
+      lastActivity: '2h ago'
+    }
+  ];
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -49,10 +113,11 @@ function Sidebar({ width, onWidthChange }: SidebarProps) {
 
       {/* Search */}
       <div className="sidebar-search">
-        <input 
-          type="text" 
-          placeholder="🔍 Search..." 
-          className="search-input"
+        <Input 
+          variant="search"
+          placeholder="🔍 Search..."
+          leftIcon={<span>🔍</span>}
+          size="sm"
         />
       </div>
 
@@ -60,23 +125,19 @@ function Sidebar({ width, onWidthChange }: SidebarProps) {
       <div className="sidebar-section">
         <div className="section-header">
           <span className="section-title">CHANNELS</span>
-          <button className="add-button">+</button>
+          <Button variant="icon" size="sm" ariaLabel="Add channel">
+            +
+          </Button>
         </div>
         <div className="channel-list">
-          <div className="channel-item active">
-            <span className="channel-icon">#</span>
-            <span className="channel-name">general</span>
-            <span className="unread-count">3</span>
-          </div>
-          <div className="channel-item">
-            <span className="channel-icon">#</span>
-            <span className="channel-name">crypto</span>
-            <span className="unread-count">1</span>
-          </div>
-          <div className="channel-item">
-            <span className="channel-icon">#</span>
-            <span className="channel-name">research</span>
-          </div>
+          {channels.map((channel) => (
+            <ChannelListItem
+              key={channel.id}
+              channel={channel}
+              isActive={activeChannelId === channel.id}
+              onClick={(channelId) => setActiveChannelId(channelId)}
+            />
+          ))}
         </div>
       </div>
 
@@ -84,19 +145,19 @@ function Sidebar({ width, onWidthChange }: SidebarProps) {
       <div className="sidebar-section">
         <div className="section-header">
           <span className="section-title">DIRECT MESSAGES</span>
-          <button className="add-button">+</button>
+          <Button variant="icon" size="sm" ariaLabel="New message">
+            +
+          </Button>
         </div>
         <div className="dm-list">
-          <div className="dm-item">
-            <div className="online-indicator active"></div>
-            <span className="dm-name">Agent Alpha</span>
-            <span className="type-badge agent">AGENT</span>
-          </div>
-          <div className="dm-item">
-            <div className="online-indicator active"></div>
-            <span className="dm-name">Dr. Smith</span>
-            <span className="type-badge human">HUMAN</span>
-          </div>
+          {directMessages.map((dm) => (
+            <ChannelListItem
+              key={dm.id}
+              channel={dm}
+              isActive={activeChannelId === dm.id}
+              onClick={(channelId) => setActiveChannelId(channelId)}
+            />
+          ))}
         </div>
       </div>
 

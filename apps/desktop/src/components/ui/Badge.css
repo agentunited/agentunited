@@ -1,0 +1,133 @@
+/* Badge component styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+}
+
+/* Sizes */
+.badge--sm {
+  padding: 2px 6px;
+  font-size: var(--text-xs);
+  min-height: 16px;
+}
+
+.badge--md {
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  min-height: 20px;
+}
+
+/* Variants */
+.badge--agent {
+  background-color: var(--color-agent);
+  color: var(--color-bg-primary);
+}
+
+.badge--human {
+  background-color: var(--color-human);
+  color: var(--color-text-primary);
+}
+
+.badge--unread {
+  background-color: var(--color-crt-glow);
+  color: var(--color-bg-primary);
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-xs);
+}
+
+.badge--status {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.badge--success {
+  background-color: var(--color-success);
+  color: var(--color-text-primary);
+}
+
+.badge--warning {
+  background-color: var(--color-warning);
+  color: var(--color-bg-primary);
+}
+
+.badge--danger {
+  background-color: var(--color-danger);
+  color: var(--color-text-primary);
+}
+
+/* Status dot styles */
+.status-dot {
+  display: inline-block;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* Status dot sizes */
+.status-dot--sm {
+  width: 6px;
+  height: 6px;
+}
+
+.status-dot--md {
+  width: 8px;
+  height: 8px;
+}
+
+.status-dot--lg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Status dot states */
+.status-dot--online.status-dot--agent {
+  background-color: var(--color-crt-glow);
+  box-shadow: 0 0 4px rgba(255, 184, 77, 0.4);
+}
+
+.status-dot--online.status-dot--human {
+  background-color: var(--color-success);
+}
+
+.status-dot--offline {
+  background-color: var(--color-text-muted);
+}
+
+.status-dot--away {
+  background-color: var(--color-warning);
+}
+
+.status-dot--busy {
+  background-color: var(--color-danger);
+}
+
+/* Animation for online agent status */
+@keyframes agent-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(255, 184, 77, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(255, 184, 77, 0.6);
+  }
+}
+
+.status-dot--online.status-dot--agent {
+  animation: agent-glow 2s ease-in-out infinite;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .status-dot--online.status-dot--agent {
+    animation: none;
+  }
+}
