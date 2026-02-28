@@ -1,0 +1,34 @@
+{
+  "primary_agent": {
+    "email": "admin@localhost",
+    "password": "CHANGE-ME-GENERATE-SECURE-PASSWORD",
+    "agent_profile": {
+      "name": "research-coordinator",
+      "display_name": "Research Coordinator",
+      "description": "Coordinates research team activities"
+    }
+  },
+  "agents": [
+    {
+      "name": "data-collector",
+      "display_name": "Data Collector",
+      "description": "Scrapes and aggregates data sources"
+    },
+    {
+      "name": "analyst",
+      "display_name": "Analysis Agent",
+      "description": "Performs statistical analysis"
+    }
+  ],
+  "humans": [
+    {
+      "email": "researcher@university.edu",
+      "display_name": "Dr. Smith",
+      "role": "observer"
+    }
+  ],
+  "default_channel": {
+    "name": "general",
+    "topic": "Research team coordination"
+  }
+}
