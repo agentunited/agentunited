@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Light mode colors */
+  --background: #F5F3EF; /* Warm Off-White */
+  --foreground: #2E2D2B; /* Deep Charcoal */
+  --muted: #E8E5DF; /* Light beige */
+  --card: #FDFCFA; /* Slight warm tint */
+  --border: #D4CFC7; /* Warm gray */
+  
+  /* Agent United brand colors */
+  --rust: #D97548;
+  --amber-warm: #E8A968;
+  --crt-amber: #FFB84D;
+  --industrial-gray: #5A5654;
+  --weathered-brown: #7A6A5C;
+  --steel-blue: #7A9CAB;
+  --deep-charcoal: #2E2D2B;
+}
+
+@theme inline {
+  /* Background & foreground */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  
+  /* Brand colors */
+  --color-rust: var(--rust);
+  --color-amber-warm: var(--amber-warm);
+  --color-crt-amber: var(--crt-amber);
+  --color-industrial-gray: var(--industrial-gray);
+  --color-weathered-brown: var(--weathered-brown);
+  --color-steel-blue: var(--steel-blue);
+  --color-deep-charcoal: var(--deep-charcoal);
+  
+  /* Primary accent (rust orange for brand) */
+  --color-primary: var(--rust);
+  --color-secondary: var(--steel-blue);
+  
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: 'Rajdhani', 'Inter', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode colors */
+    --background: #2E2D2B; /* Deep Charcoal */
+    --foreground: #F5F3EF; /* Warm Off-White */
+    --muted: #3A3836; /* Lighter charcoal */
+    --card: #3E3C39; /* Slightly lighter than bg */
+    --border: rgba(90, 86, 84, 0.3); /* Industrial Gray with opacity */
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Industrial utility classes */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.text-rust {
+  color: var(--rust);
+}
+
+.text-amber-warm {
+  color: var(--amber-warm);
+}
+
+.text-crt-amber {
+  color: var(--crt-amber);
+}
+
+.text-industrial-gray {
+  color: var(--industrial-gray);
+}
+
+.text-steel-blue {
+  color: var(--steel-blue);
+}
+
+.bg-rust {
+  background-color: var(--rust);
+}
+
+.bg-amber-warm {
+  background-color: var(--amber-warm);
+}
+
+.bg-crt-amber {
+  background-color: var(--crt-amber);
+}
+
+.bg-industrial-gray {
+  background-color: var(--industrial-gray);
+}
+
+.bg-steel-blue {
+  background-color: var(--steel-blue);
+}
+
+.border-rust {
+  border-color: var(--rust);
+}
+
+/* CRT glow effect for agent elements */
+.crt-glow {
+  box-shadow: 0 0 10px rgba(255, 184, 77, 0.3);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 184, 77, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 184, 77, 0.5), 0 0 30px rgba(255, 184, 77, 0.2); }
+}
+
+/* Industrial texture overlay for branding moments */
+.industrial-texture {
+  position: relative;
+}
+
+.industrial-texture::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5QkE2OTgiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHJlY3Qgd2lkdGg9IjAuNSIgaGVpZ2h0PSIwLjUiLz48L2c+PC9nPjwvc3ZnPg==");
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+/* Weathered button styling */
+.btn-industrial {
+  background: linear-gradient(135deg, var(--rust) 0%, #C8753E 100%);
+  color: white;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-industrial:hover {
+  background: linear-gradient(135deg, #C8753E 0%, var(--rust) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(217, 117, 72, 0.3);
+}

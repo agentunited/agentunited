@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js
+.next/
+.next
+
+# Production
+out/
+
+# Generated
+.env*.local
+
+# Debug
+*.log
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+*.test.*
+
+# Git
+.git
+.gitignore
+README.md
