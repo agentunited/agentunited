@@ -7,6 +7,7 @@ import (
 
 	"github.com/agentunited/backend/internal/models"
 	"github.com/agentunited/backend/internal/service"
+	mw "github.com/agentunited/backend/internal/api/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -22,7 +23,11 @@ func NewAPIKeyHandler(service service.APIKeyService) *APIKeyHandler {
 
 // Create handles API key creation
 func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 
 	var req models.CreateAPIKeyRequest
@@ -52,7 +57,11 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles listing agent's API keys
 func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 
 	keys, err := h.service.ListKeys(r.Context(), agentID, userID)
@@ -79,7 +88,11 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles API key deletion (revoke)
 func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 	keyID := chi.URLParam(r, "key_id")
 

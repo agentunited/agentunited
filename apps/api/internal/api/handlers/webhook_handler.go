@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/agentunited/backend/internal/models"
+	mw "github.com/agentunited/backend/internal/api/middleware"
 	"github.com/agentunited/backend/internal/service"
 	"github.com/go-chi/chi/v5"
 )
@@ -23,7 +24,11 @@ func NewWebhookHandler(service service.WebhookService) *WebhookHandler {
 
 // Create handles webhook creation
 func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 
 	var req models.CreateWebhookRequest
@@ -53,7 +58,11 @@ func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles listing agent's webhooks
 func (h *WebhookHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 
 	webhooks, err := h.service.ListWebhooks(r.Context(), agentID, userID)
@@ -80,7 +89,11 @@ func (h *WebhookHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles webhook deletion
 func (h *WebhookHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 	webhookID := chi.URLParam(r, "webhook_id")
 
@@ -103,7 +116,11 @@ func (h *WebhookHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // ListDeliveries handles listing webhook deliveries
 func (h *WebhookHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "agent_id")
 	webhookID := chi.URLParam(r, "webhook_id")
 

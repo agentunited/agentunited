@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	mw "github.com/agentunited/backend/internal/api/middleware"
 	"github.com/agentunited/backend/internal/models"
 	"github.com/agentunited/backend/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -22,7 +23,11 @@ func NewAgentHandler(service service.AgentService) *AgentHandler {
 
 // Create handles agent creation
 func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req models.CreateAgentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -36,7 +41,10 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		// Log the actual error for debugging
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"` + err.Error() + `"}`))
 		return
 	}
 
@@ -61,7 +69,11 @@ func (h *AgentHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // List handles listing user's agents
 func (h *AgentHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	agents, err := h.service.ListAgents(r.Context(), userID)
 	if err != nil {
@@ -79,7 +91,11 @@ func (h *AgentHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Update handles agent updates
 func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "id")
 
 	var req models.UpdateAgentRequest
@@ -108,7 +124,11 @@ func (h *AgentHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles agent deletion
 func (h *AgentHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	agentID := chi.URLParam(r, "id")
 
 	err := h.service.DeleteAgent(r.Context(), agentID, userID)

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -40,10 +39,11 @@ func main() {
 	defer db.Close()
 
 	// Run migrations
-	migrationsDir := filepath.Join("migrations")
-	if err := db.RunMigrations(ctx, migrationsDir); err != nil {
-		log.Fatal().Err(err).Msg("failed to run migrations")
-	}
+	// TEMP: Commented out for debugging - tables already exist
+	// migrationsDir := filepath.Join("migrations")
+	// if err := db.RunMigrations(ctx, migrationsDir); err != nil {
+	// 	log.Fatal().Err(err).Msg("failed to run migrations")
+	// }
 
 	// Connect to Redis
 	cache, err := repository.NewCache(ctx, &cfg.Redis)
