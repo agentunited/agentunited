@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
-    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "dev:electron": "wait-on http://localhost:5180 && electron .",
     "build": "tsc && vite build && electron-builder",
     "build:mac": "tsc && vite build && electron-builder --mac",
     "build:dmg": "tsc && vite build && electron-builder --mac dmg",
@@ -77,8 +77,12 @@
     ]
   },
   "dependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "electron-squirrel-startup": "^1.0.0",
-    "electron-updater": "^6.1.7"
+    "electron-updater": "^6.1.7",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

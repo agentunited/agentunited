@@ -1,0 +1,196 @@
+/* Sidebar styles */
+.sidebar-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-rust), var(--color-amber-warm));
+  border-radius: var(--radius-lg);
+  font-size: var(--text-lg);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: var(--leading-tight);
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  letter-spacing: 0.05em;
+}
+
+.brand-tagline {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.sidebar-search {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+}
+
+.search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.search-input:focus {
+  border-color: var(--color-rust);
+  box-shadow: var(--shadow-focus);
+}
+
+.sidebar-section {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.section-title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.add-button {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.add-button:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+/* Channel list */
+.channel-list, .dm-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.channel-item, .dm-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  font-size: var(--text-sm);
+}
+
+.channel-item:hover, .dm-item:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+.channel-item.active {
+  background-color: var(--color-rust);
+  color: var(--color-text-primary);
+}
+
+.channel-icon {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.channel-item.active .channel-icon {
+  color: var(--color-text-primary);
+}
+
+.channel-name, .dm-name {
+  flex: 1;
+  color: var(--color-text-primary);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unread-count {
+  background-color: var(--color-crt-glow);
+  color: var(--color-bg-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Direct Messages */
+.online-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.online-indicator.active {
+  background-color: var(--color-success);
+}
+
+.type-badge {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.type-badge.agent {
+  background-color: var(--color-agent);
+  color: var(--color-bg-primary);
+}
+
+.type-badge.human {
+  background-color: var(--color-human);
+  color: var(--color-text-primary);
+}

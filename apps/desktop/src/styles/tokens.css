@@ -1,0 +1,162 @@
+/* Agent United Design Tokens - macOS Desktop App */
+
+:root {
+  /* Primary brand colors */
+  --color-rust: #D97548;
+  --color-amber-warm: #E8A968;
+  --color-crt-glow: #FFB84D;
+  --color-steel-blue: #7A9CAB;
+  
+  /* Semantic colors */
+  --color-agent: #FFB84D;
+  --color-human: #7A9CAB;
+  --color-success: #7D9973;
+  --color-warning: #E8A968;
+  --color-danger: #C4655F;
+  
+  /* Neutrals (dark mode - primary) */
+  --color-bg-primary: #2E2D2B;
+  --color-bg-secondary: #3A3836;
+  --color-bg-tertiary: #474441;
+  --color-bg-elevated: #3E3C39;
+  
+  --color-border: rgba(90, 86, 84, 0.2);
+  --color-border-hover: rgba(90, 86, 84, 0.4);
+  
+  --color-text-primary: #F5F3EF;
+  --color-text-secondary: #C4BFB8;
+  --color-text-muted: #8A8581;
+  
+  /* Neutrals (light mode - secondary) */
+  --color-bg-primary-light: #F5F3EF;
+  --color-bg-secondary-light: #E8E5DF;
+  --color-bg-tertiary-light: #FFFFFF;
+  
+  --color-text-primary-light: #2E2D2B;
+  --color-text-secondary-light: #5A5654;
+  --color-text-muted-light: #8A8581;
+}
+
+/* Spacing tokens */
+:root {
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+}
+
+/* Typography tokens */
+:root {
+  /* Font families */
+  --font-display: 'Rajdhani', system-ui, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  
+  /* Font sizes */
+  --text-xs: 10px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  
+  /* Font weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}
+
+/* Border radius tokens */
+:root {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+}
+
+/* Shadow tokens */
+:root {
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-focus: 0 0 0 3px rgba(217, 117, 72, 0.3);
+}
+
+/* Animation tokens */
+:root {
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Layout tokens */
+:root {
+  --sidebar-width: 240px;
+  --sidebar-min-width: 200px;
+  --sidebar-max-width: 320px;
+  --titlebar-height: 22px;
+}
+
+/* Application base styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling in Electron */
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars on macOS */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Focus styles */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-md);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
