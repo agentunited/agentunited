@@ -33,18 +33,21 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	channelRepo := repository.NewChannelRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 	agentRepo := repository.NewAgentRepository(db)
+	apiKeyRepo := repository.NewAPIKeyRepository(db)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, jwtSecret)
 	channelService := service.NewChannelService(channelRepo)
 	messageService := service.NewMessageService(messageRepo, channelRepo)
 	agentService := service.NewAgentService(agentRepo)
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, agentRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
 	messageHandler := handlers.NewMessageHandler(messageService)
 	agentHandler := handlers.NewAgentHandler(agentService)
+	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeyService)
 	
 	// Initialize WebSocket hub and handler
 	hub := handlers.NewHub()
@@ -70,6 +73,11 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 			r.Get("/{id}", agentHandler.Get)
 			r.Patch("/{id}", agentHandler.Update)
 			r.Delete("/{id}", agentHandler.Delete)
+			
+			// API key routes (nested under agents)
+			r.Post("/{agent_id}/keys", apiKeyHandler.Create)
+			r.Get("/{agent_id}/keys", apiKeyHandler.List)
+			r.Delete("/{agent_id}/keys/{key_id}", apiKeyHandler.Delete)
 		})
 		
 		// Channel routes
