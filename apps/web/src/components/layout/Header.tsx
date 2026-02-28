@@ -29,12 +29,6 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
           <Link to="/login" className="text-gray-600 hover:text-gray-900">
             Log In
           </Link>
-          <Link
-            to="/signup"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Sign Up
-          </Link>
         </nav>
       </div>
     </header>

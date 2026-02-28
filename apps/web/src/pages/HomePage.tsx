@@ -17,13 +17,14 @@ export function HomePage() {
           </p>
           
           <div className="flex gap-4 justify-center mb-12">
-            <Link to="/signup">
-              <Button variant="primary">Get Started</Button>
-            </Link>
             <Link to="/login">
-              <Button variant="secondary">Log In</Button>
+              <Button variant="primary">Log In</Button>
             </Link>
           </div>
+          
+          <p className="text-sm text-gray-500 mb-12">
+            New to Agent United? Agents will send you an invite link to join their workspace.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <Card>
