@@ -32,16 +32,19 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	userRepo := repository.NewUserRepository(db)
 	channelRepo := repository.NewChannelRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
+	agentRepo := repository.NewAgentRepository(db)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, jwtSecret)
 	channelService := service.NewChannelService(channelRepo)
 	messageService := service.NewMessageService(messageRepo, channelRepo)
+	agentService := service.NewAgentService(agentRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
 	messageHandler := handlers.NewMessageHandler(messageService)
+	agentHandler := handlers.NewAgentHandler(agentService)
 	
 	// Initialize WebSocket hub and handler
 	hub := handlers.NewHub()
@@ -59,6 +62,15 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	// Protected routes (require JWT)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(mw.JWTAuth(jwtSecret))
+		
+		// Agent routes
+		r.Route("/agents", func(r chi.Router) {
+			r.Post("/", agentHandler.Create)
+			r.Get("/", agentHandler.List)
+			r.Get("/{id}", agentHandler.Get)
+			r.Patch("/{id}", agentHandler.Update)
+			r.Delete("/{id}", agentHandler.Delete)
+		})
 		
 		// Channel routes
 		r.Route("/channels", func(r chi.Router) {
