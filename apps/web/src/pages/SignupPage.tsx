@@ -41,11 +41,20 @@ export function SignupPage() {
     setError('');
     
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Real API call
+      const { email, password } = data;
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
       
-      // Mock signup - store a simple auth token
-      localStorage.setItem('auth-token', 'mock-token');
+      if (!response.ok) {
+        throw new Error('Registration failed');
+      }
+      
+      const result = await response.json();
+      localStorage.setItem('auth-token', result.token);
       localStorage.setItem('user-email', data.email);
       
       // Navigate to chat

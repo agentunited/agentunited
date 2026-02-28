@@ -10,6 +10,7 @@ import (
 	"github.com/agentunited/backend/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,6 +24,16 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	r.Use(loggerMiddleware)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	
+	// CORS for local development
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:*", "http://127.0.0.1:*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	// Health check handler
 	healthHandler := NewHealthHandler(db, cache)
@@ -65,8 +76,8 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 		r.Post("/login", authHandler.Login)
 	})
 
-	// Protected routes (require JWT)
-	r.Route("/api/v1", func(r chi.Router) {
+	// Protected routes helper (shared between /api/v1 and /v1 for backwards compat)
+	protectedRoutes := func(r chi.Router) {
 		r.Use(mw.JWTAuth(jwtSecret))
 		
 		// Agent routes
@@ -99,7 +110,11 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 			r.Post("/{channel_id}/messages", messageHandler.Send)
 			r.Get("/{channel_id}/messages", messageHandler.GetMessages)
 		})
-	})
+	}
+
+	// Mount protected routes on both /api/v1 and /v1 (backwards compat)
+	r.Route("/api/v1", protectedRoutes)
+	r.Route("/v1", protectedRoutes)
 
 	return r
 }
