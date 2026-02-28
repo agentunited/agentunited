@@ -40,21 +40,41 @@ func (r *PostgresChannelRepository) Create(ctx context.Context, channel *models.
 	defer tx.Rollback(ctx)
 
 	// Insert channel
-	query := `
-		INSERT INTO channels (name, topic, created_by, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at
-	`
-
-	err = tx.QueryRow(
-		ctx,
-		query,
-		channel.Name,
-		channel.Topic,
-		channel.CreatedBy,
-		channel.CreatedAt,
-		channel.UpdatedAt,
-	).Scan(&channel.ID, &channel.CreatedAt, &channel.UpdatedAt)
+	var query string
+	if channel.ID != "" {
+		// Use provided ID (for bootstrap scenarios)
+		query = `
+			INSERT INTO channels (id, name, topic, created_by, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING created_at, updated_at
+		`
+		err = tx.QueryRow(
+			ctx,
+			query,
+			channel.ID,
+			channel.Name,
+			channel.Topic,
+			channel.CreatedBy,
+			channel.CreatedAt,
+			channel.UpdatedAt,
+		).Scan(&channel.CreatedAt, &channel.UpdatedAt)
+	} else {
+		// Let database generate ID
+		query = `
+			INSERT INTO channels (name, topic, created_by, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id, created_at, updated_at
+		`
+		err = tx.QueryRow(
+			ctx,
+			query,
+			channel.Name,
+			channel.Topic,
+			channel.CreatedBy,
+			channel.CreatedAt,
+			channel.UpdatedAt,
+		).Scan(&channel.ID, &channel.CreatedAt, &channel.UpdatedAt)
+	}
 
 	if err != nil {
 		// Check for unique constraint violation (duplicate name)

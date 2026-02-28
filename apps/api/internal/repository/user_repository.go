@@ -31,20 +31,41 @@ func NewUserRepository(db *DB) UserRepository {
 
 // Create inserts a new user into the database
 func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) error {
-	query := `
-		INSERT INTO users (email, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at, updated_at
-	`
+	var query string
+	var err error
 
-	err := r.db.Pool.QueryRow(
-		ctx,
-		query,
-		user.Email,
-		user.PasswordHash,
-		user.CreatedAt,
-		user.UpdatedAt,
-	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	if user.ID != "" {
+		// Use provided ID (for bootstrap scenarios)
+		query = `
+			INSERT INTO users (id, email, password_hash, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING created_at, updated_at
+		`
+		err = r.db.Pool.QueryRow(
+			ctx,
+			query,
+			user.ID,
+			user.Email,
+			user.PasswordHash,
+			user.CreatedAt,
+			user.UpdatedAt,
+		).Scan(&user.CreatedAt, &user.UpdatedAt)
+	} else {
+		// Let database generate ID
+		query = `
+			INSERT INTO users (email, password_hash, created_at, updated_at)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, created_at, updated_at
+		`
+		err = r.db.Pool.QueryRow(
+			ctx,
+			query,
+			user.Email,
+			user.PasswordHash,
+			user.CreatedAt,
+			user.UpdatedAt,
+		).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	}
 
 	if err != nil {
 		// Check for unique constraint violation (duplicate email)

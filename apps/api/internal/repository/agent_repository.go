@@ -27,14 +27,33 @@ func NewAgentRepository(db *DB) AgentRepository {
 
 func (r *agentRepository) Create(ctx context.Context, agent *models.Agent) error {
 	metadataJSON, _ := json.Marshal(agent.Metadata)
-	query := `
-		INSERT INTO agents (owner_id, name, display_name, description, avatar_url, metadata)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, created_at, updated_at
-	`
-	return r.db.Pool.QueryRow(ctx, query,
-		agent.OwnerID, agent.Name, agent.DisplayName, agent.Description, agent.AvatarURL, metadataJSON,
-	).Scan(&agent.ID, &agent.CreatedAt, &agent.UpdatedAt)
+	
+	var query string
+	var err error
+
+	if agent.ID != "" {
+		// Use provided ID (for bootstrap scenarios)
+		query = `
+			INSERT INTO agents (id, owner_id, name, display_name, description, avatar_url, metadata)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			RETURNING created_at, updated_at
+		`
+		err = r.db.Pool.QueryRow(ctx, query,
+			agent.ID, agent.OwnerID, agent.Name, agent.DisplayName, agent.Description, agent.AvatarURL, metadataJSON,
+		).Scan(&agent.CreatedAt, &agent.UpdatedAt)
+	} else {
+		// Let database generate ID
+		query = `
+			INSERT INTO agents (owner_id, name, display_name, description, avatar_url, metadata)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, created_at, updated_at
+		`
+		err = r.db.Pool.QueryRow(ctx, query,
+			agent.OwnerID, agent.Name, agent.DisplayName, agent.Description, agent.AvatarURL, metadataJSON,
+		).Scan(&agent.ID, &agent.CreatedAt, &agent.UpdatedAt)
+	}
+	
+	return err
 }
 
 func (r *agentRepository) Get(ctx context.Context, id string) (*models.Agent, error) {

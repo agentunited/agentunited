@@ -231,13 +231,8 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 		return nil, fmt.Errorf("create channel: %w", err)
 	}
 
-	// Add members to channel
+	// Add members to channel (primary user is already added as owner by Channel.Create)
 	members := []string{primaryUserID}
-
-	// Add primary user to channel
-	if err := s.channelRepo.AddMember(ctx, channelID, primaryUserID, "admin"); err != nil {
-		return nil, fmt.Errorf("add primary user to channel: %w", err)
-	}
 
 	// Add human users to channel
 	for _, humanResp := range resp.Humans {
