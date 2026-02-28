@@ -43,6 +43,11 @@ func (m *MockUserRepository) Count(ctx context.Context) (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (m *MockUserRepository) Update(ctx context.Context, user *models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
 // Test: Register with valid input should create user
 func TestAuthService_Register_ValidInput(t *testing.T) {
 	mockRepo := new(MockUserRepository)

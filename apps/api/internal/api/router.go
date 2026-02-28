@@ -56,6 +56,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	apiKeyService := service.NewAPIKeyService(apiKeyRepo, agentRepo)
 	webhookService := service.NewWebhookService(webhookRepo, agentRepo)
 	bootstrapService := service.NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, jwtSecret, "http://localhost:8080")
+	inviteService := service.NewInviteService(userRepo, inviteRepo, jwtSecret)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -65,6 +66,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeyService)
 	webhookHandler := handlers.NewWebhookHandler(webhookService)
 	bootstrapHandler := handlers.NewBootstrapHandler(bootstrapService)
+	inviteHandler := handlers.NewInviteHandler(inviteService)
 	
 	// Initialize WebSocket hub and handler
 	hub := handlers.NewHub()
@@ -75,6 +77,10 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 
 	// Bootstrap route (public, only works on fresh instance)
 	r.Post("/api/v1/bootstrap", bootstrapHandler.ServeHTTP)
+
+	// Invite routes (public)
+	r.Get("/api/v1/invite", inviteHandler.ValidateInvite)
+	r.Post("/api/v1/invite/accept", inviteHandler.AcceptInvite)
 
 	// Authentication routes (public)
 	r.Route("/api/v1/auth", func(r chi.Router) {

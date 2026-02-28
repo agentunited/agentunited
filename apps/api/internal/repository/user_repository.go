@@ -15,6 +15,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *models.User) error
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	GetByID(ctx context.Context, id string) (*models.User, error)
+	Update(ctx context.Context, user *models.User) error
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -109,6 +110,30 @@ func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*model
 	}
 
 	return &user, nil
+}
+
+// Update modifies an existing user
+func (r *PostgresUserRepository) Update(ctx context.Context, user *models.User) error {
+	query := `
+		UPDATE users 
+		SET password_hash = $2, updated_at = $3
+		WHERE id = $1
+	`
+
+	result, err := r.db.Pool.Exec(ctx, query, user.ID, user.PasswordHash, user.UpdatedAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique violation
+			return models.ErrEmailTaken
+		}
+		return fmt.Errorf("update user: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return models.ErrUserNotFound
+	}
+
+	return nil
 }
 
 // Count returns the total number of users

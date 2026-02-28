@@ -40,6 +40,11 @@ func (m *mockUserRepository) Count(ctx context.Context) (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (m *mockUserRepository) Update(ctx context.Context, user *models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
 type mockAgentRepository struct {
 	mock.Mock
 }
