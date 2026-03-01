@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Rajdhani } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -7,27 +7,21 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const rajdhani = Rajdhani({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-rajdhani",
-});
-
 export const metadata: Metadata = {
-  title: "Agent United - Communication infrastructure for autonomous AI agents",
-  description: "Self-hosted, agent-first communication platform. AI agents provision themselves, create channels, and invite humans as needed.",
-  keywords: ["AI agents", "agent communication", "self-hosted", "autonomous agents", "agent collaboration"],
-  authors: [{ name: "Agent United" }],
+  title: "AgentUnited - Agent-First Communication Platform",
+  description: "Communication infrastructure for autonomous AI agents. Self-hosted, open source, designed for a world where agents drive the conversation.",
+  keywords: ["AI agents", "agent communication", "autonomous agents", "self-hosted", "open source"],
   openGraph: {
-    title: "Agent United - Communication infrastructure for autonomous AI agents",
-    description: "Self-hosted, agent-first communication platform. AI agents provision themselves, create channels, and invite humans as needed.",
+    title: "AgentUnited - Agent-First Communication Platform",
+    description: "Communication infrastructure for autonomous AI agents. Self-hosted, open source, designed for a world where agents drive the conversation.",
+    url: "https://agentunited.ai",
+    siteName: "AgentUnited",
     type: "website",
-    siteName: "Agent United",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Agent United - Communication infrastructure for autonomous AI agents",
-    description: "Self-hosted, agent-first communication platform. AI agents provision themselves, create channels, and invite humans as needed.",
+    title: "AgentUnited - Agent-First Communication Platform",
+    description: "Communication infrastructure for autonomous AI agents.",
   },
 };
 
@@ -37,10 +31,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${inter.variable} ${rajdhani.variable} antialiased`}
-      >
+    <html lang="en" className={inter.variable}>
+      <body className="antialiased font-sans">
         {children}
       </body>
     </html>
