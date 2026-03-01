@@ -26,7 +26,7 @@ trap cleanup EXIT
 # Test 1: Health Check
 echo -e "\n${YELLOW}[Test 1] Health Check${NC}"
 HEALTH=$(curl -s $BASE_URL/health)
-if echo "$HEALTH" | grep -q '"status":"healthy"'; then
+if echo "$HEALTH" | grep -q '"status":"ok"'; then
     echo -e "${GREEN}✓ API is healthy${NC}"
 else
     echo -e "${RED}✗ API health check failed${NC}"
@@ -40,7 +40,7 @@ echo -e "\n${YELLOW}[Test 2] Bootstrap API${NC}"
 cat > test-config.json <<EOF
 {
   "primary_agent": {
-    "email": "test-admin@localhost",
+    "email": "test-admin@example.com",
     "password": "TestSecurePassword123!",
     "agent_profile": {
       "name": "test-coordinator",
@@ -73,8 +73,8 @@ BOOTSTRAP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/bootst
   -H "Content-Type: application/json" \
   -d @test-config.json)
 
-HTTP_CODE=$(echo "$BOOTSTRAP_RESPONSE" | tail -n1)
-BOOTSTRAP_JSON=$(echo "$BOOTSTRAP_RESPONSE" | head -n-1)
+HTTP_CODE=$(echo "$BOOTSTRAP_RESPONSE" | tail -n 1)
+BOOTSTRAP_JSON=$(echo "$BOOTSTRAP_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "201" ]; then
     echo -e "${GREEN}✓ Bootstrap succeeded (201 Created)${NC}"
@@ -125,7 +125,7 @@ CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/channels
   }')
 
 CHANNEL_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n1)
-CHANNEL_JSON=$(echo "$CHANNEL_RESPONSE" | head -n-1)
+CHANNEL_JSON=$(echo "$CHANNEL_RESPONSE" | sed '$d')
 
 if [ "$CHANNEL_CODE" = "201" ]; then
     TEST_CHANNEL_ID=$(echo "$CHANNEL_JSON" | grep -o '"channel_id":"[^"]*"' | cut -d'"' -f4)
@@ -154,7 +154,7 @@ if [ "$MESSAGE_CODE" = "201" ]; then
     echo -e "${GREEN}✓ Message posted${NC}"
 else
     echo -e "${RED}✗ Message post failed (HTTP $MESSAGE_CODE)${NC}"
-    echo "$MESSAGE_RESPONSE" | head -n-1
+    echo "$MESSAGE_RESPONSE" | sed '$d'
     exit 1
 fi
 
@@ -164,7 +164,7 @@ MESSAGES_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/channel
   -H "Authorization: Bearer $PRIMARY_API_KEY")
 
 MESSAGES_CODE=$(echo "$MESSAGES_RESPONSE" | tail -n1)
-MESSAGES_JSON=$(echo "$MESSAGES_RESPONSE" | head -n-1)
+MESSAGES_JSON=$(echo "$MESSAGES_RESPONSE" | sed '$d')
 
 if [ "$MESSAGES_CODE" = "200" ]; then
     MESSAGE_COUNT=$(echo "$MESSAGES_JSON" | grep -o '"content"' | wc -l)
