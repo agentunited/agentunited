@@ -9,11 +9,11 @@ export function LandingHero() {
       {/* Full-screen background image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/concept-main.jpg"
-          alt="Inspiring vision of humans and AI agents united in collaboration"
+          src="/images/concept-ny.jpg"
+          alt="Inspiring New York concept - Liberty and intelligence united"
           fill
           className="object-cover object-center"
-          style={{ objectPosition: "50% 60%" }}
+          style={{ objectPosition: "50% 50%" }}
           priority
         />
         {/* Enhanced gradient overlays for text in sky area */}

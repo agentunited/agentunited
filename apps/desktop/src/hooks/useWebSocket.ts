@@ -116,8 +116,21 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
           if (channelsRes.ok) {
             const channelsData = await channelsRes.json();
             console.log('Channels data:', channelsData);
-            setChannels(channelsData.channels || []);
-            console.log('Channels set:', channelsData.channels?.length || 0, 'channels');
+            
+            // Map API response to ChannelData interface
+            const mappedChannels: ChannelData[] = (channelsData.channels || []).map((ch: any) => ({
+              id: ch.id,
+              name: ch.name,
+              type: 'channel' as const, // API doesn't return type, assume all are channels
+              topic: ch.topic,
+              unreadCount: 0, // API doesn't return unread count yet
+              lastMessage: undefined,
+              members: []
+            }));
+            
+            console.log('Mapped channels:', mappedChannels);
+            setChannels(mappedChannels);
+            console.log('Channels set:', mappedChannels.length, 'channels');
           } else {
             console.error('Failed to fetch channels:', channelsRes.status, await channelsRes.text());
           }
