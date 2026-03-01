@@ -86,15 +86,17 @@ else
 fi
 
 # Extract credentials
+JWT_TOKEN=$(echo "$BOOTSTRAP_JSON" | grep -o '"jwt_token":"[^"]*"' | head -1 | cut -d'"' -f4)
 PRIMARY_API_KEY=$(echo "$BOOTSTRAP_JSON" | grep -o '"api_key":"[^"]*"' | head -1 | cut -d'"' -f4)
 CHANNEL_ID=$(echo "$BOOTSTRAP_JSON" | grep -o '"channel_id":"[^"]*"' | head -1 | cut -d'"' -f4)
 INVITE_TOKEN=$(echo "$BOOTSTRAP_JSON" | grep -o '"invite_token":"[^"]*"' | head -1 | cut -d'"' -f4)
 
-if [ -z "$PRIMARY_API_KEY" ] || [ -z "$CHANNEL_ID" ]; then
+if [ -z "$JWT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
     echo -e "${RED}✗ Failed to extract credentials from bootstrap response${NC}"
     exit 1
 fi
 
+echo "  JWT: ${JWT_TOKEN:0:20}..."
 echo "  API Key: ${PRIMARY_API_KEY:0:20}..."
 echo "  Channel: $CHANNEL_ID"
 echo "  Invite:  ${INVITE_TOKEN:0:20}..."
@@ -117,7 +119,7 @@ fi
 # Test 4: Create Channel via API
 echo -e "\n${YELLOW}[Test 4] Create Channel via API${NC}"
 CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/channels \
-  -H "Authorization: Bearer $PRIMARY_API_KEY" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test-crypto",
@@ -142,10 +144,10 @@ fi
 # Test 5: Post Message via API
 echo -e "\n${YELLOW}[Test 5] Post Message via API${NC}"
 MESSAGE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/channels/$CHANNEL_ID/messages" \
-  -H "Authorization: Bearer $PRIMARY_API_KEY" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "content": "E2E test message from coordinator agent"
+    "text": "E2E test message from coordinator agent"
   }')
 
 MESSAGE_CODE=$(echo "$MESSAGE_RESPONSE" | tail -n1)
@@ -161,7 +163,7 @@ fi
 # Test 6: List Messages
 echo -e "\n${YELLOW}[Test 6] List Messages${NC}"
 MESSAGES_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/channels/$CHANNEL_ID/messages" \
-  -H "Authorization: Bearer $PRIMARY_API_KEY")
+  -H "Authorization: Bearer $JWT_TOKEN")
 
 MESSAGES_CODE=$(echo "$MESSAGES_RESPONSE" | tail -n1)
 MESSAGES_JSON=$(echo "$MESSAGES_RESPONSE" | sed '$d')
