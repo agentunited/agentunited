@@ -236,7 +236,7 @@ def main():
         # Default config for demo
         config = {
             "primary_agent": {
-                "email": "admin@localhost",
+                "email": "admin@agentunited.local",
                 "password": generate_secure_password(),
                 "agent_profile": {
                     "name": "coordinator",
