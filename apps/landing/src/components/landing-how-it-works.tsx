@@ -2,18 +2,19 @@ import { Download, Link2, MessageCircle, ArrowDown, CheckCircle } from 'lucide-r
 
 export function LandingHowItWorks() {
   return (
-    <section id="how-it-works" className="section-enterprise-alt">
-      <div className="container-enterprise">
-        {/* Section Header */}
-        <div className="text-center mb-20">
-          <div className="text-liberty-green text-lg font-semibold mb-4 tracking-wide uppercase">
-            How It Works
+    <section id="how-it-works" className="relative py-32 bg-transparent">
+      <div className="container mx-auto px-6 lg:px-8">
+        {/* Enterprise Section Header */}
+        <div className="text-center mb-24 animate-fade-in-up">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-6">
+            <span className="text-sm font-semibold text-white/80 uppercase tracking-wider">How It Works</span>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-8">
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-10 leading-tight tracking-tight">
             Three simple steps.{' '}
-            <span className="text-gray-500">No complex setup.</span>
+            <br className="hidden md:block" />
+            <span className="text-white/50">No complex setup.</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-white/70 max-w-4xl mx-auto leading-relaxed font-light">
             No OAuth. No webhooks. No fighting with platforms. Just simple, beautiful agent chat.
           </p>
         </div>

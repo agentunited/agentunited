@@ -47,54 +47,55 @@ export function LandingBenefits() {
   ]
 
   return (
-    <section className="section-enterprise">
-      <div className="container-enterprise">
-        {/* Section Header */}
-        <div className="text-center mb-20">
-          <div className="text-liberty-green text-lg font-semibold mb-4 tracking-wide uppercase">
-            Why Choose AgentUnited
+    <section className="relative py-32 bg-transparent">
+      <div className="container mx-auto px-6 lg:px-8">
+        {/* Enterprise Section Header */}
+        <div className="text-center mb-24 animate-fade-in-up">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-6">
+            <span className="text-sm font-semibold text-white/80 uppercase tracking-wider">Why Choose AgentUnited</span>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-8">
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-10 leading-tight tracking-tight">
             Everything you need.{' '}
-            <span className="text-gray-500">Nothing you don't.</span>
+            <br className="hidden md:block" />
+            <span className="text-white/50">Nothing you don't.</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-white/70 max-w-4xl mx-auto leading-relaxed font-light">
             Built specifically for people who want to chat with their AI agents. 
             Not teams. Not enterprises. Just you and your agents.
           </p>
         </div>
 
-        {/* Benefits Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+        {/* Enterprise Benefits Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20 animate-fade-in-up animation-delay-200">
           {benefits.map((benefit, index) => {
             const Icon = benefit.icon
             return (
               <div key={index} className="group relative">
-                {/* Card */}
-                <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-2 h-full">
+                {/* Enterprise Dark Card */}
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10 hover:border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105 h-full">
                   {/* Icon and stat */}
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="w-14 h-14 bg-liberty-green/10 rounded-xl flex items-center justify-center group-hover:bg-liberty-green group-hover:scale-110 transition-all duration-300">
-                      <Icon className="w-7 h-7 text-liberty-green group-hover:text-white transition-colors duration-300" />
+                  <div className="flex items-start justify-between mb-8">
+                    <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300">
+                      <Icon className="w-8 h-8 text-emerald-400 group-hover:text-emerald-300 transition-colors duration-300" />
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">Impact</div>
-                      <div className="text-sm font-bold text-liberty-green">{benefit.stat}</div>
+                      <div className="text-xs text-white/40 uppercase tracking-wider font-semibold">Impact</div>
+                      <div className="text-sm font-bold text-emerald-400">{benefit.stat}</div>
                     </div>
                   </div>
                   
                   {/* Content */}
-                  <h3 className="text-xl font-bold text-deep-slate mb-4 group-hover:text-liberty-green transition-colors">
+                  <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-emerald-300 transition-colors">
                     {benefit.title}
                   </h3>
                   
-                  <p className="text-gray-600 mb-6 leading-relaxed">
+                  <p className="text-white/70 mb-8 leading-relaxed text-lg">
                     {benefit.description}
                   </p>
                   
-                  {/* Highlight */}
-                  <div className="bg-gradient-to-r from-liberty-green/10 to-liberty-green/5 rounded-lg p-4 border-l-4 border-liberty-green">
-                    <p className="text-liberty-green font-semibold text-sm">
+                  {/* Enterprise Highlight */}
+                  <div className="bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 backdrop-blur-sm rounded-2xl p-5 border border-emerald-500/30">
+                    <p className="text-emerald-300 font-semibold">
                       {benefit.highlight}
                     </p>
                   </div>
@@ -104,27 +105,27 @@ export function LandingBenefits() {
           })}
         </div>
 
-        {/* Social Proof */}
-        <div className="bg-gray-50 rounded-2xl p-12 mb-20">
-          <h3 className="text-2xl font-bold text-center text-deep-slate mb-12">
+        {/* Enterprise Social Proof */}
+        <div className="bg-gradient-to-r from-white/5 via-white/10 to-white/5 backdrop-blur-xl rounded-3xl p-12 lg:p-16 border border-white/20 mb-20 animate-fade-in-up animation-delay-400">
+          <h3 className="text-3xl lg:text-4xl font-bold text-center text-white mb-16">
             What developers are saying
           </h3>
           
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="mb-6">
-                <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
-                <p className="text-gray-700 italic leading-relaxed">
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105">
+              <div className="mb-8">
+                <div className="text-amber-400 text-3xl mb-4">★★★★★</div>
+                <p className="text-white/80 italic leading-relaxed text-lg">
                   "I spent 4 hours trying to set up a Discord bot for my agent. With AgentUnited, I was chatting in 2 minutes."
                 </p>
               </div>
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-liberty-green rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white font-bold text-sm">AK</span>
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center mr-4">
+                  <span className="text-white font-bold">AK</span>
                 </div>
                 <div>
-                  <div className="font-semibold text-deep-slate">Alex K.</div>
-                  <div className="text-gray-500 text-sm">OpenClaw user</div>
+                  <div className="font-semibold text-white">Alex K.</div>
+                  <div className="text-white/60 text-sm">OpenClaw user</div>
                 </div>
               </div>
             </div>
