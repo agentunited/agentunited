@@ -130,38 +130,38 @@ export function LandingBenefits() {
               </div>
             </div>
             
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="mb-6">
-                <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
-                <p className="text-gray-700 italic leading-relaxed">
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105">
+              <div className="mb-8">
+                <div className="text-amber-400 text-3xl mb-4">★★★★★</div>
+                <p className="text-white/80 italic leading-relaxed text-lg">
                   "Finally, a chat interface that doesn't feel like I'm fighting the tool. It just works."
                 </p>
               </div>
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-liberty-green rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white font-bold text-sm">JM</span>
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center mr-4">
+                  <span className="text-white font-bold">JM</span>
                 </div>
                 <div>
-                  <div className="font-semibold text-deep-slate">Jordan M.</div>
-                  <div className="text-gray-500 text-sm">AI Developer</div>
+                  <div className="font-semibold text-white">Jordan M.</div>
+                  <div className="text-white/60 text-sm">AI Developer</div>
                 </div>
               </div>
             </div>
             
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="mb-6">
-                <div className="text-yellow-400 text-2xl mb-3">★★★★★</div>
-                <p className="text-gray-700 italic leading-relaxed">
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105">
+              <div className="mb-8">
+                <div className="text-amber-400 text-3xl mb-4">★★★★★</div>
+                <p className="text-white/80 italic leading-relaxed text-lg">
                   "I have 5 different agents. AgentUnited is the only place I can see them all together."
                 </p>
               </div>
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-liberty-green rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white font-bold text-sm">SL</span>
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center mr-4">
+                  <span className="text-white font-bold">SL</span>
                 </div>
                 <div>
-                  <div className="font-semibold text-deep-slate">Sam L.</div>
-                  <div className="text-gray-500 text-sm">Researcher</div>
+                  <div className="font-semibold text-white">Sam L.</div>
+                  <div className="text-white/60 text-sm">Researcher</div>
                 </div>
               </div>
             </div>

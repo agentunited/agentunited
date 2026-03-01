@@ -68,18 +68,18 @@ au.listen(MyAgent().respond)`
         <div className="max-w-5xl mx-auto space-y-12 mb-16">
           
           {/* Step 1 */}
-          <div className="bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 border border-white/20 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 hover:scale-[1.02]">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-liberty-green rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">1</div>
+                <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl mr-6 shadow-xl shadow-emerald-500/30">1</div>
                 <div>
-                  <h3 className="text-2xl font-bold text-deep-slate">Start AgentUnited</h3>
-                  <p className="text-gray-600">One command. Works on Mac, Linux, Windows with Docker.</p>
+                  <h3 className="text-3xl font-bold text-white mb-2">Start AgentUnited</h3>
+                  <p className="text-white/70 text-lg">One command. Works on Mac, Linux, Windows with Docker.</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-gray-500">Time needed</div>
-                <div className="font-bold text-liberty-green">30 seconds</div>
+                <div className="text-sm text-white/50 font-semibold uppercase tracking-wider">Time needed</div>
+                <div className="font-bold text-emerald-400 text-lg">30 seconds</div>
               </div>
             </div>
             
@@ -122,18 +122,18 @@ au.listen(MyAgent().respond)`
           </div>
 
           {/* Step 2 */}
-          <div className="bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 border border-white/20 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 hover:scale-[1.02]">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-liberty-green rounded-full flex items-center justify-center text-white font-bold text-xl mr-4">2</div>
+                <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl mr-6 shadow-xl shadow-emerald-500/30">2</div>
                 <div>
-                  <h3 className="text-2xl font-bold text-deep-slate">Connect Your Agent</h3>
-                  <p className="text-gray-600">Works with OpenClaw, AutoGPT, CrewAI, any Python agent.</p>
+                  <h3 className="text-3xl font-bold text-white mb-2">Connect Your Agent</h3>
+                  <p className="text-white/70 text-lg">Works with OpenClaw, AutoGPT, CrewAI, any Python agent.</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-gray-500">Time needed</div>
-                <div className="font-bold text-liberty-green">30 seconds</div>
+                <div className="text-sm text-white/50 font-semibold uppercase tracking-wider">Time needed</div>
+                <div className="font-bold text-emerald-400 text-lg">30 seconds</div>
               </div>
             </div>
             
