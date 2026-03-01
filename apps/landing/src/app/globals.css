@@ -114,7 +114,7 @@
   }
 }
 
-/* Production-grade animations */
+/* Enterprise-grade animations system */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -127,7 +127,7 @@
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(40px);
   }
   to {
     opacity: 1;
@@ -138,7 +138,7 @@
 @keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-50px);
+    transform: translateX(-60px);
   }
   to {
     opacity: 1;
@@ -149,9 +149,11 @@
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.8;
+    transform: scale(1.05);
   }
 }
 
@@ -170,6 +172,55 @@
   }
   90% {
     transform: translate3d(0, -4px, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.2), 0 0 60px rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(60px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -199,34 +250,66 @@
   .border-gray-medium { border-color: #6C757D; }
   .border-gray-dark { border-color: #343A40; }
 
-  /* Production-grade animation utilities */
+  /* Enterprise-grade animation utilities */
   .animate-fade-in {
-    animation: fadeIn 0.8s ease-out forwards;
+    animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .animate-fade-in-up {
-    animation: fadeInUp 1s ease-out forwards;
+    animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .animate-slide-in-left {
-    animation: slideInLeft 1s ease-out forwards;
+    animation: slideInLeft 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-slide-in-bottom {
+    animation: slideInFromBottom 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse 3s ease-in-out infinite;
   }
 
   .animate-bounce {
-    animation: bounce 2s infinite;
+    animation: bounce 3s infinite;
   }
 
-  /* Animation delays for staggered entrance */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-glow {
+    animation: glow 4s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Sophisticated animation delays */
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
   .animation-delay-200 {
     animation-delay: 200ms;
   }
 
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
   .animation-delay-400 {
     animation-delay: 400ms;
+  }
+
+  .animation-delay-500 {
+    animation-delay: 500ms;
   }
 
   .animation-delay-600 {
@@ -237,35 +320,110 @@
     animation-delay: 800ms;
   }
 
-  /* Modern glassmorphism effects */
+  /* Enterprise glassmorphism system */
   .glass-effect {
-    backdrop-filter: blur(16px) saturate(180%);
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.125);
+    backdrop-filter: blur(20px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  /* Professional shadows */
+  .glass-effect-strong {
+    backdrop-filter: blur(24px) saturate(200%);
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-effect-subtle {
+    backdrop-filter: blur(12px) saturate(160%);
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Professional shadow system */
   .shadow-glow-white {
-    box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.15), 0 0 80px rgba(255, 255, 255, 0.05);
   }
 
   .shadow-glow-blue {
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.2), 0 0 80px rgba(59, 130, 246, 0.08);
   }
 
-  /* Smooth hover transforms */
+  .shadow-glow-emerald {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.2), 0 0 80px rgba(16, 185, 129, 0.08);
+  }
+
+  .shadow-enterprise {
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .shadow-enterprise-lg {
+    box-shadow: 
+      0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Premium hover effects */
   .hover-lift {
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-                box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .hover-lift:hover {
-    transform: translateY(-4px);
+    transform: translateY(-6px) scale(1.02);
+    filter: brightness(1.1);
   }
 
-  /* Better focus states */
+  .hover-glow {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .hover-glow:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+  }
+
+  /* Enhanced focus states */
   .focus-ring-white {
-    @apply focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent;
+    @apply focus:outline-none focus:ring-4 focus:ring-white/30 focus:ring-offset-4 focus:ring-offset-black;
+  }
+
+  .focus-ring-blue {
+    @apply focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:ring-offset-4 focus:ring-offset-black;
+  }
+
+  /* Text effects */
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow-xl {
+    text-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Enterprise grid patterns */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .grid-pattern-lg {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 64px 64px;
   }
 
   /* Enterprise Layout Structure */

@@ -16,8 +16,9 @@ interface ApiMessage {
 interface ApiChannel {
   id: string;
   name: string;
+  topic?: string;
   description?: string;
-  memberCount?: number;
+  member_count?: number;
 }
 
 interface SendMessageRequest {
@@ -88,8 +89,8 @@ function mapApiChannel(apiChannel: ApiChannel): Channel {
   return {
     id: apiChannel.id,
     name: apiChannel.name,
-    topic: apiChannel.description || '',
-    memberCount: apiChannel.memberCount
+    topic: apiChannel.topic || apiChannel.description || '',
+    memberCount: apiChannel.member_count
   };
 }
 

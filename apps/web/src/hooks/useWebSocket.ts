@@ -76,15 +76,17 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
             return;
           }
 
-          if (data.type === 'message' || data.type === 'new_message') {
+          if (data.type === 'message' || data.type === 'new_message' || data.type === 'message.created') {
+            const d = data.data || data; // message.created wraps in { type, data }
             const msg: Message = {
-              id: data.id || data.message?.id || `ws-${Date.now()}`,
-              channelId: data.channel_id || data.message?.channel_id || channelId,
-              author: data.author_email || data.author_type || 'Unknown',
-              authorId: data.author_id || data.message?.author_id || '',
-              text: data.text || data.message?.text || '',
-              timestamp: data.created_at || data.message?.created_at || new Date().toISOString(),
-              isOwnMessage: data.author_id === localStorage.getItem('user-id'),
+              id: d.id || d.message?.id || `ws-${Date.now()}`,
+              channelId: d.channel_id || d.message?.channel_id || channelId,
+              author: d.author_email || d.author_type || 'Unknown',
+              authorId: d.author_id || d.message?.author_id || '',
+              authorType: (d.author_type === 'agent') ? 'agent' : 'human',
+              text: d.text || d.message?.text || '',
+              timestamp: d.created_at || d.message?.created_at || new Date().toISOString(),
+              isOwnMessage: d.author_id === localStorage.getItem('user-id'),
             };
 
             // Only add if it's for the current channel

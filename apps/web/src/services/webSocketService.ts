@@ -125,14 +125,16 @@ export class WebSocketService {
       case 'message':
         // Server sent a new message
         if (data.message) {
+          const m = data.message;
           const message: Message = {
-            id: data.message.id,
-            channelId: data.message.channelId,
-            author: data.message.author?.name || 'Unknown',
-            authorId: data.message.author?.id || 'unknown',
-            text: data.message.content || data.message.text,
-            timestamp: data.message.timestamp || new Date().toISOString(),
-            isOwnMessage: false // Server will indicate if it's from current user
+            id: m.id,
+            channelId: m.channel_id || m.channelId,
+            author: m.author_email || m.author?.name || 'Unknown',
+            authorId: m.author_id || m.author?.id || 'unknown',
+            authorType: (m.author_type === 'agent') ? 'agent' : 'human',
+            text: m.text || m.content,
+            timestamp: m.created_at || m.timestamp || new Date().toISOString(),
+            isOwnMessage: false
           };
 
           this.onMessage?.({
