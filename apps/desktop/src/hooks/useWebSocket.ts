@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getWebSocketService, MessageData, ChannelData, UserData } from '../services/WebSocketService';
+import { getWebSocketService, initializeWebSocketService, MessageData, ChannelData, UserData } from '../services/WebSocketService';
 
 export interface UseWebSocketOptions {
   autoConnect?: boolean;
@@ -56,7 +56,6 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
   useEffect(() => {
     if (url || token) {
       // Re-initialize service with new config
-      const { initializeWebSocketService } = require('../services/WebSocketService');
       initializeWebSocketService({
         url: url || 'ws://localhost:8080/ws',
         token
@@ -100,9 +99,43 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
   // WebSocket event handlers
   useEffect(() => {
     // Connection status
-    const unsubscribeConnection = wsService.onConnectionChange((isConnected) => {
+    const unsubscribeConnection = wsService.onConnectionChange(async (isConnected) => {
       setConnected(isConnected);
       setConnecting(false);
+      
+      // Fetch initial data when connected
+      if (isConnected && token) {
+        try {
+          // Fetch channels
+          const channelsRes = await fetch('http://localhost:8080/api/v1/channels', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          console.log('Channels fetch response:', channelsRes.status);
+          if (channelsRes.ok) {
+            const channelsData = await channelsRes.json();
+            console.log('Channels data:', channelsData);
+            setChannels(channelsData.channels || []);
+            console.log('Channels set:', channelsData.channels?.length || 0, 'channels');
+          } else {
+            console.error('Failed to fetch channels:', channelsRes.status, await channelsRes.text());
+          }
+          
+          // Fetch current user info
+          const meRes = await fetch('http://localhost:8080/api/v1/users/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            setCurrentUser(meData.user || null);
+          }
+        } catch (error) {
+          console.error('Failed to fetch initial data:', error);
+        }
+      }
     });
 
     // Message events

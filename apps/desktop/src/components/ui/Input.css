@@ -104,7 +104,8 @@
   margin-right: var(--space-2);
 }
 
-.input__icon-button {
+.input__icon-button,
+.input__icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,6 +127,10 @@
 .input__icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.input__icon-wrapper {
+  /* No hover/disabled states needed since the child Button handles that */
 }
 
 .input__icon--password {

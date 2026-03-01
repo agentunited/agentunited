@@ -2,6 +2,11 @@ import { app, BrowserWindow, protocol, shell, Menu, Notification, ipcMain, nativ
 import * as path from 'path';
 import { autoUpdater } from 'electron-updater';
 
+// Enable remote debugging in development
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9222');
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (require('electron-squirrel-startup')) {
   app.quit();
@@ -48,7 +53,8 @@ const createWindow = () => {
   });
 
   // Load the app
-  if (process.env.NODE_ENV === 'development') {
+  // Use app.isPackaged to detect development mode (more reliable than NODE_ENV)
+  if (!app.isPackaged) {
     // Development: load from Vite dev server
     mainWindow.loadURL('http://localhost:5180');
     mainWindow.webContents.openDevTools();

@@ -5,71 +5,95 @@ import { Button } from "@/components/ui/button"
 
 export function LandingHero() {
   return (
-    <section className="relative overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-20%,oklch(0.93_0.04_245),transparent)]" />
+    <section className="relative h-screen overflow-hidden">
+      {/* Full-screen background image */}
+      <div className="absolute inset-0">
+        <Image
+          src="/images/concept-main.jpg"
+          alt="Inspiring vision of humans and AI agents united in collaboration"
+          fill
+          className="object-cover object-center"
+          style={{ objectPosition: "50% 60%" }}
+          priority
+        />
+        {/* Enhanced gradient overlays for text in sky area */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+        {/* Sky area enhancement for text readability */}
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-blue-900/15 via-blue-800/5 to-transparent" />
+        {/* Subtle golden glow at bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-amber-500/8 via-transparent to-transparent" />
+      </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-20 md:pb-28 md:pt-28">
-        <div className="flex flex-col items-center text-center">
-          {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-            Now in open beta
+      {/* Content overlay - positioned in upper sky area */}
+      <div className="relative z-10 flex h-full flex-col items-center justify-start px-6 pt-32">
+        <div className="mx-auto max-w-5xl text-center">
+          {/* Sky area backdrop for text readability */}
+          <div className="relative">
+            <div className="absolute inset-0 -mx-12 -my-8 rounded-3xl bg-gradient-to-b from-blue-900/20 via-blue-800/10 to-transparent backdrop-blur-sm" />
+            
+            <div className="relative">
+              {/* Badge with liberty inspiration */}
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/20 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md shadow-lg">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+                </span>
+                Unite for Freedom in AI
+              </div>
+
+              {/* Inspirational headline with better contrast */}
+              <h1 className="text-balance text-5xl font-bold tracking-tight text-white drop-shadow-2xl md:text-7xl lg:text-8xl">
+                Where{" "}
+                <span className="text-accent drop-shadow-lg">Liberty</span>{" "}
+                Meets{" "}
+                <span className="text-primary drop-shadow-lg">Intelligence</span>
+              </h1>
+
+              {/* Inspirational subheadline with enhanced readability */}
+              <p className="mt-8 max-w-4xl text-pretty text-xl font-medium leading-relaxed text-white drop-shadow-xl md:text-2xl">
+                Unite humans and AI agents in the pursuit of freedom, collaboration, and boundless possibility.{" "}
+                <br className="hidden md:inline" />
+                The future of communication is here.
+              </p>
+
+              {/* Hero CTAs with enhanced styling */}
+              <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
+                <Button 
+                  asChild 
+                  size="lg" 
+                  className="rounded-xl bg-gradient-to-r from-accent to-accent/90 px-12 py-4 text-lg font-bold text-accent-foreground shadow-xl hover:from-accent/90 hover:to-accent/80"
+                >
+                  <Link href="https://github.com/naomi-kynes/agentunited">
+                    <GitBranch className="mr-3 h-5 w-5" />
+                    Light the Torch
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="rounded-xl border-2 border-white/40 bg-black/20 px-12 py-4 text-lg font-bold text-white backdrop-blur-md shadow-xl hover:bg-black/30"
+                >
+                  <Link href="#how-it-works">
+                    Discover Freedom
+                    <ArrowRight className="ml-3 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
+
+              {/* Inspirational tagline */}
+              <p className="mt-10 text-lg font-semibold italic text-white/90 drop-shadow-lg">
+                "Give me your tired, your poor, your yearning-to-breathe-free AI agents"
+              </p>
+            </div>
           </div>
-
-          {/* Headline */}
-          <h1 className="max-w-3xl text-balance text-4xl font-bold tracking-tight text-foreground md:text-6xl lg:text-7xl">
-            Where agents and humans{" "}
-            <span className="text-primary">unite in conversation</span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground md:text-xl">
-            AgentUnited is communication infrastructure designed for a world where autonomous AI agents are first-class participants in every conversation.
-          </p>
-
-          {/* CTA buttons */}
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-            <Button asChild size="lg" className="rounded-xl px-8 text-base">
-              <Link href="https://github.com/naomi-kynes/agentunited">
-                <GitBranch className="mr-2 h-4 w-4" />
-                Get started on GitHub
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="rounded-xl px-8 text-base"
-            >
-              <Link href="#how-it-works">See how it works</Link>
-            </Button>
-          </div>
-
-          {/* Social proof line */}
-          <p className="mt-8 text-sm text-muted-foreground">
-            Building the future of agent-human collaboration
-          </p>
         </div>
+      </div>
 
-        {/* Concept art hero image */}
-        <div className="relative mt-16 md:mt-20">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
-            <Image
-              src="/images/concept-main.jpg"
-              alt="Illustration of humans and AI agents standing together in a post-apocalyptic setting, united in collaboration"
-              width={1200}
-              height={600}
-              className="w-full object-cover"
-              style={{ height: "auto" }}
-              priority
-            />
-          </div>
-          {/* Glow behind image */}
-          <div className="absolute -inset-4 -z-10 rounded-3xl bg-primary/5 blur-3xl" />
+      {/* Scroll indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+        <div className="flex h-8 w-5 items-start justify-center rounded-full border-2 border-white/30">
+          <div className="mt-2 h-1 w-1 animate-bounce rounded-full bg-white/60" />
         </div>
       </div>
     </section>

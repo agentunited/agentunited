@@ -91,13 +91,16 @@ export class WebSocketService {
     }
 
     this.isConnecting = true;
-    console.log('Connecting to WebSocket:', this.config.url);
 
     try {
       const wsUrl = new URL(this.config.url);
       if (this.config.token) {
         wsUrl.searchParams.set('token', this.config.token);
       }
+      
+      console.log('Connecting to WebSocket:', wsUrl.toString());
+      console.log('Token present:', !!this.config.token);
+      console.log('Token length:', this.config.token?.length || 0);
 
       this.ws = new WebSocket(wsUrl.toString());
       
@@ -272,9 +275,10 @@ let webSocketService: WebSocketService | null = null;
 export const getWebSocketService = (): WebSocketService => {
   if (!webSocketService) {
     // Default config - should be overridden by app initialization
+    // Use import.meta.env for Vite (browser environment)
     webSocketService = new WebSocketService({
-      url: process.env.WEBSOCKET_URL || 'ws://localhost:8080/ws',
-      token: process.env.AUTH_TOKEN
+      url: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080/ws',
+      token: import.meta.env.VITE_AUTH_TOKEN
     });
   }
   return webSocketService;

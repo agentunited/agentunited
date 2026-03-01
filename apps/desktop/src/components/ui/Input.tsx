@@ -101,15 +101,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         />
         
         {rightIconElement && (
-          <button
-            type="button"
-            className="input__icon-button"
-            onClick={handleRightIconClick}
-            disabled={disabled}
-            aria-label={isPassword ? (showPassword ? 'Hide password' : 'Show password') : undefined}
-          >
-            {rightIconElement}
-          </button>
+          isPassword || onRightIconClick ? (
+            <button
+              type="button"
+              className="input__icon-button"
+              onClick={handleRightIconClick}
+              disabled={disabled}
+              aria-label={isPassword ? (showPassword ? 'Hide password' : 'Show password') : undefined}
+            >
+              {rightIconElement}
+            </button>
+          ) : (
+            // Don't wrap in button if it's already interactive (e.g., a Button component)
+            <div className="input__icon-wrapper">
+              {rightIconElement}
+            </div>
+          )
         )}
       </div>
       

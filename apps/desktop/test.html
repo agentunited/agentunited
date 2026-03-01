@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test Page</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background: #2E2D2B;
+      color: #F5F3EF;
+      font-family: system-ui, sans-serif;
+      font-size: 20px;
+    }
+    h1 { color: #FFB84D; }
+  </style>
+</head>
+<body>
+  <h1>🗽 Electron Test</h1>
+  <p>If you can see this, Electron is rendering HTML correctly.</p>
+  <p>Time: <span id="time"></span></p>
+  <script>
+    document.getElementById('time').textContent = new Date().toLocaleTimeString();
+    console.log('Test page loaded successfully');
+  </script>
+</body>
+</html>
