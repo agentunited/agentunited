@@ -28,21 +28,14 @@ export function LandingNav() {
               fill="none"
               className="text-primary-foreground"
             >
-              <rect x="4" y="3" width="6" height="4" rx="1" fill="currentColor" stroke="currentColor" strokeWidth="0.5"/>
-              <rect x="5" y="4" width="4" height="2" rx="0.5" fill="none" stroke="currentColor" strokeWidth="0.3"/>
-              <circle cx="6.5" cy="5" r="0.5" fill="currentColor"/>
-              <circle cx="7.5" cy="5" r="0.5" fill="currentColor"/>
-              <rect x="5.5" y="7" width="3" height="2" rx="0.5" fill="none" stroke="currentColor" strokeWidth="0.4"/>
-              <ellipse cx="7" cy="11" rx="3" ry="1" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-              
-              <rect x="8" y="3" width="6" height="4" rx="1" fill="currentColor" stroke="currentColor" strokeWidth="0.5"/>
-              <rect x="9" y="4" width="4" height="2" rx="0.5" fill="none" stroke="currentColor" strokeWidth="0.3"/>
-              <circle cx="10.5" cy="5" r="0.5" fill="currentColor"/>
-              <circle cx="11.5" cy="5" r="0.5" fill="currentColor"/>
-              <rect x="9.5" y="7" width="3" height="2" rx="0.5" fill="none" stroke="currentColor" strokeWidth="0.4"/>
-              <ellipse cx="11" cy="11" rx="3" ry="1" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-              
-              <line x1="10" y1="5" x2="12" y2="5" stroke="currentColor" strokeWidth="1"/>
+              <path
+                d="M9 1L2 5v8l7 4 7-4V5L9 1z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <circle cx="9" cy="9" r="2.5" fill="currentColor" />
+              <path d="M9 1v5.5M2 5l4.5 2.5M16 5l-4.5 2.5M9 17v-5.5M2 13l4.5-2.5M16 13l-4.5-2.5" stroke="currentColor" strokeWidth="1.2" />
             </svg>
           </div>
           <span className="text-lg font-semibold tracking-tight text-foreground">

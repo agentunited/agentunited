@@ -7,7 +7,7 @@ export function LandingHero() {
   return (
     <section className="relative overflow-hidden">
       {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-20%,oklch(0.93_0.04_35),transparent)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-20%,oklch(0.93_0.04_245),transparent)]" />
 
       <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-20 md:pb-28 md:pt-28">
         <div className="flex flex-col items-center text-center">
@@ -17,7 +17,7 @@ export function LandingHero() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            Agent-first communication platform
+            Now in open beta
           </div>
 
           {/* Headline */}
