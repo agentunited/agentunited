@@ -31,11 +31,11 @@ export function LandingHowItWorks() {
               
               {/* Content */}
               <div className="flex-1">
-                <div className="flex items-center mb-4">
-                  <Download className="w-8 h-8 text-liberty-green mr-4" />
-                  <h3 className="text-3xl font-bold text-deep-slate">Start AgentUnited</h3>
+                <div className="flex items-center mb-6">
+                  <Download className="w-10 h-10 text-emerald-400 mr-5" />
+                  <h3 className="text-4xl font-bold text-white">Start AgentUnited</h3>
                 </div>
-                <p className="text-xl text-gray-600 mb-6">
+                <p className="text-xl text-white/70 mb-8 leading-relaxed">
                   One command. 30 seconds. Done.
                 </p>
                 
@@ -74,11 +74,11 @@ export function LandingHowItWorks() {
               
               {/* Content */}
               <div className="flex-1">
-                <div className="flex items-center mb-4">
-                  <Link2 className="w-8 h-8 text-liberty-green mr-4" />
-                  <h3 className="text-3xl font-bold text-deep-slate">Connect Your Agent</h3>
+                <div className="flex items-center mb-6">
+                  <Link2 className="w-10 h-10 text-emerald-400 mr-5" />
+                  <h3 className="text-4xl font-bold text-white">Connect Your Agent</h3>
                 </div>
-                <p className="text-xl text-gray-600 mb-6">
+                <p className="text-xl text-white/70 mb-8 leading-relaxed">
                   Add 3 lines to your existing agent. Works with any framework.
                 </p>
                 
@@ -131,43 +131,43 @@ export function LandingHowItWorks() {
               
               {/* Content */}
               <div className="flex-1">
-                <div className="flex items-center mb-4">
-                  <MessageCircle className="w-8 h-8 text-liberty-green mr-4" />
-                  <h3 className="text-3xl font-bold text-deep-slate">Start Chatting</h3>
+                <div className="flex items-center mb-6">
+                  <MessageCircle className="w-10 h-10 text-emerald-400 mr-5" />
+                  <h3 className="text-4xl font-bold text-white">Start Chatting</h3>
                 </div>
-                <p className="text-xl text-gray-600 mb-6">
+                <p className="text-xl text-white/70 mb-8 leading-relaxed">
                   Open the app. See your agent in the sidebar. Click and chat.
                 </p>
                 
-                {/* Visual representation */}
-                <div className="bg-white rounded-xl border-2 border-gray-200 p-8 shadow-lg">
+                {/* Enterprise Visual representation */}
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/20 p-8 shadow-2xl">
                   <div className="grid md:grid-cols-3 gap-8 text-center">
                     <div>
-                      <div className="w-16 h-16 bg-liberty-green/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <span className="text-2xl">🖥️</span>
                       </div>
-                      <div className="font-semibold text-gray-900 mb-2">macOS App</div>
-                      <div className="text-gray-600 text-sm">Native, fast, beautiful</div>
+                      <div className="font-semibold text-white mb-2">macOS App</div>
+                      <div className="text-white/70 text-sm">Native, fast, beautiful</div>
                     </div>
                     <div>
-                      <div className="w-16 h-16 bg-liberty-green/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <span className="text-2xl">🌐</span>
                       </div>
-                      <div className="font-semibold text-gray-900 mb-2">Web Browser</div>
-                      <div className="text-gray-600 text-sm">Works anywhere</div>
+                      <div className="font-semibold text-white mb-2">Web Browser</div>
+                      <div className="text-white/70 text-sm">Works anywhere</div>
                     </div>
                     <div>
-                      <div className="w-16 h-16 bg-liberty-green/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <span className="text-2xl">💬</span>
                       </div>
-                      <div className="font-semibold text-gray-900 mb-2">Chat History</div>
-                      <div className="text-gray-600 text-sm">Never lose context</div>
+                      <div className="font-semibold text-white mb-2">Chat History</div>
+                      <div className="text-white/70 text-sm">Never lose context</div>
                     </div>
                   </div>
                   
                   <div className="mt-8 pt-6 border-t border-gray-200 text-center">
                     <CheckCircle className="w-8 h-8 text-liberty-green mx-auto mb-3" />
-                    <p className="text-lg font-semibold text-deep-slate">
+                    <p className="text-lg font-semibold text-white">
                       That's it! You're chatting with your agent.
                     </p>
                   </div>

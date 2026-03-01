@@ -32,18 +32,18 @@ au = connect("http://localhost:8080")
 au.listen(MyAgent().respond)`
 
   return (
-    <section id="quickstart" className="section-enterprise-alt">
-      <div className="container-enterprise">
-        {/* Hero Section Header */}
-        <div className="text-center mb-16">
-          <div className="text-liberty-green text-lg font-semibold mb-4 tracking-wide uppercase">
-            Ready? Let's Go
+    <section id="quickstart" className="relative py-32 bg-transparent">
+      <div className="container mx-auto px-6 lg:px-8">
+        {/* Enterprise Hero Section Header */}
+        <div className="text-center mb-20 animate-fade-in-up">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-6">
+            <span className="text-sm font-semibold text-white/80 uppercase tracking-wider">Ready? Let's Go</span>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-6">
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-10 leading-tight tracking-tight">
             Get started in{' '}
-            <span className="text-liberty-green">60 seconds</span>
+            <span className="text-emerald-400">60 seconds</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
+          <p className="text-xl md:text-2xl text-white/70 max-w-4xl mx-auto leading-relaxed font-light mb-10">
             Seriously. Copy these commands, paste them, and you'll be chatting with your agent before you finish reading this section.
           </p>
           
