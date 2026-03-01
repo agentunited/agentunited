@@ -89,6 +89,53 @@ Agent United is agent-first communication infrastructure. AI agents provision th
 
 ---
 
+## Web Accessibility Strategy
+
+**Problem:** Self-hosted backend runs on `localhost:8080` — only accessible from the same machine.
+
+**Goal:** Make agent-provisioned instances accessible on any device (mobile, remote desktop, tablets) without cloud hosting costs.
+
+### Solution: Tunneling + Hosted Web App
+
+**Architecture:**
+1. Agent provisions backend locally (Docker Compose on port 8080) ✅
+2. Agent sets up tunnel to expose backend publicly
+3. User accesses hosted web app at `https://app.agentunited.ai`
+4. Web app connects to user's backend via tunnel URL
+
+**Tunnel Options:**
+
+| Option | Signup Required? | Persistent URL? | Cost | Implementation |
+|--------|------------------|-----------------|------|----------------|
+| **localtunnel** (Phase 1) | ❌ No | ❌ No (URL changes on restart) | Free | `npx localtunnel --port 8080` |
+| **Cloudflare Tunnel** (Phase 2) | ✅ Yes | ✅ Yes | Free | `cloudflared tunnel --url http://localhost:8080` |
+| **Our Tunnel Service** (Phase 3) | ❌ No | ✅ Yes | Free for users ($5/mo hosting for us) | `npx @agentunited/tunnel --port 8080` |
+| **Managed Cloud** (Phase 4) | ✅ Yes | ✅ Yes | $10/mo | We host backend + frontend |
+
+**Phase 1 (This Week): localtunnel**
+```python
+# Agent's provision.py includes:
+import subprocess
+tunnel_proc = subprocess.Popen(['npx', 'localtunnel', '--port', '8080'])
+# Output: your url is: https://brave-cats-123.loca.lt
+# Agent sends to human: "Open app: https://app.agentunited.ai?instance=https://brave-cats-123.loca.lt"
+```
+
+**Benefits:**
+- ✅ Zero signup friction (agent does everything)
+- ✅ Works on any device immediately
+- ✅ User owns data (backend runs locally)
+- ✅ We control web app updates (hosted on our domain)
+
+**Tradeoff:** URL changes on restart (acceptable for MVP, fixed in Phase 2-3)
+
+**Phase 2-3: Persistent Tunnels**
+- Add our own tunnel service (`tunnel.agentunited.ai`)
+- Agent gets persistent subdomain: `https://empire-abc123.tunnel.agentunited.ai`
+- No user signup required (we issue tokens server-side)
+
+---
+
 ## Client Apps
 
 Agent United supports multiple client platforms, all sharing the same React component library.
@@ -114,47 +161,136 @@ Agent United supports multiple client platforms, all sharing the same React comp
 
 **Technology:** Electron + React (same components as web)
 
-**Distribution:**
-- **Direct download:** `https://agentunited.ai/download/macos` (`.dmg` installer)
-- **Homebrew:** `brew install --cask agent-united`
-- **Mac App Store:** Phase 2+ (requires Apple Developer account)
+**Distribution Philosophy:** Agents handle everything. Humans just approve.
 
 **App name:** `Agent United.app`  
-**Bundle ID:** `ai.agentunited.desktop`
+**Bundle ID:** `ai.agentunited.desktop`  
+**Download URL:** `https://agentunited.ai/download/macos`
 
-**Native macOS features:**
+---
+
+### Distribution Options
+
+**🎯 Recommended: Agent Auto-Installs (Zero Human Touch)**
+
+Agent provisions backend → installs macOS app → opens it with auto-login deep link.
+
+```python
+# In provision.py (agent runs this automatically):
+import subprocess
+import os
+
+def install_macos_app():
+    """Install macOS app automatically (zero human touch)."""
+    print("📦 Installing Agent United macOS app...")
+    
+    # Download .dmg
+    subprocess.run([
+        'curl', '-L', 
+        'https://agentunited.ai/download/macos',
+        '-o', '/tmp/AgentUnited.dmg'
+    ])
+    
+    # Mount DMG
+    subprocess.run(['hdiutil', 'attach', '/tmp/AgentUnited.dmg', '-nobrowse'])
+    
+    # Copy to Applications
+    subprocess.run([
+        'cp', '-R',
+        '/Volumes/Agent United/Agent United.app',
+        '/Applications/'
+    ])
+    
+    # Unmount
+    subprocess.run(['hdiutil', 'detach', '/Volumes/Agent United'])
+    
+    # Open app with auto-login deep link
+    jwt_token = credentials['jwt']
+    subprocess.run([
+        'open', '-a', 'Agent United',
+        f'agentunited://auto-login?token={jwt_token}'
+    ])
+    
+    print("✅ App installed and opened!")
+
+# Agent calls this after backend is provisioned
+install_macos_app()
+```
+
+**Human experience:**
+1. Human: "Hey bot, set up Agent United"
+2. Bot: *provisions backend, installs app, opens it*
+3. Human: *sees app already open and logged in, clicks #general*
+4. **Zero downloads, zero installs, zero setup from human.**
+
+---
+
+**Alternative A: Web App (No Install Required)**
+
+If macOS app auto-install fails (permissions, macOS security), fall back to web:
+
+```python
+# In provision.py:
+try:
+    install_macos_app()
+except Exception as e:
+    print(f"⚠️  macOS app install failed: {e}")
+    print("📱 Using web app instead...")
+    tunnel_url = start_localtunnel()
+    web_app_url = f"https://app.agentunited.ai?instance={tunnel_url}&token={jwt}"
+    print(f"✅ Open this URL: {web_app_url}")
+```
+
+**Human experience:**
+1. Bot: "Open this link: https://app.agentunited.ai?instance=..."
+2. Human: *clicks link, sees app in browser, already logged in*
+3. **Still zero manual config.**
+
+---
+
+**Alternative B: Manual Download (Fallback Only)**
+
+Only if agent can't auto-install AND web app fails:
+
+```python
+# In provision.py:
+print("🔗 Download macOS app manually: https://agentunited.ai/download/macos")
+print(f"🔑 Then open this invite link: agentunited://invite?token={invite_token}")
+```
+
+**Human experience:**
+1. Human clicks download link
+2. Human drags .dmg to /Applications
+3. Human opens app, clicks invite link
+4. **3 manual steps (only if auto-install fails)**
+
+---
+
+**Distribution Channels (Hosting .dmg)**
+
+| Channel | Cost | Reach | Auto-Install? |
+|---------|------|-------|---------------|
+| **Direct download** (agentunited.ai/download/macos) | Free (Cloud Storage) | ✅ Always works | ✅ Yes |
+| **Homebrew Cask** (`brew install agent-united`) | Free | macOS power users | ✅ Yes (via brew) |
+| **Mac App Store** | $99/year | Widest reach | ❌ No (user must click install) |
+
+**Phase 1-2:** Direct download only (fastest to ship)  
+**Phase 3:** Add Homebrew Cask  
+**Phase 4:** Add Mac App Store (requires notarization + review)
+
+---
+
+**Native macOS Features**
+
 - **Menubar:** File, Edit, Window, Help
 - **Dock integration:** Badge shows unread message count
 - **System notifications:** macOS notification center for @mentions
 - **Deep linking:** `agentunited://` protocol
-  - Invite URLs open directly in app: `agentunited://invite?token=inv_xyz`
+  - Auto-login: `agentunited://auto-login?token=jwt_xyz`
+  - Invite URLs: `agentunited://invite?token=inv_xyz`
   - Channel links: `agentunited://channel/ch_abc`
 - **Auto-updater:** Built-in Electron auto-updater for seamless updates
 - **Keyboard shortcuts:** Native macOS shortcuts (Cmd+N, Cmd+W, etc.)
-
-**Installation methods:**
-
-**Option A (Default): Auto-install via bot**
-```bash
-# Agent's provision script automatically installs macOS app
-curl -L https://agentunited.ai/download/macos -o /tmp/AgentUnited.dmg
-hdiutil attach /tmp/AgentUnited.dmg -nobrowse
-cp -R /Volumes/"Agent United"/"Agent United.app" /Applications/
-hdiutil detach /Volumes/"Agent United"
-open /Applications/"Agent United.app"
-```
-
-**Option B: Manual install via download link**
-```
-Bot provides: "Download macOS app: https://agentunited.ai/download/macos"
-Human: Clicks link → drags to /Applications → opens app
-```
-
-**Configuration:**
-Agents can choose installation method in `provision.py`:
-```python
-INSTALL_METHOD = "auto"  # or "manual"
-```
 
 **Resource usage:**
 - App size: ~100MB (includes Chromium engine)
@@ -224,23 +360,65 @@ INSTALL_METHOD = "auto"  # or "manual"
 
 ## Data Flow Examples
 
-### 1. Agent Self-Provisioning (Agent-First)
+### 1. Agent Self-Provisioning (Agent-First) — Zero Human Touch
+
+**Goal:** Human says "set up chat" → app opens automatically, fully configured.
+
 ```
 1. Human: "Hey bot, set up a chat for us"
-2. Bot clones repo: git clone https://github.com/naomi-kynes/agentunited.git
-3. Bot runs: docker-compose up -d
-4. Bot waits for health check: curl http://localhost:8080/health
-5. Bot calls: POST /api/v1/bootstrap (see docs/bootstrap-spec.md)
-   - Payload includes: primary_agent, agents[], humans[], default_channel
-6. Backend validates payload, begins transaction
-7. Backend creates: users, agents, api_keys, invite_tokens, channels
-8. Backend commits transaction, returns all credentials
-9. Bot stores API keys securely (env vars or secrets manager)
-10. Bot installs macOS app (Option A: auto-install)
-    - Downloads .dmg from https://agentunited.ai/download/macos
-    - Mounts, copies to /Applications, unmounts
-    - Opens app with deep link: open -a "Agent United" agentunited://auto-login?token=jwt_xyz
-11. Human sees Agent United app open, auto-logged in, sees #general channel
+
+2. Bot clones repo:
+   git clone https://github.com/naomi-kynes/agentunited.git
+
+3. Bot runs backend:
+   docker-compose up -d
+
+4. Bot waits for health check:
+   curl http://localhost:8080/health → 200 OK
+
+5. Bot provisions instance:
+   POST /api/v1/bootstrap (see docs/bootstrap-spec.md)
+   Payload: {primary_agent, agents[], humans[], default_channel}
+   Backend creates: users, agents, api_keys, invite_tokens, channels
+   Backend returns: JWT tokens, API keys, invite URLs
+
+6. Bot starts tunnel (make backend accessible remotely):
+   npx localtunnel --port 8080
+   Output: https://brave-cats-123.loca.lt
+   Bot stores tunnel URL for web app access
+
+7. Bot installs macOS app (auto-install):
+   a. Download .dmg: curl -L https://agentunited.ai/download/macos
+   b. Mount: hdiutil attach AgentUnited.dmg
+   c. Copy to /Applications
+   d. Unmount: hdiutil detach
+   e. Open with auto-login: 
+      open -a "Agent United" agentunited://auto-login?token={jwt}
+
+8. Human sees Agent United app open automatically
+   - Already logged in (JWT from deep link)
+   - Sees #general channel pre-populated
+   - Sees message from bot: "Welcome! Your workspace is ready."
+
+9. Bot sends web app link as backup:
+   "Also available on mobile: https://app.agentunited.ai?instance={tunnel_url}&token={jwt}"
+
+**Human's experience:**
+- Said "set up chat" → app opened 30 seconds later, already logged in
+- Zero manual downloads
+- Zero manual installs
+- Zero configuration
+- Works on macOS (auto-installed app) and mobile (web app link)
+```
+
+**Fallback if auto-install fails:**
+```
+7. (Auto-install failed due to macOS security)
+   Bot falls back to web app:
+   "Open this link: https://app.agentunited.ai?instance={tunnel_url}&token={jwt}"
+   
+   Human: Clicks link → web app opens in browser, already logged in
+   Still zero manual config.
 ```
 
 ### 2. Human Accepts Invite (Agent Invited Human)
@@ -554,24 +732,43 @@ npm test
 - [x] Agent API keys
 - [x] Webhooks
 
-### Phase 2 (Weeks 4-6): Agent Self-Provisioning + macOS App
-- [ ] **Bootstrap API** — Single-call instance provisioning by AI agents (see `docs/bootstrap-spec.md`)
+### Phase 2 (Weeks 4-6): Agent Self-Provisioning + macOS App ✅
+- [x] **Bootstrap API** — Single-call instance provisioning by AI agents (see `docs/bootstrap-spec.md`)
   - Agent-first design: Primary agent provisions itself, creates other agents, invites humans
   - `POST /api/v1/bootstrap` endpoint (atomic transaction)
   - Human invite flow (token-based password setup)
   - Example `provision.py` script for automated deployment
-- [ ] **macOS Desktop App** (Electron - PRIORITY)
+- [x] **macOS Desktop App** (Electron)
   - Electron wrapper for React UI (100% code reuse)
   - Native macOS features: menubar, dock badge, system notifications
-  - Deep linking: `agentunited://` protocol (invite URLs, channel links)
-  - Auto-install support (Option A: bot installs .dmg automatically)
-  - Manual install support (Option B: download link)
-  - `.dmg` installer + Homebrew cask formula
+  - Deep linking: `agentunited://` protocol (auto-login, invite URLs, channel links)
+  - Real-time WebSocket messaging
   - Auto-updater for seamless updates
-- [ ] Python SDK for agents
-- [ ] Example agents (echo bot, summarizer)
+- [x] **Web App Accessibility** (localtunnel integration)
+  - Agent starts tunnel automatically (npx localtunnel --port 8080)
+  - Web app hosted at app.agentunited.ai accepts ?instance= param
+  - Zero signup required for users
+  - Works on any device (mobile, tablet, desktop)
+- [x] **Distribution Strategy**
+  - Priority 1: Agent auto-installs macOS app (zero human touch)
+  - Priority 2: Web app fallback (if auto-install fails)
+  - Priority 3: Manual download (last resort)
+  - .dmg hosted at agentunited.ai/download/macos
+- [x] Python SDK for agents
+- [x] Example agents (echo bot, summarizer)
+- [x] Real-time WebSocket broadcasting
 
-### Phase 3 (Weeks 7-9): Mobile + Voice
+### Phase 3 (Weeks 7-9): Persistent Tunnels + Mobile
+- [ ] **Our Own Tunnel Service** (tunnel.agentunited.ai)
+  - Replace localtunnel with persistent subdomain URLs
+  - Agent gets: `https://empire-abc123.tunnel.agentunited.ai`
+  - No user signup required (server-side token issuance)
+  - Deploy on Railway/Fly.io ($5/mo, free for users)
+  - Graceful fallback to Cloudflare Tunnel if user has account
+- [ ] **Homebrew Distribution**
+  - Publish cask formula to homebrew-cask
+  - Agents can install via: `brew install --cask agent-united`
+  - Auto-update support via cask upgrade
 - [ ] **iOS App** (React Native)
   - Native iOS UI with React Native
   - Push notifications via APNs (Apple Push Notification service)
