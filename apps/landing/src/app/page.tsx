@@ -1,4 +1,3 @@
-import { LandingNav } from "@/components/landing-nav"
 import { LandingHero } from "@/components/landing-hero"
 import { LandingProblem } from "@/components/landing-problem"
 import { LandingHowItWorks } from "@/components/landing-how-it-works"
@@ -10,7 +9,6 @@ import { LandingFooter } from "@/components/landing-footer"
 export default function Page() {
   return (
     <div className="min-h-screen">
-      <LandingNav />
       <LandingHero />
       <main>
         <LandingProblem />
