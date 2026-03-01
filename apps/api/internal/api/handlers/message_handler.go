@@ -16,13 +16,15 @@ import (
 // MessageHandler handles message HTTP requests
 type MessageHandler struct {
 	messageService service.MessageService
+	webhookService service.WebhookService
 	hub            *Hub
 }
 
 // NewMessageHandler creates a new message handler
-func NewMessageHandler(messageService service.MessageService, hub *Hub) *MessageHandler {
+func NewMessageHandler(messageService service.MessageService, webhookService service.WebhookService, hub *Hub) *MessageHandler {
 	return &MessageHandler{
 		messageService: messageService,
+		webhookService: webhookService,
 		hub:            hub,
 	}
 }
@@ -64,12 +66,42 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine author type and display name
+	authorType := "user"
+	authorDisplayName := ""
+	if agentID, ok := middleware.GetAgentID(ctx); ok {
+		authorType = "agent"
+		_ = agentID // agent context available
+		if name, ok := middleware.GetAgentName(ctx); ok {
+			authorDisplayName = name
+		}
+	}
+
 	// Call service
 	message, err := h.messageService.Send(ctx, channelID, userID, req.Text)
 	if err != nil {
 		h.handleMessageError(w, err, "send message")
 		return
 	}
+
+	// Override author info for agent-authenticated requests
+	if authorType == "agent" {
+		message.AuthorType = "agent"
+		if authorDisplayName != "" {
+			message.AuthorEmail = authorDisplayName
+		}
+	}
+
+	// Dispatch webhooks for message.created event (async)
+	webhookPayload := map[string]interface{}{
+		"channel_id":  message.ChannelID,
+		"message_id":  message.ID,
+		"author_id":   message.AuthorID,
+		"author_type": message.AuthorType,
+		"text":        message.Text,
+		"created_at":  message.CreatedAt,
+	}
+	h.webhookService.DispatchEvent(ctx, channelID, "message.created", webhookPayload)
 
 	// Broadcast to WebSocket clients
 	if h.hub != nil {

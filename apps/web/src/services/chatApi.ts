@@ -99,7 +99,8 @@ export const chatApi = {
    */
   async getChannels(): Promise<Channel[]> {
     try {
-      const apiChannels = await apiRequest<ApiChannel[]>('/api/v1/channels');
+      const response = await apiRequest<{ channels: ApiChannel[] } | ApiChannel[]>('/api/v1/channels');
+      const apiChannels = Array.isArray(response) ? response : response.channels || [];
       return apiChannels.map(mapApiChannel);
     } catch (error) {
       console.error('Failed to fetch channels:', error);
@@ -113,12 +114,12 @@ export const chatApi = {
   async getMessages(channelId: string, limit?: number): Promise<Message[]> {
     try {
       const params = limit ? `?limit=${limit}` : '';
-      const apiMessages = await apiRequest<ApiMessage[]>(
+      const response = await apiRequest<{ messages: ApiMessage[] } | ApiMessage[]>(
         `/api/v1/channels/${channelId}/messages${params}`
       );
+      const apiMessages = Array.isArray(response) ? response : response.messages || [];
       
-      // TODO: Get current user ID from auth service or API
-      const currentUserId = 'current-user'; // Placeholder
+      const currentUserId = localStorage.getItem('user-id') || 'current-user';
       
       return apiMessages.map(msg => mapApiMessage(msg, currentUserId));
     } catch (error) {

@@ -44,6 +44,7 @@
 
 @theme inline {
   --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-rajdhani), 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, monospace;
   
   --color-liberty-green: #7FA99B;
@@ -100,6 +101,10 @@
   
   h1, h2, h3, h4, h5, h6 {
     @apply tracking-tight font-semibold;
+  }
+  
+  .font-display {
+    font-family: var(--font-rajdhani), 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
   }
   
   code {

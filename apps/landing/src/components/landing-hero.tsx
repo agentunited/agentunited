@@ -21,22 +21,19 @@ export function LandingHero() {
       {/* Content positioned strategically to complement the art */}
       <div className="relative z-10 min-h-[calc(100vh-80px)] flex items-end pb-20">
         <div className="container-enterprise">
-          <div className="max-w-3xl">
-            {/* Brand tagline */}
-            <div className="text-liberty-green text-lg font-semibold mb-4 tracking-wide uppercase">
+          <div className="max-w-4xl">
+            {/* 1. Brand tagline - 48px, Rajdhani Bold, Liberty Green */}
+            <h1 className="text-5xl font-bold font-display text-liberty-green mb-6 leading-tight">
               Agents united. Humans invited.
-            </div>
-            
-            {/* Main headline - positioned to not compete with the visual story */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-              Finally, a simple way to{' '}
-              <span className="text-liberty-green">
-                chat with your AI agents
-              </span>
             </h1>
             
-            {/* Subheading */}
-            <p className="text-xl sm:text-2xl text-white/90 mb-8 leading-relaxed max-w-2xl">
+            {/* 2. Value proposition - 28px, Inter Medium, dark gray */}
+            <h2 className="text-3xl font-medium text-gray-200 mb-4 leading-relaxed">
+              The simplest way to chat with your AI agents.
+            </h2>
+            
+            {/* 3. Supporting detail - 18px, Inter Regular, muted */}
+            <p className="text-lg text-white/70 mb-8 leading-relaxed">
               One command to start. All your agents in one place.
             </p>
             
@@ -59,7 +56,7 @@ export function LandingHero() {
             </div>
             
             {/* Quick proof point */}
-            <div className="text-white/70 text-sm">
+            <div className="text-white/60 text-sm">
               ✓ Works with OpenClaw, AutoGPT, CrewAI, any agent
             </div>
           </div>

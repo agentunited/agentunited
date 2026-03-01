@@ -19,7 +19,9 @@ type contextKey string
 
 const (
 	// UserIDKey is the context key for user ID
-	UserIDKey contextKey = "user_id"
+	UserIDKey     contextKey = "user_id"
+	AgentIDKey    contextKey = "agent_id"
+	AgentNameKey  contextKey = "agent_name"
 )
 
 // Auth creates an authentication middleware that supports both JWT tokens and API keys
@@ -45,14 +47,18 @@ func Auth(jwtSecret string, apiKeyRepo repository.APIKeyRepository, agentRepo re
 			var err error
 
 			// Check if this is an API key (starts with au_) or JWT token
+			var agentID, agentName string
 			if strings.HasPrefix(tokenString, "au_") {
 				// API Key authentication
-				userID, err = authenticateAPIKey(r.Context(), tokenString, apiKeyRepo, agentRepo)
-				if err != nil {
-					log.Error().Err(err).Str("key_prefix", tokenString[:10]+"...").Msg("invalid API key")
+				result, authErr := authenticateAPIKey(r.Context(), tokenString, apiKeyRepo, agentRepo)
+				if authErr != nil {
+					log.Error().Err(authErr).Str("key_prefix", tokenString[:10]+"...").Msg("invalid API key")
 					respondUnauthorized(w, "Invalid or expired API key")
 					return
 				}
+				userID = result.UserID
+				agentID = result.AgentID
+				agentName = result.AgentName
 			} else {
 				// JWT token authentication
 				userID, err = authenticateJWT(tokenString, jwtSecret)
@@ -65,6 +71,10 @@ func Auth(jwtSecret string, apiKeyRepo repository.APIKeyRepository, agentRepo re
 
 			// Add user ID to context
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			if agentID != "" {
+				ctx = context.WithValue(ctx, AgentIDKey, agentID)
+				ctx = context.WithValue(ctx, AgentNameKey, agentName)
+			}
 
 			// Call next handler
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -134,23 +144,33 @@ func authenticateJWT(tokenString, jwtSecret string) (string, error) {
 }
 
 // authenticateAPIKey validates an API key and returns the user ID
-func authenticateAPIKey(ctx context.Context, apiKey string, apiKeyRepo repository.APIKeyRepository, agentRepo repository.AgentRepository) (string, error) {
+type apiKeyResult struct {
+	UserID      string
+	AgentID     string
+	AgentName   string
+}
+
+func authenticateAPIKey(ctx context.Context, apiKey string, apiKeyRepo repository.APIKeyRepository, agentRepo repository.AgentRepository) (*apiKeyResult, error) {
 	// Hash the provided API key
 	keyHash := hashAPIKey(apiKey)
 	
 	// Look up the API key in the database
 	key, err := apiKeyRepo.GetByHash(ctx, keyHash)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Get the agent to find the owner (user)
 	agent, err := agentRepo.Get(ctx, key.AgentID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return agent.OwnerID, nil
+	return &apiKeyResult{
+		UserID:    agent.OwnerID,
+		AgentID:   agent.ID,
+		AgentName: agent.DisplayName,
+	}, nil
 }
 
 // hashAPIKey hashes an API key using SHA-256
@@ -170,4 +190,16 @@ func respondUnauthorized(w http.ResponseWriter, message string) {
 func GetUserID(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(UserIDKey).(string)
 	return userID, ok
+}
+
+// GetAgentID extracts agent ID from request context (set when API key auth is used)
+func GetAgentID(ctx context.Context) (string, bool) {
+	agentID, ok := ctx.Value(AgentIDKey).(string)
+	return agentID, ok
+}
+
+// GetAgentName extracts agent display name from request context
+func GetAgentName(ctx context.Context) (string, bool) {
+	agentName, ok := ctx.Value(AgentNameKey).(string)
+	return agentName, ok
 }

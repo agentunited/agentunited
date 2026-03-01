@@ -14,7 +14,7 @@ export function LandingProblem() {
             <span className="text-gray-500">Now what?</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Most people end up frustrated with solutions that weren't designed for chatting with AI agents.
+            Most people end up frustrated with solutions that weren't designed for simple agent chat.
           </p>
         </div>
 

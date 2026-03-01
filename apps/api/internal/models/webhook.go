@@ -32,3 +32,9 @@ type CreateWebhookRequest struct {
 	URL    string   `json:"url" validate:"required,url"`
 	Events []string `json:"events" validate:"required,min=1"`
 }
+
+// WebhookWithSecret includes the webhook secret for dispatch purposes
+type WebhookWithSecret struct {
+	Webhook
+	Secret string `json:"-"` // Never expose secret in JSON
+}
