@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Input } from '../components/ui';
+import { useNativeIntegration } from '../hooks/useNativeIntegration';
 import './SettingsWindow.css';
 
 type SettingsTab = 'general' | 'account' | 'appearance' | 'keyboard' | 'advanced';
@@ -25,16 +26,49 @@ export function SettingsWindow({ onClose }: SettingsWindowProps) {
   const [settings, setSettings] = useState<SettingsData>({
     apiEndpoint: 'http://localhost:8080',
     agentId: 'ag_01H8XZ30A1B2C3D4E5F6G7H8I9',
-    launchAtLogin: true,
+    launchAtLogin: false,
     desktopNotifications: true,
     soundNotifications: true,
     dockBadge: true,
-    displayName: 'Alice Smith',
+    displayName: 'Current User',
     theme: 'dark',
     fontSize: 'md'
   });
 
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Native integration
+  const { 
+    isElectron, 
+    appConfig, 
+    updateAppConfig, 
+    getAppVersion,
+    isMacOS 
+  } = useNativeIntegration();
+  
+  const [appVersion, setAppVersion] = useState<string>('1.0.0');
+
+  // Load native app config
+  useEffect(() => {
+    if (isElectron && appConfig) {
+      setSettings(prev => ({
+        ...prev,
+        launchAtLogin: appConfig.startup.launchAtLogin,
+        desktopNotifications: appConfig.notifications.enabled,
+        soundNotifications: appConfig.notifications.sound,
+        dockBadge: appConfig.dock.badgeEnabled
+      }));
+    }
+  }, [isElectron, appConfig]);
+
+  // Load app version
+  useEffect(() => {
+    if (isElectron) {
+      getAppVersion().then(version => {
+        if (version) setAppVersion(version);
+      });
+    }
+  }, [isElectron, getAppVersion]);
 
   const tabs = [
     { id: 'general', label: 'General', icon: '⚙️' },
@@ -66,8 +100,27 @@ export function SettingsWindow({ onClose }: SettingsWindowProps) {
 
   const saveSettings = async () => {
     try {
-      // Mock API call - replace with real settings save
+      // Save to native app config if in Electron
+      if (isElectron) {
+        await updateAppConfig({
+          notifications: {
+            enabled: settings.desktopNotifications,
+            sound: settings.soundNotifications,
+            mentions: true, // Keep existing mention setting
+            directMessages: true // Keep existing DM setting
+          },
+          dock: {
+            badgeEnabled: settings.dockBadge
+          },
+          startup: {
+            launchAtLogin: settings.launchAtLogin
+          }
+        });
+      }
+      
+      // Save other settings (API endpoint, theme, etc.)
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
       setHasChanges(false);
       console.log('Settings saved:', settings);
     } catch (error) {
@@ -101,49 +154,68 @@ export function SettingsWindow({ onClose }: SettingsWindowProps) {
         </div>
       </div>
 
-      <div className="settings-section">
-        <h3>Startup</h3>
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={settings.launchAtLogin}
-            onChange={(e) => updateSetting('launchAtLogin', e.target.checked)}
-          />
-          <span className="checkbox-text">Start AgentUnited automatically when you log in</span>
-        </label>
-      </div>
-
-      <div className="settings-section">
-        <h3>Notifications</h3>
-        <div className="checkbox-group">
+      {isElectron && (
+        <div className="settings-section">
+          <h3>Startup</h3>
           <label className="checkbox-label">
             <input
               type="checkbox"
-              checked={settings.desktopNotifications}
-              onChange={(e) => updateSetting('desktopNotifications', e.target.checked)}
+              checked={settings.launchAtLogin}
+              onChange={(e) => updateSetting('launchAtLogin', e.target.checked)}
             />
-            <span className="checkbox-text">Show desktop notifications for new messages</span>
+            <span className="checkbox-text">
+              Start AgentUnited automatically when you log in
+            </span>
           </label>
-          
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={settings.soundNotifications}
-              onChange={(e) => updateSetting('soundNotifications', e.target.checked)}
-            />
-            <span className="checkbox-text">Play sound for new messages</span>
-          </label>
-          
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={settings.dockBadge}
-              onChange={(e) => updateSetting('dockBadge', e.target.checked)}
-            />
-            <span className="checkbox-text">Badge dock icon with unread count</span>
-          </label>
+          {isMacOS && (
+            <p className="form-help">
+              Requires system permissions. You may need to approve in System Preferences → Users & Groups → Login Items.
+            </p>
+          )}
         </div>
-      </div>
+      )}
+
+      {isElectron && (
+        <div className="settings-section">
+          <h3>Notifications</h3>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={settings.desktopNotifications}
+                onChange={(e) => updateSetting('desktopNotifications', e.target.checked)}
+              />
+              <span className="checkbox-text">Show desktop notifications for new messages</span>
+            </label>
+            
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={settings.soundNotifications}
+                onChange={(e) => updateSetting('soundNotifications', e.target.checked)}
+                disabled={!settings.desktopNotifications}
+              />
+              <span className="checkbox-text">Play sound for new messages</span>
+            </label>
+            
+            {isMacOS && (
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={settings.dockBadge}
+                  onChange={(e) => updateSetting('dockBadge', e.target.checked)}
+                />
+                <span className="checkbox-text">Badge dock icon with unread count</span>
+              </label>
+            )}
+          </div>
+          {isMacOS && (
+            <p className="form-help">
+              Notifications can be configured in System Preferences → Notifications & Focus → AgentUnited.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="settings-actions">
         <Button variant="secondary" onClick={resetToDefaults}>
@@ -276,6 +348,34 @@ export function SettingsWindow({ onClose }: SettingsWindowProps) {
             Export Logs
           </Button>
           <p className="form-help">Export application logs for debugging</p>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>About</h3>
+        <div className="about-info">
+          <div className="about-item">
+            <span className="about-label">Version:</span>
+            <span className="about-value">{appVersion}</span>
+          </div>
+          {isElectron && (
+            <>
+              <div className="about-item">
+                <span className="about-label">Platform:</span>
+                <span className="about-value">
+                  {isMacOS ? 'macOS' : 'Desktop'} App
+                </span>
+              </div>
+              <div className="about-item">
+                <span className="about-label">Electron:</span>
+                <span className="about-value">{process.versions?.electron || 'Unknown'}</span>
+              </div>
+            </>
+          )}
+          <div className="about-item">
+            <span className="about-label">License:</span>
+            <span className="about-value">MIT</span>
+          </div>
         </div>
       </div>
     </div>

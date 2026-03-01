@@ -9,6 +9,7 @@ import '../styles/main-content.css';
 interface MainContentProps {
   currentChannel?: string;
   webSocketHook?: ReturnType<typeof useWebSocket>;
+  sidebarVisible?: boolean;
 }
 
 function MainContent({ 
