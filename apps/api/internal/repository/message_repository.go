@@ -69,9 +69,13 @@ func (r *PostgresMessageRepository) GetByChannel(ctx context.Context, channelID 
 				m.author_type,
 				m.text,
 				m.created_at,
-				COALESCE(u.email, '') as author_email
+				CASE 
+					WHEN m.author_type = 'agent' THEN COALESCE(a.display_name, a.name, '')
+					ELSE COALESCE(u.email, '')
+				END as author_email
 			FROM messages m
 			LEFT JOIN users u ON m.author_id = u.id AND m.author_type = 'user'
+			LEFT JOIN agents a ON m.author_id = a.id AND m.author_type = 'agent'
 			WHERE m.channel_id = $1
 			ORDER BY m.created_at DESC
 			LIMIT $2
@@ -87,9 +91,13 @@ func (r *PostgresMessageRepository) GetByChannel(ctx context.Context, channelID 
 				m.author_type,
 				m.text,
 				m.created_at,
-				COALESCE(u.email, '') as author_email
+				CASE 
+					WHEN m.author_type = 'agent' THEN COALESCE(a.display_name, a.name, '')
+					ELSE COALESCE(u.email, '')
+				END as author_email
 			FROM messages m
 			LEFT JOIN users u ON m.author_id = u.id AND m.author_type = 'user'
+			LEFT JOIN agents a ON m.author_id = a.id AND m.author_type = 'agent'
 			WHERE m.channel_id = $1
 			AND m.created_at < (
 				SELECT created_at FROM messages WHERE id = $2
@@ -148,9 +156,13 @@ func (r *PostgresMessageRepository) GetByID(ctx context.Context, id string) (*mo
 			m.author_type,
 			m.text,
 			m.created_at,
-			COALESCE(u.email, '') as author_email
+			CASE 
+				WHEN m.author_type = 'agent' THEN COALESCE(a.display_name, a.name, '')
+				ELSE COALESCE(u.email, '')
+			END as author_email
 		FROM messages m
 		LEFT JOIN users u ON m.author_id = u.id AND m.author_type = 'user'
+		LEFT JOIN agents a ON m.author_id = a.id AND m.author_type = 'agent'
 		WHERE m.id = $1
 	`
 

@@ -66,30 +66,25 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine author type and display name
-	authorType := "user"
-	authorDisplayName := ""
+	// Call service — use agent-aware method when authenticated as agent
+	var message *models.Message
+	var err error
 	if agentID, ok := middleware.GetAgentID(ctx); ok {
-		authorType = "agent"
-		_ = agentID // agent context available
+		agentName := ""
 		if name, ok := middleware.GetAgentName(ctx); ok {
-			authorDisplayName = name
+			agentName = name
 		}
+		agentCtx := service.AgentContext{
+			AgentID:     agentID,
+			DisplayName: agentName,
+		}
+		message, err = h.messageService.SendAsAgent(ctx, channelID, userID, agentCtx, req.Text)
+	} else {
+		message, err = h.messageService.Send(ctx, channelID, userID, req.Text)
 	}
-
-	// Call service
-	message, err := h.messageService.Send(ctx, channelID, userID, req.Text)
 	if err != nil {
 		h.handleMessageError(w, err, "send message")
 		return
-	}
-
-	// Override author info for agent-authenticated requests
-	if authorType == "agent" {
-		message.AuthorType = "agent"
-		if authorDisplayName != "" {
-			message.AuthorEmail = authorDisplayName
-		}
 	}
 
 	// Dispatch webhooks for message.created event (async)

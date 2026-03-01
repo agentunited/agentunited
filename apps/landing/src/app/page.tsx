@@ -8,15 +8,22 @@ import { LandingFooter } from "@/components/landing-footer"
 
 export default function Page() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
+      {/* Hero takes full viewport */}
       <LandingHero />
-      <main>
-        <LandingProblem />
-        <LandingHowItWorks />
-        <LandingBenefits />
-        <LandingQuickstart />
-        <LandingFAQ />
+      
+      {/* Main content with production-grade spacing */}
+      <main className="relative z-10 bg-white">
+        <div className="space-y-24 md:space-y-32 lg:space-y-40">
+          <LandingProblem />
+          <LandingHowItWorks />
+          <LandingBenefits />
+          <LandingQuickstart />
+          <LandingFAQ />
+        </div>
       </main>
+      
+      {/* Footer */}
       <LandingFooter />
     </div>
   )

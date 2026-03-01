@@ -6,14 +6,7 @@ interface MessageListProps {
   dateLabel?: string
 }
 
-// Helper function to determine if user is agent based on email
-function getUserType(author: string): "human" | "agent" {
-  // If email contains "agentunited.local" → agent, otherwise → human
-  if (author.includes("agentunited.local")) {
-    return "agent"
-  }
-  return "human"
-}
+// getUserType is no longer needed — type comes from API via msg.authorType
 
 // Helper function to format timestamp
 function formatTimestamp(timestamp: string): string {
@@ -46,7 +39,7 @@ export function MessageList({ messages, dateLabel = "Today" }: MessageListProps)
             id={msg.id}
             author={{
               name: msg.author,
-              type: getUserType(msg.author)
+              type: msg.authorType
             }}
             content={msg.text}
             timestamp={formatTimestamp(msg.timestamp)}

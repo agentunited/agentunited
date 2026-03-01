@@ -97,23 +97,8 @@ export function ChatPage() {
     );
   }
 
-  // Mock direct messages for now (TODO: Fetch from API)
-  const directMessages = [
-    {
-      id: 'dm-1',
-      name: 'Agent Alpha',
-      type: 'agent' as const,
-      online: true,
-      unread: 2
-    },
-    {
-      id: 'dm-2', 
-      name: 'John Smith',
-      type: 'human' as const,
-      online: false,
-      unread: 0
-    }
-  ];
+  // TODO: Fetch DMs from API when DM support is added
+  const directMessages: { id: string; name: string; type: 'agent' | 'human'; online: boolean; unread: number }[] = [];
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">

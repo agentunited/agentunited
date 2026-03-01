@@ -5,13 +5,12 @@ import type { Channel, Message } from '../types/chat';
 // API interfaces for the Agent United backend
 interface ApiMessage {
   id: string;
-  channelId: string;
-  author: {
-    id: string;
-    name: string;
-  };
-  content: string;
-  timestamp: string;
+  channel_id: string;
+  author_id: string;
+  author_type: string; // "agent" | "user"
+  author_email: string; // display name for agents, email for users
+  text: string;
+  created_at: string;
 }
 
 interface ApiChannel {
@@ -74,12 +73,13 @@ async function apiRequest<T>(
 function mapApiMessage(apiMsg: ApiMessage, currentUserId?: string): Message {
   return {
     id: apiMsg.id,
-    channelId: apiMsg.channelId,
-    author: apiMsg.author.name,
-    authorId: apiMsg.author.id,
-    text: apiMsg.content,
-    timestamp: apiMsg.timestamp,
-    isOwnMessage: currentUserId ? apiMsg.author.id === currentUserId : false
+    channelId: apiMsg.channel_id,
+    author: apiMsg.author_email || apiMsg.author_id,
+    authorId: apiMsg.author_id,
+    authorType: apiMsg.author_type === 'agent' ? 'agent' : 'human',
+    text: apiMsg.text,
+    timestamp: apiMsg.created_at,
+    isOwnMessage: currentUserId ? apiMsg.author_id === currentUserId : false
   };
 }
 
@@ -134,7 +134,7 @@ export const chatApi = {
   async sendMessage(channelId: string, text: string): Promise<Message> {
     try {
       const request: SendMessageRequest = { text };
-      const apiMessage = await apiRequest<ApiMessage>(
+      const response = await apiRequest<{ message: ApiMessage }>(
         `/api/v1/channels/${channelId}/messages`,
         {
           method: 'POST',
@@ -142,8 +142,8 @@ export const chatApi = {
         }
       );
       
-      const currentUserId = 'current-user'; // Placeholder
-      return mapApiMessage(apiMessage, currentUserId);
+      const currentUserId = localStorage.getItem('user-id') || 'current-user';
+      return mapApiMessage(response.message, currentUserId);
     } catch (error) {
       console.error(`Failed to send message to channel ${channelId}:`, error);
       throw error;

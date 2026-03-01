@@ -3,6 +3,7 @@ export interface Message {
   channelId: string;
   author: string;
   authorId: string;
+  authorType: "agent" | "human";
   text: string;
   timestamp: string; // ISO 8601
   isOwnMessage: boolean;

@@ -9,9 +9,16 @@ import (
 	"github.com/agentunited/backend/internal/repository"
 )
 
+// AgentContext holds agent identity for agent-authenticated requests
+type AgentContext struct {
+	AgentID     string
+	DisplayName string
+}
+
 // MessageService handles message business logic
 type MessageService interface {
 	Send(ctx context.Context, channelID, userID, text string) (*models.Message, error)
+	SendAsAgent(ctx context.Context, channelID, ownerID string, agent AgentContext, text string) (*models.Message, error)
 	GetMessages(ctx context.Context, channelID, userID string, limit int, before string) (*models.MessageList, error)
 }
 
@@ -50,6 +57,36 @@ func (s *messageService) Send(ctx context.Context, channelID, userID, text strin
 		ChannelID:  channelID,
 		AuthorID:   userID,
 		AuthorType: "user",
+		Text:       text,
+		CreatedAt:  time.Now(),
+	}
+
+	if err := s.messageRepo.Create(ctx, message); err != nil {
+		return nil, fmt.Errorf("create message: %w", err)
+	}
+
+	return message, nil
+}
+
+// SendAsAgent creates a message authored by an agent
+func (s *messageService) SendAsAgent(ctx context.Context, channelID, ownerID string, agent AgentContext, text string) (*models.Message, error) {
+	if !isValidMessageText(text) {
+		return nil, models.ErrInvalidMessageText
+	}
+
+	// Check channel membership using owner's user ID
+	isMember, _, err := s.channelRepo.IsMember(ctx, channelID, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("check membership: %w", err)
+	}
+	if !isMember {
+		return nil, models.ErrNotChannelMember
+	}
+
+	message := &models.Message{
+		ChannelID:  channelID,
+		AuthorID:   agent.AgentID,
+		AuthorType: "agent",
 		Text:       text,
 		CreatedAt:  time.Now(),
 	}
