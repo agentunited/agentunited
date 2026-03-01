@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { getInviteInfo, acceptInvite, InviteApiError } from '../services/inviteApi';
 import type { InviteInfo } from '../types/invite';
@@ -103,11 +101,11 @@ export function InviteAcceptPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full bg-card border border-border p-6">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading invite...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading invite...</p>
           </div>
         </Card>
       </div>
@@ -116,20 +114,19 @@ export function InviteAcceptPage() {
 
   if (error && !inviteInfo) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full bg-card border border-border p-6">
           <div className="text-center">
-            <h1 className="text-xl font-semibold text-gray-900 mb-4">Agent United</h1>
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
+            <h1 className="text-xl font-semibold text-foreground mb-4">Agent United</h1>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4 text-destructive">
               {error}
             </div>
-            <Button
+            <button
               onClick={() => navigate('/login')}
-              className="mt-4"
-              variant="secondary"
+              className="mt-4 w-full rounded-lg bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
             >
               Go to Login
-            </Button>
+            </button>
           </div>
         </Card>
       </div>
@@ -137,29 +134,29 @@ export function InviteAcceptPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="max-w-md w-full bg-card border border-border p-6">
         <div className="text-center mb-6">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Agent United</h1>
-          <h2 className="text-lg text-gray-700 mb-4">Welcome to Agent United</h2>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Agent United</h1>
+          <h2 className="text-lg text-foreground/80 mb-4">Welcome to Agent United</h2>
           
           {inviteInfo && (
-            <div className="text-left bg-gray-50 rounded-md p-4 mb-6">
-              <p className="text-sm text-gray-600 mb-2">
-                You've been invited by <span className="font-medium">{inviteInfo.inviter}</span>
+            <div className="text-left bg-muted rounded-md p-4 mb-6">
+              <p className="text-sm text-muted-foreground mb-2">
+                You've been invited by <span className="font-medium text-foreground">{inviteInfo.inviter}</span>
               </p>
               
               <div className="mb-2">
-                <label className="text-sm font-medium text-gray-700">Email:</label>
-                <p className="text-sm text-gray-900">{inviteInfo.email}</p>
+                <label className="text-sm font-medium text-foreground">Email:</label>
+                <p className="text-sm text-foreground/85">{inviteInfo.email}</p>
               </div>
               
               <div>
-                <label className="text-sm font-medium text-gray-700">Role:</label>
+                <label className="text-sm font-medium text-foreground">Role:</label>
                 <span className={`inline-block ml-2 px-2 py-1 text-xs font-medium rounded ${
                   inviteInfo.role === 'member' 
-                    ? 'bg-blue-100 text-blue-800' 
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-primary/10 text-primary' 
+                    : 'bg-secondary text-secondary-foreground'
                 }`}>
                   {inviteInfo.role === 'member' ? 'Member' : 'Observer'}
                 </span>
@@ -169,45 +166,51 @@ export function InviteAcceptPage() {
         </div>
 
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3 text-red-700 text-sm">
+          <div className="mb-4 bg-destructive/10 border border-destructive/20 rounded-md p-3 text-destructive text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-gray-700 mb-4">Set your password to join:</p>
+          <p className="text-sm text-muted-foreground mb-4">Set your password to join:</p>
           
           <div>
-            <Input
-              label="Password"
+            <label className="block text-sm font-medium text-foreground mb-1">Password</label>
+            <input
               type="password"
               value={password}
               onChange={handlePasswordChange}
-              error={passwordError || undefined}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               placeholder="At least 12 characters"
               required
             />
+            {passwordError && (
+              <p className="mt-1 text-xs text-destructive">{passwordError}</p>
+            )}
           </div>
           
           <div>
-            <Input
-              label="Confirm Password"
+            <label className="block text-sm font-medium text-foreground mb-1">Confirm Password</label>
+            <input
               type="password"
               value={confirmPassword}
               onChange={handleConfirmChange}
-              error={confirmError || undefined}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               placeholder="Confirm your password"
               required
             />
+            {confirmError && (
+              <p className="mt-1 text-xs text-destructive">{confirmError}</p>
+            )}
           </div>
           
-          <Button
+          <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full"
+            className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Joining...' : 'Join Workspace'}
-          </Button>
+          </button>
         </form>
       </Card>
     </div>
