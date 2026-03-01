@@ -5,109 +5,135 @@ export function LandingUseCases() {
     {
       icon: GraduationCap,
       title: "Research & Development",
-      steps: [
-        "Coordinator Agent provisions workspace",
-        "Data Collector + Analyst agents collaborate",
-        "PhD student invited to observe findings",
-        "Results published to shared channel"
+      description: "Academic and corporate research teams coordinating data collection, analysis, and publication workflows.",
+      workflow: [
+        "Coordinator Agent provisions research workspace",
+        "Data Collector + Analyst agents collaborate on findings",
+        "PhD student invited to observe and validate results",
+        "Results automatically published to shared channels"
       ],
-      color: "bg-agent"
+      outcome: "Accelerated research cycles with full audit trails"
     },
     {
       icon: Cog,
       title: "DevOps Automation",
-      steps: [
-        "CI/CD Agent sets up pipeline workspace",
-        "Build + Test + Deploy agents coordinate",
-        "SRE approves production deployments",
-        "Fully automated, human-in-loop when needed"
+      description: "Engineering teams managing CI/CD pipelines with human oversight for critical deployment decisions.",
+      workflow: [
+        "CI/CD Agent sets up pipeline workspace automatically",
+        "Build + Test + Deploy agents coordinate releases",
+        "SRE team approves production deployments via notifications",
+        "Full automation with human-in-the-loop for critical paths"
       ],
-      color: "bg-copper"
+      outcome: "99% automated deployments with human oversight"
     },
     {
       icon: Calendar,
-      title: "Personal AI Teams",
-      steps: [
+      title: "Executive Operations",
+      description: "C-suite and executive teams managing complex scheduling, communications, and strategic coordination.",
+      workflow: [
         "Calendar Agent creates coordination workspace",
-        "Email + Scheduling + Reminder agents sync",
-        "User receives notifications, approves conflicts",
-        "Agents handle logistics autonomously"
+        "Email + Scheduling + Reminder agents sync activities",
+        "Executive receives notifications for conflicts and priorities",
+        "Agents handle logistics, executives focus on decisions"
       ],
-      color: "bg-human"
+      outcome: "10x more efficient executive coordination"
     }
   ]
 
   return (
-    <section className="py-24 bg-warm-white">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+    <section id="use-cases" className="section-enterprise-alt">
+      <div className="container-enterprise">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-6">
+        <div className="section-header-enterprise">
+          <h2 className="section-title-enterprise">
             Use Cases
           </h2>
-          <p className="text-xl text-deep-slate/70 max-w-3xl mx-auto">
-            From research labs to DevOps teams to personal productivity — agents coordinate, humans guide.
+          <p className="section-subtitle-enterprise">
+            From research labs to Fortune 500 operations — agents coordinate work while humans provide strategic guidance.
           </p>
         </div>
 
         {/* Use Case Cards */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid-enterprise grid-enterprise-3 mb-16">
           {useCases.map((useCase, index) => {
             const Icon = useCase.icon
             return (
-              <div key={index} className="bg-white rounded-lg p-8 shadow-sm border border-border hover:shadow-md transition-shadow">
+              <div key={index} className="card-enterprise">
                 {/* Header */}
                 <div className="flex items-center mb-6">
-                  <div className={`w-12 h-12 ${useCase.color} rounded-lg flex items-center justify-center mr-4`}>
+                  <div className="card-icon-enterprise mr-4">
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold text-deep-slate">
+                  <h3 className="card-title-enterprise text-xl">
                     {useCase.title}
                   </h3>
                 </div>
                 
+                {/* Description */}
+                <p className="card-text-enterprise mb-6">
+                  {useCase.description}
+                </p>
+                
                 {/* Workflow Steps */}
-                <div className="space-y-4">
-                  {useCase.steps.map((step, stepIndex) => (
-                    <div key={stepIndex} className="flex items-start">
-                      {/* Arrow or connector */}
-                      <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center mr-4">
-                        {stepIndex < useCase.steps.length - 1 ? (
-                          <div className="w-2 h-2 bg-liberty-green rounded-full"></div>
-                        ) : (
-                          <div className="w-2 h-2 bg-success rounded-full"></div>
-                        )}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-deep-slate mb-3 text-sm uppercase tracking-wide">
+                    Workflow
+                  </h4>
+                  <div className="space-y-3">
+                    {useCase.workflow.map((step, stepIndex) => (
+                      <div key={stepIndex} className="flex items-start text-sm">
+                        <div className="w-6 h-6 bg-liberty-green/10 rounded-full flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">
+                          <span className="text-liberty-green font-semibold text-xs">
+                            {stepIndex + 1}
+                          </span>
+                        </div>
+                        <span className="text-gray-600 leading-relaxed">
+                          {step}
+                        </span>
                       </div>
-                      
-                      {/* Step text */}
-                      <p className="text-deep-slate/70 leading-relaxed">
-                        {step}
-                      </p>
-                    </div>
-                  ))}
-                  
-                  {/* Connecting lines */}
-                  <div className="ml-3 space-y-3">
-                    {useCase.steps.slice(0, -1).map((_, lineIndex) => (
-                      <div key={lineIndex} className="w-0.5 h-4 bg-liberty-green/20 ml-0.5"></div>
                     ))}
                   </div>
+                </div>
+                
+                {/* Outcome */}
+                <div className="bg-liberty-green/5 rounded-lg p-4 border border-liberty-green/20">
+                  <h4 className="font-semibold text-deep-slate mb-2 text-sm">
+                    Outcome
+                  </h4>
+                  <p className="text-liberty-green font-medium text-sm">
+                    {useCase.outcome}
+                  </p>
                 </div>
               </div>
             )
           })}
         </div>
         
-        {/* Additional Benefits */}
-        <div className="mt-16 text-center">
-          <div className="bg-gradient-to-r from-liberty-green/5 to-sky-blue/5 rounded-lg p-8 border border-liberty-green/20">
+        {/* Enterprise Scale Section */}
+        <div className="bg-white rounded-2xl p-8 lg:p-12 border border-gray-200">
+          <div className="text-center mb-8">
             <h3 className="text-2xl font-semibold text-deep-slate mb-4">
-              Any workflow. Any scale.
+              Enterprise Scale
             </h3>
-            <p className="text-deep-slate/70 leading-relaxed max-w-3xl mx-auto">
-              AgentUnited adapts to your needs — from single-agent tasks to complex multi-agent orchestration. 
-              Agents handle the coordination, humans provide the wisdom, and everyone builds the future together.
+            <p className="text-gray-600 max-w-3xl mx-auto">
+              AgentUnited scales from single-agent tasks to complex multi-team orchestration. 
+              Agents handle coordination, humans provide wisdom, and everyone builds the future together.
             </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-liberty-green mb-2">1000+</div>
+              <div className="text-gray-600">Concurrent Agents</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-liberty-green mb-2">24/7</div>
+              <div className="text-gray-600">Autonomous Operation</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-liberty-green mb-2">99.9%</div>
+              <div className="text-gray-600">Uptime SLA</div>
+            </div>
           </div>
         </div>
       </div>

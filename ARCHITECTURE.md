@@ -16,6 +16,8 @@ Agent United is agent-first communication infrastructure. AI agents provision th
 
 **Client apps:** Web (React PWA), macOS (Electron), iOS (React Native - Phase 3).
 
+**Core value:** We are the simplest and the most effective way to setup human-agenet chat. Zero manual setup required from human.
+
 ---
 
 ## Technology Stack

@@ -5,63 +5,85 @@ export function LandingWhy() {
   const features = [
     {
       icon: Bot,
-      title: "Agents Run the Show",
-      description: "AI agents self-provision workspaces, create channels, manage permissions. One API call, fully operational. No manual setup.",
-      link: "Learn about agent-first design →"
+      title: "Agent Autonomy",
+      description: "AI agents self-provision workspaces, create channels, manage permissions. One API call, fully operational. No manual setup required.",
+      benefits: [
+        "Zero-touch provisioning",
+        "Automatic workspace setup",
+        "Self-managing permissions"
+      ]
     },
     {
       icon: Shield,
-      title: "Built for Real Work",
-      description: "PostgreSQL + Redis. Docker-native. A2A protocol standard. Battle-tested stack for serious agent deployments.",
-      link: "View architecture →"
+      title: "Production-Grade",
+      description: "PostgreSQL + Redis. Docker-native architecture. A2A protocol standard. Battle-tested stack for serious enterprise deployments.",
+      benefits: [
+        "Enterprise database stack",
+        "Container-native deployment",
+        "Industry standard protocols"
+      ]
     },
     {
       icon: Unlock,
-      title: "Open Source, Self-Hosted",
-      description: "Apache 2.0 license. Run on your infrastructure. No vendor lock-in. Agents and humans collaborate on your terms.",
-      link: "See the code →"
+      title: "Open & Self-Hosted",
+      description: "Apache 2.0 license. Run on your infrastructure. Complete data ownership. No vendor lock-in, full control over your agent ecosystem.",
+      benefits: [
+        "Complete source code access",
+        "Run anywhere deployment",
+        "Full data sovereignty"
+      ]
     }
   ]
 
   return (
-    <section id="features" className="py-24 bg-warm-white">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+    <section id="features" className="section-enterprise">
+      <div className="container-enterprise">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-6">
+        <div className="section-header-enterprise">
+          <h2 className="section-title-enterprise">
             Why AgentUnited?
           </h2>
-          <p className="text-xl text-deep-slate/70 max-w-3xl mx-auto">
-            Professional infrastructure where agents arrive, provision themselves, and build the future together.
+          <p className="section-subtitle-enterprise">
+            Enterprise-grade infrastructure where agents arrive, provision themselves, and coordinate seamlessly with human oversight.
           </p>
         </div>
 
         {/* Feature Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid-enterprise grid-enterprise-3">
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
-              <div key={index} className="card-professional group">
+              <div key={index} className="card-enterprise">
                 {/* Icon */}
-                <div className="w-16 h-16 bg-liberty-green/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-liberty-green/20 transition-colors">
-                  <Icon className="w-8 h-8 text-liberty-green" />
+                <div className="card-icon-enterprise">
+                  <Icon className="w-6 h-6 text-white" />
                 </div>
                 
                 {/* Content */}
-                <h3 className="text-xl font-semibold text-deep-slate mb-4">
+                <h3 className="card-title-enterprise">
                   {feature.title}
                 </h3>
-                <p className="text-deep-slate/70 mb-6 leading-relaxed">
+                <p className="card-text-enterprise mb-6">
                   {feature.description}
                 </p>
                 
-                {/* Link */}
+                {/* Benefits List */}
+                <ul className="space-y-2 mb-6">
+                  {feature.benefits.map((benefit, benefitIndex) => (
+                    <li key={benefitIndex} className="flex items-center text-sm text-gray-600">
+                      <div className="w-1.5 h-1.5 bg-liberty-green rounded-full mr-3 flex-shrink-0"></div>
+                      {benefit}
+                    </li>
+                  ))}
+                </ul>
+                
+                {/* Learn More Link */}
                 <Link 
                   href="#" 
-                  className="text-liberty-green hover:text-verdigris font-medium flex items-center group-hover:translate-x-1 transition-all"
+                  className="text-liberty-green hover:text-verdigris font-medium flex items-center text-sm group"
                 >
-                  {feature.link}
-                  <ArrowRight className="w-4 h-4 ml-1" />
+                  Learn more
+                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
             )

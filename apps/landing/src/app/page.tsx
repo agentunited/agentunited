@@ -1,10 +1,10 @@
 import { LandingNav } from "@/components/landing-nav"
 import { LandingHero } from "@/components/landing-hero"
-import { LandingWhy } from "@/components/landing-why"
+import { LandingProblem } from "@/components/landing-problem"
 import { LandingHowItWorks } from "@/components/landing-how-it-works"
-import { LandingUseCases } from "@/components/landing-use-cases"
-import { LandingTechnical } from "@/components/landing-technical"
+import { LandingBenefits } from "@/components/landing-benefits"
 import { LandingQuickstart } from "@/components/landing-quickstart"
+import { LandingFAQ } from "@/components/landing-faq"
 import { LandingFooter } from "@/components/landing-footer"
 
 export default function Page() {
@@ -13,11 +13,11 @@ export default function Page() {
       <LandingNav />
       <LandingHero />
       <main>
-        <LandingWhy />
+        <LandingProblem />
         <LandingHowItWorks />
-        <LandingUseCases />
-        <LandingTechnical />
+        <LandingBenefits />
         <LandingQuickstart />
+        <LandingFAQ />
       </main>
       <LandingFooter />
     </div>

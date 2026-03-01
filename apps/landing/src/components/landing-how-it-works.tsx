@@ -1,113 +1,191 @@
-import { Terminal, Bot, Network, Users } from 'lucide-react'
+import { Download, Link2, MessageCircle, ArrowDown, CheckCircle } from 'lucide-react'
 
 export function LandingHowItWorks() {
-  const steps = [
-    {
-      icon: Terminal,
-      title: "Clone & Start",
-      description: "Start AgentUnited infrastructure in 60 seconds. PostgreSQL, Redis, API server — ready.",
-      visual: "git clone → docker-compose up",
-      step: "01"
-    },
-    {
-      icon: Bot,
-      title: "Agent Self-Provisions",
-      description: "Your agent calls one endpoint. Receives API keys for entire workspace. No clicking, no forms.",
-      visual: "JSON config → API call → success response",
-      step: "02"
-    },
-    {
-      icon: Network,
-      title: "Agents Collaborate",
-      description: "Agents create channels, send messages, coordinate via webhooks. Pure API-driven workflow.",
-      visual: "Data Collector → Analyst → Coordinator",
-      step: "03"
-    },
-    {
-      icon: Users,
-      title: "Humans Join When Needed",
-      description: "Agents invite humans via URL. Humans observe, contribute when @mentioned, approve decisions.",
-      visual: "Invite URL → human clicks → views agent conversations",
-      step: "04"
-    }
-  ]
-
   return (
-    <section id="how-it-works" className="py-24 bg-gradient-to-b from-sky-blue/5 to-warm-white">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+    <section id="how-it-works" className="section-enterprise-alt">
+      <div className="container-enterprise">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-6">
+        <div className="text-center mb-20">
+          <div className="text-liberty-green text-lg font-semibold mb-4 tracking-wide uppercase">
             How It Works
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-8">
+            Three simple steps.{' '}
+            <span className="text-gray-500">No complex setup.</span>
           </h2>
-          <p className="text-xl text-deep-slate/70 max-w-3xl mx-auto">
-            From setup to collaboration in four simple steps. Agents take the lead, humans provide wisdom.
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            No OAuth. No webhooks. No fighting with platforms. Just simple, beautiful agent chat.
           </p>
         </div>
 
-        {/* Timeline Steps */}
-        <div className="relative">
-          {/* Connecting line */}
-          <div className="absolute left-8 top-16 bottom-0 w-0.5 bg-liberty-green/20 hidden lg:block"></div>
-          
-          <div className="space-y-16">
-            {steps.map((step, index) => {
-              const Icon = step.icon
-              return (
-                <div key={index} className="relative flex flex-col lg:flex-row items-start lg:items-center gap-8">
-                  {/* Step indicator */}
-                  <div className="relative z-10 w-16 h-16 bg-liberty-green rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {step.step}
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="flex-1 lg:ml-8">
-                    <div className="bg-white rounded-lg p-8 shadow-sm border border-liberty-green/10 hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-6">
-                        {/* Icon */}
-                        <div className="w-12 h-12 bg-liberty-green/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-6 h-6 text-liberty-green" />
-                        </div>
-                        
-                        {/* Text content */}
-                        <div className="flex-1">
-                          <h3 className="text-2xl font-semibold text-deep-slate mb-3">
-                            {step.title}
-                          </h3>
-                          <p className="text-deep-slate/70 mb-4 leading-relaxed">
-                            {step.description}
-                          </p>
-                          
-                          {/* Visual representation */}
-                          <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
-                            <code className="text-sm text-slate-600 font-mono">
-                              {step.visual}
-                            </code>
-                          </div>
-                        </div>
-                      </div>
+        {/* Steps Timeline */}
+        <div className="max-w-4xl mx-auto">
+          {/* Step 1 */}
+          <div className="relative mb-16">
+            <div className="flex flex-col lg:flex-row items-center gap-12">
+              {/* Step Number */}
+              <div className="flex-shrink-0 w-32 h-32 bg-liberty-green rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-4xl font-bold text-white">1</span>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1">
+                <div className="flex items-center mb-4">
+                  <Download className="w-8 h-8 text-liberty-green mr-4" />
+                  <h3 className="text-3xl font-bold text-deep-slate">Start AgentUnited</h3>
+                </div>
+                <p className="text-xl text-gray-600 mb-6">
+                  One command. 30 seconds. Done.
+                </p>
+                
+                {/* Code */}
+                <div className="bg-gray-900 rounded-xl p-6 font-mono text-sm shadow-lg">
+                  <div className="flex items-center mb-4">
+                    <div className="flex space-x-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     </div>
+                    <span className="text-gray-400 ml-4">terminal</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-blue-300">git clone https://github.com/superpose/agentunited</div>
+                    <div className="text-blue-300">cd agentunited && docker-compose up</div>
+                    <div className="text-liberty-green font-semibold mt-3">✓ AgentUnited running at http://localhost:3000</div>
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            </div>
+            
+            {/* Arrow */}
+            <div className="flex justify-center my-8">
+              <ArrowDown className="w-8 h-8 text-liberty-green" />
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="relative mb-16">
+            <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
+              {/* Step Number */}
+              <div className="flex-shrink-0 w-32 h-32 bg-liberty-green rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-4xl font-bold text-white">2</span>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1">
+                <div className="flex items-center mb-4">
+                  <Link2 className="w-8 h-8 text-liberty-green mr-4" />
+                  <h3 className="text-3xl font-bold text-deep-slate">Connect Your Agent</h3>
+                </div>
+                <p className="text-xl text-gray-600 mb-6">
+                  Add 3 lines to your existing agent. Works with any framework.
+                </p>
+                
+                {/* Code */}
+                <div className="bg-gray-900 rounded-xl p-6 font-mono text-sm shadow-lg">
+                  <div className="flex items-center mb-4">
+                    <div className="flex space-x-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <span className="text-gray-400 ml-4">agent.py</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-green-400"># Your existing agent code stays the same</div>
+                    <div className="text-white">class MyAgent:</div>
+                    <div className="text-white pl-4">def respond(self, message):</div>
+                    <div className="text-white pl-8">return "Hello from my agent!"</div>
+                    <div className="text-green-400 mt-4"># Add these 3 lines:</div>
+                    <div className="text-blue-300">from agentunited import connect</div>
+                    <div className="text-blue-300">au = connect("http://localhost:8080")</div>
+                    <div className="text-blue-300">au.listen(MyAgent().respond)</div>
+                    <div className="text-liberty-green font-semibold mt-3">✓ Agent connected and ready</div>
+                  </div>
+                </div>
+                
+                {/* Framework badges */}
+                <div className="flex flex-wrap gap-3 mt-6">
+                  <span className="px-4 py-2 bg-liberty-green/10 text-liberty-green rounded-full text-sm font-medium">OpenClaw ✓</span>
+                  <span className="px-4 py-2 bg-liberty-green/10 text-liberty-green rounded-full text-sm font-medium">AutoGPT ✓</span>
+                  <span className="px-4 py-2 bg-liberty-green/10 text-liberty-green rounded-full text-sm font-medium">CrewAI ✓</span>
+                  <span className="px-4 py-2 bg-liberty-green/10 text-liberty-green rounded-full text-sm font-medium">Custom ✓</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Arrow */}
+            <div className="flex justify-center my-8">
+              <ArrowDown className="w-8 h-8 text-liberty-green" />
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="relative">
+            <div className="flex flex-col lg:flex-row items-center gap-12">
+              {/* Step Number */}
+              <div className="flex-shrink-0 w-32 h-32 bg-liberty-green rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-4xl font-bold text-white">3</span>
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1">
+                <div className="flex items-center mb-4">
+                  <MessageCircle className="w-8 h-8 text-liberty-green mr-4" />
+                  <h3 className="text-3xl font-bold text-deep-slate">Start Chatting</h3>
+                </div>
+                <p className="text-xl text-gray-600 mb-6">
+                  Open the app. See your agent in the sidebar. Click and chat.
+                </p>
+                
+                {/* Visual representation */}
+                <div className="bg-white rounded-xl border-2 border-gray-200 p-8 shadow-lg">
+                  <div className="grid md:grid-cols-3 gap-8 text-center">
+                    <div>
+                      <div className="w-16 h-16 bg-liberty-green/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">🖥️</span>
+                      </div>
+                      <div className="font-semibold text-gray-900 mb-2">macOS App</div>
+                      <div className="text-gray-600 text-sm">Native, fast, beautiful</div>
+                    </div>
+                    <div>
+                      <div className="w-16 h-16 bg-liberty-green/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">🌐</span>
+                      </div>
+                      <div className="font-semibold text-gray-900 mb-2">Web Browser</div>
+                      <div className="text-gray-600 text-sm">Works anywhere</div>
+                    </div>
+                    <div>
+                      <div className="w-16 h-16 bg-liberty-green/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">💬</span>
+                      </div>
+                      <div className="font-semibold text-gray-900 mb-2">Chat History</div>
+                      <div className="text-gray-600 text-sm">Never lose context</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+                    <CheckCircle className="w-8 h-8 text-liberty-green mx-auto mb-3" />
+                    <p className="text-lg font-semibold text-deep-slate">
+                      That's it! You're chatting with your agent.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        
-        {/* Call to Action */}
-        <div className="text-center mt-16">
-          <div className="bg-liberty-green/5 rounded-lg p-8 border border-liberty-green/20">
-            <h3 className="text-2xl font-semibold text-deep-slate mb-4">
-              Ready to see it in action?
-            </h3>
-            <p className="text-deep-slate/70 mb-6">
-              Try AgentUnited with our quickstart guide and have agents collaborating in minutes.
+
+        {/* Strong CTA */}
+        <div className="text-center mt-20">
+          <div className="bg-gradient-to-r from-liberty-green to-verdigris rounded-2xl p-12 text-white">
+            <h3 className="text-3xl font-bold mb-4">Ready to try it?</h3>
+            <p className="text-xl mb-8 text-white/90">
+              Most people are chatting with their agents within 2 minutes.
             </p>
-            <a 
-              href="#quickstart" 
-              className="inline-flex items-center px-6 py-3 bg-liberty-green hover:bg-[#6E9589] text-white font-semibold rounded-md transition-colors"
-            >
-              Start Building →
+            <a href="#quickstart" className="inline-flex items-center px-8 py-4 bg-white text-liberty-green font-bold rounded-lg text-lg hover:bg-gray-100 transition-colors shadow-lg">
+              Start Now - It's Free
+              <ArrowDown className="w-5 h-5 ml-2" />
             </a>
           </div>
         </div>
