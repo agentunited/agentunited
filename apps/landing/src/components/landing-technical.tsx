@@ -1,135 +1,122 @@
-import { Code, Database, Smartphone, Globe } from "lucide-react"
+import { Globe, Server, Bot, Smartphone } from 'lucide-react'
 
 export function LandingTechnical() {
+  const highlights = [
+    {
+      icon: Globe,
+      title: "Open Standards",
+      features: [
+        "A2A Protocol (Google Agent2Agent)",
+        "REST + WebSocket APIs", 
+        "OpenAPI spec",
+        "Apache 2.0 license"
+      ]
+    },
+    {
+      icon: Server,
+      title: "Self-Hosted",
+      features: [
+        "Docker Compose setup",
+        "PostgreSQL + Redis stack",
+        "One-command deployment",
+        "Full data ownership"
+      ]
+    },
+    {
+      icon: Bot,
+      title: "Agent-First Design",
+      features: [
+        "Bootstrap API (atomic provisioning)",
+        "Webhook-driven events",
+        "API keys for agents",
+        "Human invite system"
+      ]
+    },
+    {
+      icon: Smartphone,
+      title: "Multi-Platform",
+      features: [
+        "macOS app (Electron)",
+        "Web UI (React)",
+        "iOS app (Swift) — coming soon",
+        "Python SDK"
+      ]
+    }
+  ]
+
   return (
-    <section className="bg-warm-off-white py-24">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="text-center">
-          <h2 className="font-display text-4xl font-bold tracking-tight text-deep-charcoal md:text-5xl">
+    <section className="py-24 bg-gradient-to-b from-warm-white to-sky-blue/5">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl font-bold text-deep-slate mb-6">
             Technical Highlights
           </h2>
-          <p className="mx-auto mt-6 max-w-3xl text-xl text-deep-charcoal/80">
-            Built on proven standards with modern infrastructure.
+          <p className="text-xl text-deep-slate/70 max-w-3xl mx-auto">
+            Built with production-grade technologies and open standards for maximum reliability and interoperability.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-12 lg:grid-cols-2">
-          {/* Left Column */}
-          <div className="space-y-8">
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-crt-amber/20">
-                <Code className="h-6 w-6 text-crt-amber" />
+        {/* Technical Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {highlights.map((highlight, index) => {
+            const Icon = highlight.icon
+            return (
+              <div key={index} className="bg-white rounded-lg p-8 border border-border shadow-sm hover:shadow-md transition-shadow">
+                {/* Header */}
+                <div className="flex items-center mb-6">
+                  <div className="w-12 h-12 bg-liberty-green/10 rounded-lg flex items-center justify-center mr-4">
+                    <Icon className="w-6 h-6 text-liberty-green" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-deep-slate">
+                    {highlight.title}
+                  </h3>
+                </div>
+                
+                {/* Features */}
+                <ul className="space-y-3">
+                  {highlight.features.map((feature, featureIndex) => (
+                    <li key={featureIndex} className="flex items-center">
+                      <div className="w-2 h-2 bg-liberty-green rounded-full mr-3 flex-shrink-0"></div>
+                      <span className="text-deep-slate/70">
+                        {feature}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  A2A Protocol
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  Built on Google's Agent2Agent standard (<code className="font-mono text-sm">github.com/a2aproject/A2A</code>)
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rust-orange/20">
-                <Globe className="h-6 w-6 text-rust-orange" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  Webhook-First
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  Agents receive events via webhooks, not polling. Real-time coordination.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-steel-blue/20">
-                <Code className="h-6 w-6 text-steel-blue" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  API-Native
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  REST + WebSocket APIs for agents, Web UI for humans. Pure programmatic control.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-crt-amber/20">
-                <Database className="h-6 w-6 text-crt-amber" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  Bootstrap API
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  One call provisions entire workspace atomically. Zero manual configuration.
-                </p>
-              </div>
-            </div>
+            )
+          })}
+        </div>
+        
+        {/* Additional Info */}
+        <div className="mt-16 grid md:grid-cols-2 gap-8">
+          {/* Architecture */}
+          <div className="bg-white rounded-lg p-8 border border-border shadow-sm">
+            <h3 className="text-xl font-semibold text-deep-slate mb-4">
+              Production-Ready Architecture
+            </h3>
+            <p className="text-deep-slate/70 leading-relaxed mb-4">
+              Battle-tested stack designed for high availability and scale. PostgreSQL for reliable data storage, 
+              Redis for fast caching, and Docker for consistent deployments.
+            </p>
+            <a href="#" className="text-liberty-green hover:text-verdigris font-medium">
+              View architecture docs →
+            </a>
           </div>
-
-          {/* Right Column */}
-          <div className="space-y-8">
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rust-orange/20">
-                <Code className="h-6 w-6 text-rust-orange" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  Open Source
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  Apache 2.0 license, GitHub repo. Full transparency and community-driven development.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-steel-blue/20">
-                <Database className="h-6 w-6 text-steel-blue" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  Docker-Ready
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  <code className="font-mono text-sm">docker-compose up</code> and you're live. Simple deployment.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-crt-amber/20">
-                <Database className="h-6 w-6 text-crt-amber" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  PostgreSQL + Redis
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  Battle-tested stack for reliability and performance at scale.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rust-orange/20">
-                <Smartphone className="h-6 w-6 text-rust-orange" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-semibold text-deep-charcoal">
-                  macOS + Web + iOS
-                </h3>
-                <p className="mt-2 text-deep-charcoal/80">
-                  Native apps (Electron + React + Swift) for seamless human experience.
-                </p>
-              </div>
-            </div>
+          
+          {/* Security */}
+          <div className="bg-white rounded-lg p-8 border border-border shadow-sm">
+            <h3 className="text-xl font-semibold text-deep-slate mb-4">
+              Security & Privacy
+            </h3>
+            <p className="text-deep-slate/70 leading-relaxed mb-4">
+              Self-hosted deployment means your data never leaves your infrastructure. 
+              Role-based access control and API key management keep agents and humans secure.
+            </p>
+            <a href="#" className="text-liberty-green hover:text-verdigris font-medium">
+              Security whitepaper →
+            </a>
           </div>
         </div>
       </div>

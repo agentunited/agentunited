@@ -74,9 +74,52 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
   }, [wsService]);
 
   // Message operations
-  const sendMessage = useCallback((channelId: string, content: string, mentions?: Array<{id: string; name: string; type: 'agent' | 'human'}>) => {
-    wsService.sendMessage(channelId, content, mentions);
-  }, [wsService]);
+  const sendMessage = useCallback(async (channelId: string, content: string, mentions?: Array<{id: string; name: string; type: 'agent' | 'human'}>) => {
+    if (!token) {
+      console.error('Cannot send message: no auth token');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`http://localhost:8080/api/v1/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: content })  // Backend expects 'text' not 'content'
+      });
+      
+      if (!res.ok) {
+        console.error('Failed to send message:', res.status, await res.text());
+      } else {
+        const data = await res.json();
+        console.log('Message sent:', data);
+        
+        // Add message to local state immediately
+        const newMessage: MessageData = {
+          id: data.message.id,
+          channelId,
+          content,
+          author: {
+            id: data.message.author_id,
+            name: data.message.author_email || 'You',  // Backend returns author_email
+            type: 'agent'  // Default for now
+          },
+          timestamp: data.message.created_at,
+          mentions: [],
+          attachments: []
+        };
+        
+        setMessages(prev => ({
+          ...prev,
+          [channelId]: [...(prev[channelId] || []), newMessage]
+        }));
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  }, [token]);
 
   // Typing indicators
   const startTyping = useCallback((channelId: string) => {
@@ -152,21 +195,36 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
     });
 
     // Message events
-    const unsubscribeMessage = wsService.on('message.created', (data: MessageData) => {
+    const unsubscribeMessage = wsService.on('message.created', (data: any) => {
+      // Map backend message format to MessageData
+      const mappedMessage: MessageData = {
+        id: data.id,
+        channelId: data.channel_id,
+        content: data.text,
+        author: {
+          id: data.author_id,
+          name: data.author_email || 'Unknown',
+          type: data.author_type === 'user' ? 'human' : 'agent'
+        },
+        timestamp: data.created_at,
+        mentions: [],
+        attachments: []
+      };
+      
       setMessages(prev => ({
         ...prev,
-        [data.channelId]: [...(prev[data.channelId] || []), data]
+        [mappedMessage.channelId]: [...(prev[mappedMessage.channelId] || []), mappedMessage]
       }));
 
       // Update channel last message
       setChannels(prev => prev.map(channel => 
-        channel.id === data.channelId
+        channel.id === mappedMessage.channelId
           ? {
               ...channel,
               lastMessage: {
-                content: data.content,
-                timestamp: data.timestamp,
-                author: data.author.name
+                content: mappedMessage.content,
+                timestamp: mappedMessage.timestamp,
+                author: mappedMessage.author.name
               },
               unreadCount: channel.id === activeChannel ? 0 : channel.unreadCount + 1
             }
@@ -276,60 +334,51 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
     }
   }, [activeChannel]);
 
-  // Load initial data when connected
+  // Fetch messages when active channel changes (initial load only, WebSocket handles updates)
   useEffect(() => {
-    if (connected) {
-      // Mock initial data - in real app, this would come from API/WebSocket
-      setChannels([
-        {
-          id: 'ch_general',
-          name: 'general',
-          type: 'channel',
-          topic: 'General discussion and updates',
-          unreadCount: 0,
-          lastMessage: {
-            content: 'Welcome to the workspace!',
-            timestamp: new Date().toISOString(),
-            author: 'System'
+    if (!connected || !activeChannel || !token) return;
+    
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/api/v1/channels/${activeChannel}/messages`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
-        },
-        {
-          id: 'ch_research',
-          name: 'research',
-          type: 'channel',
-          topic: 'Research findings and data analysis',
-          unreadCount: 2
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          
+          // Map API response to MessageData format
+          // Backend returns: { id, channel_id, author_id, author_type, author_email, text, created_at }
+          const mappedMessages: MessageData[] = (data.messages || []).map((msg: any) => ({
+            id: msg.id,
+            channelId: activeChannel,
+            content: msg.text,  // Backend uses 'text' field
+            author: {
+              id: msg.author_id,
+              name: msg.author_email || 'Unknown',  // Backend returns author_email
+              type: msg.author_type === 'user' ? 'human' : 'agent'  // Map 'user' to 'human'
+            },
+            timestamp: msg.created_at,
+            mentions: [],
+            attachments: []
+          }));
+          
+          setMessages(prev => ({
+            ...prev,
+            [activeChannel]: mappedMessages
+          }));
+        } else {
+          console.error('Failed to fetch messages:', res.status, await res.text());
         }
-      ]);
-
-      setUsers([
-        {
-          id: 'user_1',
-          name: 'Research Agent',
-          type: 'agent',
-          status: 'online'
-        },
-        {
-          id: 'user_2',
-          name: 'Alice Smith',
-          type: 'human',
-          status: 'online'
-        }
-      ]);
-
-      setCurrentUser({
-        id: 'user_current',
-        name: 'Current User',
-        type: 'human',
-        status: 'online'
-      });
-
-      // Set default active channel
-      if (!activeChannel) {
-        setActiveChannel('ch_general');
+      } catch (error) {
+        console.error('Error fetching messages:', error);
       }
-    }
-  }, [connected, activeChannel]);
+    };
+    
+    fetchMessages();
+  }, [connected, activeChannel, token]);
 
   return {
     connected,

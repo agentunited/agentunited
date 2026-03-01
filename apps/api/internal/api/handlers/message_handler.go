@@ -16,12 +16,14 @@ import (
 // MessageHandler handles message HTTP requests
 type MessageHandler struct {
 	messageService service.MessageService
+	hub            *Hub
 }
 
 // NewMessageHandler creates a new message handler
-func NewMessageHandler(messageService service.MessageService) *MessageHandler {
+func NewMessageHandler(messageService service.MessageService, hub *Hub) *MessageHandler {
 	return &MessageHandler{
 		messageService: messageService,
+		hub:            hub,
 	}
 }
 
@@ -67,6 +69,17 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.handleMessageError(w, err, "send message")
 		return
+	}
+
+	// Broadcast to WebSocket clients
+	if h.hub != nil {
+		wsMessage := map[string]interface{}{
+			"type": "message.created",
+			"data": message,
+		}
+		if msgBytes, err := json.Marshal(wsMessage); err == nil {
+			h.hub.Broadcast(ctx, channelID, msgBytes)
+		}
 	}
 
 	// Return success response

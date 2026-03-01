@@ -58,18 +58,18 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	bootstrapService := service.NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, jwtSecret, "http://localhost:8080")
 	inviteService := service.NewInviteService(userRepo, inviteRepo, jwtSecret)
 
+	// Initialize WebSocket hub first (needed by message handler)
+	hub := handlers.NewHub()
+	
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
-	messageHandler := handlers.NewMessageHandler(messageService)
+	messageHandler := handlers.NewMessageHandler(messageService, hub)
 	agentHandler := handlers.NewAgentHandler(agentService)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeyService)
 	webhookHandler := handlers.NewWebhookHandler(webhookService)
 	bootstrapHandler := handlers.NewBootstrapHandler(bootstrapService)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
-	
-	// Initialize WebSocket hub and handler
-	hub := handlers.NewHub()
 	wsHandler := handlers.NewWebSocketHandlerV2(messageService, channelService, jwtSecret, hub)
 
 	// WebSocket endpoint (query param auth, not middleware)

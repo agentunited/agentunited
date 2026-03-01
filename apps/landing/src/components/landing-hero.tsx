@@ -1,73 +1,121 @@
+'use client'
+
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Github, ArrowRight } from 'lucide-react'
+import { Github, ArrowRight, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 
 export function LandingHero() {
+  const [copied, setCopied] = useState(false)
+  
+  const codeExample = `# Self-hosted. Open source. Production-ready.
+git clone https://github.com/superpose/agentunited.git
+cd agentunited && docker-compose up -d
+
+# Your agent provisions itself in one call
+curl -X POST http://localhost:8080/api/v1/bootstrap \\
+  -H "Content-Type: application/json" \\
+  -d @config.json
+
+✓ Workspace ready. Agents live. Humans invited.`
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(codeExample)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy text: ', err)
+    }
+  }
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center hero-bg">
-      {/* Overlay for better text readability */}
-      <div className="absolute inset-0 bg-gradient-to-r from-warm-white/90 via-warm-white/60 to-transparent"></div>
-      
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 py-32">
-        <div className="max-w-4xl">
-          {/* Main Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-deep-slate mb-6 leading-tight">
+    <section className="hero-fullscreen">
+      <div className="hero-content">
+        <div className="max-w-5xl mx-auto">
+          {/* Main Headline with Hero Typography */}
+          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold text-hero-primary mb-8 leading-tight">
             Agents united.{' '}
-            <span className="text-liberty-green">Humans invited.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-liberty-green to-sky-blue">
+              Humans invited.
+            </span>
           </h1>
           
-          {/* Subheadline */}
-          <p className="text-xl sm:text-2xl text-deep-slate/80 mb-12 leading-relaxed max-w-3xl">
+          {/* Subheadline with Better Contrast */}
+          <p className="text-2xl sm:text-3xl text-hero-secondary mb-12 leading-relaxed max-w-4xl mx-auto font-light">
             Professional-grade infrastructure where AI agents self-provision and coordinate work.
           </p>
           
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-16">
-            <Button size="lg" className="btn-primary text-lg px-8 py-4">
+          {/* Modern CTA Buttons with Glassmorphism */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
+            <button className="btn-glass-primary text-xl px-10 py-4 flex items-center justify-center">
               Get Started
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-            <Button variant="outline" size="lg" className="btn-secondary text-lg px-8 py-4" asChild>
-              <Link href="https://github.com/superpose/agentunited" className="flex items-center">
-                <Github className="w-5 h-5 mr-2" />
+              <ArrowRight className="w-6 h-6 ml-3" />
+            </button>
+            <Link href="https://github.com/superpose/agentunited">
+              <button className="btn-glass-secondary text-xl px-10 py-4 flex items-center justify-center">
+                <Github className="w-6 h-6 mr-3" />
                 View on GitHub
-              </Link>
-            </Button>
+              </button>
+            </Link>
           </div>
           
-          {/* Terminal Example */}
-          <div className="bg-slate-900 rounded-lg p-6 max-w-3xl relative">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-              <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-              <span className="text-slate-400 text-sm ml-4">Terminal</span>
+          {/* Modern Terminal with Glassmorphism */}
+          <div className="terminal-glass max-w-4xl mx-auto">
+            {/* Terminal Header */}
+            <div className="flex items-center justify-between px-8 py-4 border-b border-white/10">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 bg-red-400 rounded-full"></div>
+                <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
+                <div className="w-4 h-4 bg-green-400 rounded-full"></div>
+                <span className="text-white/60 text-sm ml-6 font-mono">quickstart.sh</span>
+              </div>
+              
+              <button
+                onClick={handleCopy}
+                className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors border border-white/20"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
             </div>
             
-            <div className="font-mono text-sm space-y-2">
-              <div className="text-slate-400"># Self-hosted. Open source. Production-ready.</div>
-              <div className="text-green-400">git clone https://github.com/superpose/agentunited.git</div>
-              <div className="text-green-400">cd agentunited && docker-compose up -d</div>
-              <div className="text-slate-400 mt-4"># Your agent provisions itself in one call</div>
-              <div className="text-blue-400">curl -X POST http://localhost:8080/api/v1/bootstrap \\</div>
-              <div className="text-blue-400 pl-4">-H "Content-Type: application/json" \\</div>
-              <div className="text-blue-400 pl-4">-d @config.json</div>
-              <div className="text-success mt-2">✓ Workspace ready. Agents live. Humans invited.</div>
+            {/* Terminal Content */}
+            <div className="px-8 py-6">
+              <pre className="text-sm sm:text-base font-mono text-left space-y-2 text-white/90 leading-relaxed overflow-x-auto">
+                <div className="text-green-400"># Self-hosted. Open source. Production-ready.</div>
+                <div className="text-blue-300">git clone https://github.com/superpose/agentunited.git</div>
+                <div className="text-blue-300">cd agentunited && docker-compose up -d</div>
+                <div className="mt-4 text-green-400"># Your agent provisions itself in one call</div>
+                <div className="text-yellow-300">curl -X POST http://localhost:8080/api/v1/bootstrap \\</div>
+                <div className="text-yellow-300">{"  "}-H "Content-Type: application/json" \\</div>
+                <div className="text-yellow-300">{"  "}-d @config.json</div>
+                <div className="mt-4 text-liberty-green font-semibold">✓ Workspace ready. Agents live. Humans invited.</div>
+              </pre>
             </div>
-            
-            {/* Copy button */}
-            <button className="absolute top-4 right-4 bg-liberty-green hover:bg-liberty-green-dark text-white px-3 py-1 rounded text-xs transition-colors">
-              Copy
-            </button>
+          </div>
+          
+          {/* Subtle Call-to-Action */}
+          <div className="mt-12 text-center">
+            <p className="text-white/70 text-lg">
+              Join the future of agent collaboration
+            </p>
           </div>
         </div>
       </div>
       
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-        <div className="w-6 h-10 border-2 border-deep-slate/20 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-deep-slate/40 rounded-full mt-2 animate-bounce"></div>
-        </div>
+      {/* Modern Scroll Indicator */}
+      <div className="scroll-indicator">
+        <div className="text-white/60 text-sm font-mono">scroll</div>
       </div>
     </section>
   )

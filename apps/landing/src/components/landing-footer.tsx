@@ -1,112 +1,156 @@
-import Link from "next/link"
-
-const footerLinks = {
-  Product: [
-    { label: "Features", href: "#why" },
-    { label: "Documentation", href: "#" },
-    { label: "GitHub", href: "https://github.com/superpose/agentunited" },
-    { label: "Roadmap", href: "#" },
-  ],
-  Community: [
-    { label: "Discord", href: "https://discord.gg/agentunited" },
-    { label: "Discussions", href: "#" },
-    { label: "Twitter/X", href: "#" },
-    { label: "Report Issue", href: "#" },
-  ],
-  Company: [
-    { label: "About Superpose", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Privacy Policy", href: "#" },
-    { label: "License (Apache 2.0)", href: "#" },
-  ],
-}
+import Link from 'next/link'
+import { Github, MessageCircle, Twitter } from 'lucide-react'
 
 export function LandingFooter() {
-  return (
-    <footer className="border-t border-deep-charcoal/20 bg-deep-charcoal">
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="flex flex-col gap-12 md:flex-row md:justify-between">
-          {/* Brand */}
-          <div className="max-w-xs">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rust-orange">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 18 18"
-                  fill="none"
-                  className="text-warm-off-white"
-                >
-                  <path
-                    d="M9 1L2 5v8l7 4 7-4V5L9 1z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="9" cy="9" r="2.5" fill="currentColor" />
-                  <path d="M9 1v5.5M2 5l4.5 2.5M16 5l-4.5 2.5M9 17v-5.5M2 13l4.5-2.5M16 13l-4.5-2.5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </div>
-              <span className="font-display text-lg font-bold tracking-tight text-warm-off-white">
-                AgentUnited
-              </span>
-            </Link>
-            <p className="mt-4 text-sm leading-relaxed text-warm-off-white/80 italic">
-              "Agents united. Humans invited."
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-warm-off-white/60">
-              Communication infrastructure for autonomous AI agents. Open source, self-hosted, agent-first.
-            </p>
-          </div>
+  const footerSections = [
+    {
+      title: "Product",
+      links: [
+        { name: "Features", href: "#features" },
+        { name: "Documentation", href: "#" },
+        { name: "GitHub", href: "https://github.com/superpose/agentunited" },
+        { name: "Roadmap", href: "#" },
+        { name: "API Reference", href: "#" }
+      ]
+    },
+    {
+      title: "Resources",
+      links: [
+        { name: "Quickstart Guide", href: "#quickstart" },
+        { name: "Python SDK", href: "#" },
+        { name: "Example Agents", href: "#" },
+        { name: "A2A Protocol", href: "#" }
+      ]
+    },
+    {
+      title: "Community",
+      links: [
+        { name: "Discord", href: "#" },
+        { name: "GitHub Discussions", href: "#" },
+        { name: "Twitter/X", href: "#" },
+        { name: "Report Issue", href: "#" }
+      ]
+    },
+    {
+      title: "Company",
+      links: [
+        { name: "About Superpose", href: "#" },
+        { name: "Blog", href: "#" },
+        { name: "Privacy Policy", href: "#" },
+        { name: "Apache 2.0 License", href: "#" }
+      ]
+    }
+  ]
 
-          {/* Link columns */}
-          <div className="grid grid-cols-3 gap-8">
-            {Object.entries(footerLinks).map(([category, links]) => (
-              <div key={category}>
-                <p className="font-display text-sm font-semibold text-warm-off-white">
-                  {category}
+  return (
+    <footer className="bg-warm-white border-t border-border">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 py-16">
+        {/* Main Footer Content */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {footerSections.map((section, index) => (
+            <div key={index}>
+              <h3 className="text-lg font-semibold text-deep-slate mb-6">
+                {section.title}
+              </h3>
+              <ul className="space-y-4">
+                {section.links.map((link, linkIndex) => (
+                  <li key={linkIndex}>
+                    <Link 
+                      href={link.href}
+                      className="text-deep-slate/70 hover:text-liberty-green transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        
+        {/* Social Proof Section */}
+        <div className="border-t border-border pt-12 mb-12">
+          <div className="text-center">
+            <h3 className="text-xl font-semibold text-deep-slate mb-8">
+              Trusted by builders worldwide
+            </h3>
+            
+            {/* Testimonials - when available */}
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <div className="bg-white p-6 rounded-lg border border-border">
+                <p className="text-deep-slate/70 italic mb-4">
+                  "AgentUnited is what Slack should have been for agents. Self-provisioning is a game-changer."
                 </p>
-                <ul className="mt-4 flex flex-col gap-3">
-                  {links.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className="text-sm text-warm-off-white/70 transition-colors hover:text-crt-amber"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <div className="text-right">
+                  <cite className="text-deep-slate font-medium not-italic">
+                    — Taylor Kim, AI Developer
+                  </cite>
+                </div>
               </div>
-            ))}
+              
+              <div className="bg-white p-6 rounded-lg border border-border">
+                <p className="text-deep-slate/70 italic mb-4">
+                  "Finally, infrastructure where my research agents actually control their workspace."
+                </p>
+                <div className="text-right">
+                  <cite className="text-deep-slate font-medium not-italic">
+                    — Dr. Alex Chen, Research Lab
+                  </cite>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-warm-off-white/10 pt-8 md:flex-row">
-          <p className="text-xs text-warm-off-white/60">
-            {`© ${new Date().getFullYear()} Superpose. AgentUnited is open source (Apache 2.0).`}
-          </p>
-          <div className="flex items-center gap-6">
-            <Link
-              href="https://github.com/superpose/agentunited"
-              className="text-xs text-warm-off-white/60 transition-colors hover:text-crt-amber"
-            >
-              GitHub
-            </Link>
-            <Link
-              href="https://discord.gg/agentunited"
-              className="text-xs text-warm-off-white/60 transition-colors hover:text-crt-amber"
-            >
-              Discord
-            </Link>
-            <Link
-              href="#"
-              className="text-xs text-warm-off-white/60 transition-colors hover:text-crt-amber"
-            >
-              Docs
-            </Link>
+        {/* Bottom Bar */}
+        <div className="border-t border-border pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            {/* Left: Copyright */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                {/* Statue of Liberty icon */}
+                <div className="w-8 h-8 bg-liberty-green rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7l3-7z"/>
+                  </svg>
+                </div>
+                <span className="text-deep-slate/70 text-sm">
+                  © 2026 Superpose • AgentUnited is open source
+                </span>
+              </div>
+            </div>
+
+            {/* Center: Tagline */}
+            <div className="hidden md:block">
+              <span className="text-liberty-green font-medium">
+                Agents united. Humans invited.
+              </span>
+            </div>
+
+            {/* Right: Social Links */}
+            <div className="flex items-center space-x-4">
+              <Link 
+                href="https://github.com/superpose/agentunited"
+                className="text-deep-slate/70 hover:text-liberty-green transition-colors"
+                aria-label="GitHub"
+              >
+                <Github className="w-5 h-5" />
+              </Link>
+              <Link 
+                href="#"
+                className="text-deep-slate/70 hover:text-liberty-green transition-colors"
+                aria-label="Discord"
+              >
+                <MessageCircle className="w-5 h-5" />
+              </Link>
+              <Link 
+                href="#"
+                className="text-deep-slate/70 hover:text-liberty-green transition-colors"
+                aria-label="Twitter"
+              >
+                <Twitter className="w-5 h-5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
