@@ -21,17 +21,167 @@ Examples:
 """
 
 import argparse
+import atexit
 import json
+import re
 import secrets
+import signal
+import subprocess
 import sys
+import threading
+import time
 import urllib.parse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 try:
     import requests
 except ImportError:
     print("Error: 'requests' library not found. Install with: pip install requests")
     sys.exit(1)
+
+
+class LocaltunnelManager:
+    """Manages a localtunnel subprocess for exposing local services."""
+    
+    def __init__(self, port: int, subdomain: Optional[str] = None):
+        self.port = port
+        self.subdomain = subdomain
+        self.process: Optional[subprocess.Popen] = None
+        self.tunnel_url: Optional[str] = None
+        self._stop_event = threading.Event()
+        
+    def start(self) -> Optional[str]:
+        """Start the localtunnel process and return the public URL."""
+        if self.process is not None:
+            print("⚠️  Tunnel already running")
+            return self.tunnel_url
+            
+        print(f"🚇 Starting localtunnel for port {self.port}...")
+        
+        # Build localtunnel command
+        cmd = ['npx', 'localtunnel', '--port', str(self.port)]
+        if self.subdomain:
+            cmd.extend(['--subdomain', self.subdomain])
+            
+        try:
+            self.process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Start thread to monitor output and extract URL
+            monitor_thread = threading.Thread(target=self._monitor_output, daemon=True)
+            monitor_thread.start()
+            
+            # Wait for URL to be available (timeout after 30 seconds)
+            start_time = time.time()
+            while self.tunnel_url is None and time.time() - start_time < 30:
+                if self.process.poll() is not None:
+                    # Process has terminated
+                    stderr_output = self.process.stderr.read() if self.process.stderr else ""
+                    print(f"❌ Localtunnel process failed: {stderr_output}")
+                    return None
+                time.sleep(0.1)
+                
+            if self.tunnel_url:
+                print(f"✅ Tunnel URL: {self.tunnel_url}")
+                return self.tunnel_url
+            else:
+                print("❌ Failed to get tunnel URL within timeout")
+                self.stop()
+                return None
+                
+        except FileNotFoundError:
+            print("❌ Error: 'npx' not found. Please install Node.js and npm.")
+            print("   Visit: https://nodejs.org/")
+            return None
+        except Exception as e:
+            print(f"❌ Error starting localtunnel: {e}")
+            return None
+            
+    def _monitor_output(self):
+        """Monitor localtunnel output to extract the public URL."""
+        if not self.process or not self.process.stdout:
+            return
+            
+        try:
+            for line in iter(self.process.stdout.readline, ''):
+                if self._stop_event.is_set():
+                    break
+                    
+                line = line.strip()
+                if line:
+                    # Look for URL pattern: "your url is: https://..."
+                    url_match = re.search(r'your url is:\s*(https://[^\s]+)', line, re.IGNORECASE)
+                    if url_match:
+                        self.tunnel_url = url_match.group(1)
+                        break
+                    
+                    # Alternative pattern: just "https://..."  
+                    url_match = re.search(r'(https://[a-zA-Z0-9-]+\.loca\.lt)', line)
+                    if url_match:
+                        self.tunnel_url = url_match.group(1)
+                        break
+                        
+        except Exception as e:
+            if not self._stop_event.is_set():
+                print(f"Warning: Error reading tunnel output: {e}")
+                
+    def stop(self):
+        """Stop the localtunnel process."""
+        self._stop_event.set()
+        
+        if self.process:
+            print("🚇 Stopping localtunnel...")
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                print("⚠️  Force killing tunnel process...")
+                self.process.kill()
+                self.process.wait()
+            except Exception as e:
+                print(f"Warning: Error stopping tunnel: {e}")
+            finally:
+                self.process = None
+                self.tunnel_url = None
+                
+    def is_running(self) -> bool:
+        """Check if the tunnel process is running."""
+        return self.process is not None and self.process.poll() is None
+
+
+# Global tunnel manager for cleanup
+_tunnel_manager: Optional[LocaltunnelManager] = None
+
+
+def _cleanup_tunnel():
+    """Cleanup function called on script exit."""
+    global _tunnel_manager
+    if _tunnel_manager:
+        _tunnel_manager.stop()
+
+
+def _signal_handler(signum, frame):
+    """Handle interrupt signals gracefully."""
+    print(f"\n🛑 Received signal {signum}, shutting down...")
+    _cleanup_tunnel()
+    sys.exit(0)
+
+
+def extract_port_from_url(url: str) -> int:
+    """Extract port from URL, defaulting to 80/443 if not specified."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.port:
+        return parsed.port
+    elif parsed.scheme == 'https':
+        return 443
+    else:
+        return 80
 
 
 def generate_secure_password() -> str:
@@ -139,7 +289,7 @@ def save_credentials(credentials: Dict[str, Any], filepath: str):
         print(f"❌ Failed to save credentials: {e}")
 
 
-def display_results(result: Dict[str, Any]):
+def display_results(result: Dict[str, Any], tunnel_url: Optional[str] = None):
     """Display bootstrap results in a user-friendly format."""
     print("\n" + "="*60)
     print("🎉 BOOTSTRAP COMPLETE")
@@ -181,12 +331,22 @@ def display_results(result: Dict[str, Any]):
     print(f"\n🏠 INSTANCE:")
     print(f"   Instance ID: {result['instance_id']}")
     
+    # Tunnel URL
+    if tunnel_url:
+        print(f"\n🌐 PUBLIC ACCESS:")
+        print(f"   Tunnel URL: {tunnel_url}")
+        print(f"   Status: Active (tunnel will close when script exits)")
+        print(f"   Note: Use this URL to access your instance from anywhere")
+    
     print("\n" + "="*60)
     print("🎯 NEXT STEPS:")
     print("1. Send invite URLs to human users")
     print("2. Use API keys to authenticate agent requests")
     print("3. Start sending messages to the default channel")
     print("4. Explore the Agent United API documentation")
+    if tunnel_url:
+        print("5. Keep this script running to maintain the tunnel")
+        print("6. Press Ctrl+C to stop the tunnel and exit")
     print("="*60)
 
 
@@ -233,7 +393,23 @@ def main():
         help="Skip creating human user invites"
     )
     
+    parser.add_argument(
+        "--tunnel",
+        action="store_true",
+        help="Start localtunnel after successful bootstrap (requires npx/Node.js)"
+    )
+    
+    parser.add_argument(
+        "--tunnel-subdomain",
+        help="Request specific subdomain for tunnel (e.g. 'my-agent-united')"
+    )
+    
     args = parser.parse_args()
+    
+    # Set up signal handlers and cleanup
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+    atexit.register(_cleanup_tunnel)
     
     # Generate secure password
     primary_password = generate_secure_password()
@@ -274,8 +450,34 @@ def main():
     # Save credentials
     save_credentials(credentials, args.save_credentials)
     
+    # Start tunnel if requested
+    tunnel_url = None
+    if args.tunnel:
+        global _tunnel_manager
+        port = extract_port_from_url(args.url)
+        _tunnel_manager = LocaltunnelManager(port, args.tunnel_subdomain)
+        tunnel_url = _tunnel_manager.start()
+        
+        if tunnel_url:
+            # Update credentials with tunnel URL
+            credentials["tunnel_url"] = tunnel_url
+            save_credentials(credentials, args.save_credentials)  # Re-save with tunnel URL
+        else:
+            print("⚠️  Failed to start tunnel, continuing without it...")
+    
     # Display results
-    display_results(result)
+    display_results(result, tunnel_url)
+    
+    # Keep alive if tunnel is running
+    if args.tunnel and _tunnel_manager and _tunnel_manager.is_running():
+        print("\n🔄 Tunnel is running. Press Ctrl+C to stop and exit.")
+        try:
+            while _tunnel_manager.is_running():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n🛑 Stopping tunnel...")
+        finally:
+            _cleanup_tunnel()
 
 
 if __name__ == "__main__":

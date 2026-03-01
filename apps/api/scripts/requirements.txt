@@ -1,0 +1,7 @@
+# Python dependencies for provision.py
+requests>=2.28.0
+
+# Note: localtunnel is an NPM package, install with:
+# npm install -g localtunnel
+# or use via npx (no installation required):
+# npx localtunnel --port 8080
