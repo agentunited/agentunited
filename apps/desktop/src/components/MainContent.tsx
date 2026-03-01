@@ -1,64 +1,159 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Message, Button, Input } from './ui';
 import type { MessageData } from './ui';
-import { NoMessagesState } from './EmptyStates';
+import { NoMessagesState, LoadingState } from './EmptyStates';
+import { MentionAutocomplete, useMentionAutocomplete } from './ui/MentionAutocomplete';
+import { useWebSocket } from '../hooks/useWebSocket';
 import '../styles/main-content.css';
 
-function MainContent() {
-  const [messageInput, setMessageInput] = useState('');
+interface MainContentProps {
+  currentChannel?: string;
+  webSocketHook?: ReturnType<typeof useWebSocket>;
+}
 
-  // Sample messages for Phase 2 demonstration
-  const messages: MessageData[] = [
-    {
-      id: 'msg1',
-      authorId: 'coordinator-agent',
-      authorName: 'Coordinator Agent',
-      authorType: 'agent',
-      content: '@data-collector Scrape BTC price data for last 30 days',
-      timestamp: '2026-02-28T10:05:00Z',
-      mentions: ['data-collector']
-    },
-    {
-      id: 'msg2',
-      authorId: 'data-collector',
-      authorName: 'Data Collector',
-      authorType: 'agent',
-      content: 'Data collected: 30 days, 720 data points.\nAvg price $42,351.',
-      timestamp: '2026-02-28T10:07:00Z',
-      attachments: [
-        {
-          id: 'file1',
-          name: 'btc-data.csv',
-          url: '#',
-          type: 'file',
-          size: 15420
-        }
-      ]
-    },
-    {
-      id: 'msg3',
-      authorId: 'dr-smith',
-      authorName: 'Dr. Smith',
-      authorType: 'human',
-      content: 'Looks good, but adjust confidence interval to 95%.',
-      timestamp: '2026-02-28T10:15:00Z'
+function MainContent({ 
+  currentChannel = 'general', 
+  webSocketHook 
+}: MainContentProps) {
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Use provided WebSocket hook or create a new one
+  const wsHook = webSocketHook || useWebSocket();
+  const {
+    connected,
+    connecting,
+    messages,
+    channels,
+    users,
+    activeChannel,
+    sendMessage,
+    startTyping,
+    stopTyping,
+    typingUsers,
+    getChannelById
+  } = wsHook;
+
+  // Mention autocomplete
+  const {
+    isOpen: mentionOpen,
+    query: mentionQuery,
+    position: mentionPosition,
+    checkForMention,
+    insertMention,
+    closeMention
+  } = useMentionAutocomplete(messageInputRef as React.RefObject<HTMLInputElement>);
+
+  // Get current channel data
+  const channelData = getChannelById(activeChannel || currentChannel);
+  const channelMessages = messages[activeChannel || currentChannel] || [];
+  const channelTypingUsers = typingUsers[activeChannel || currentChannel] || [];
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [channelMessages]);
+
+  // Handle typing indicators
+  useEffect(() => {
+    let typingTimer: NodeJS.Timeout;
+    
+    const handleInputChange = () => {
+      if (message.trim() && connected) {
+        startTyping(activeChannel || currentChannel);
+        
+        // Stop typing after 2 seconds of inactivity
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+          stopTyping(activeChannel || currentChannel);
+        }, 2000);
+      }
+    };
+
+    if (message.trim()) {
+      handleInputChange();
     }
-  ];
+    
+    return () => {
+      clearTimeout(typingTimer);
+      if (connected && message.trim()) {
+        stopTyping(activeChannel || currentChannel);
+      }
+    };
+  }, [message, connected, activeChannel, currentChannel, startTyping, stopTyping]);
 
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      // Handle message sending
-      console.log('Send message:', messageInput);
-      setMessageInput('');
+  const handleSendMessage = async () => {
+    if (!message.trim() || !connected || isSending) return;
+
+    setIsSending(true);
+    
+    try {
+      // Extract mentions from message
+      const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+      const mentions: Array<{id: string; name: string; type: 'agent' | 'human'}> = [];
+      let match;
+      
+      while ((match = mentionRegex.exec(message)) !== null) {
+        const mentionName = match[1];
+        const user = users.find(u => u.name.toLowerCase().includes(mentionName.toLowerCase()));
+        if (user) {
+          mentions.push({
+            id: user.id,
+            name: user.name,
+            type: user.type
+          });
+        }
+      }
+
+      sendMessage(activeChannel || currentChannel, message, mentions);
+      setMessage('');
+      if (connected) {
+        stopTyping(activeChannel || currentChannel);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setIsSending(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !mentionOpen) {
       e.preventDefault();
       handleSendMessage();
     }
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    checkForMention();
+  };
+
+  const handleMentionSelect = (mention: any, startPos: number, endPos: number) => {
+    insertMention(mention, startPos, endPos);
+  };
+
+  if (connecting) {
+    return (
+      <div className="main-content">
+        <LoadingState message="Connecting to workspace..." />
+      </div>
+    );
+  }
+
+  if (!connected) {
+    return (
+      <div className="main-content">
+        <div className="main-content__offline">
+          <div className="offline-icon">📡</div>
+          <h2>Connection Lost</h2>
+          <p>Unable to connect to Agent United. Check your connection and try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="main-content">
@@ -66,8 +161,10 @@ function MainContent() {
       <div className="channel-header">
         <div className="channel-info">
           <span className="channel-icon">#</span>
-          <h1 className="channel-name">general</h1>
-          <span className="channel-topic">Research team coordination</span>
+          <h1 className="channel-name">{channelData?.name || currentChannel}</h1>
+          {channelData?.topic && (
+            <span className="channel-topic">{channelData.topic}</span>
+          )}
         </div>
         <div className="channel-actions">
           <Button variant="icon" size="sm" ariaLabel="More options">
@@ -82,38 +179,90 @@ function MainContent() {
       {/* Message area */}
       <div className="message-area">
         <div className="message-list">
-          {messages.map((message) => (
-            <Message
-              key={message.id}
-              message={message}
-              showActions={true}
-              onReply={(messageId) => console.log('Reply to:', messageId)}
-              onReact={(messageId, reaction) => console.log('React to:', messageId, reaction)}
-            />
-          ))}
+          {channelMessages.length > 0 ? (
+            <>
+              {channelMessages.map(msg => (
+                <Message
+                  key={msg.id}
+                  message={{
+                    id: msg.id,
+                    authorId: msg.author.id,
+                    authorName: msg.author.name,
+                    authorType: msg.author.type,
+                    content: msg.content,
+                    timestamp: msg.timestamp,
+                    mentions: msg.mentions?.map(m => m.name) || [],
+                    attachments: msg.attachments?.map(att => ({
+                      ...att,
+                      type: att.type as 'image' | 'file' // Cast to expected type
+                    }))
+                  }}
+                  showActions={true}
+                  onReply={(messageId) => console.log('Reply to:', messageId)}
+                  onReact={(messageId, reaction) => console.log('React to:', messageId, reaction)}
+                />
+              ))}
+              
+              {/* Typing indicators */}
+              {channelTypingUsers.length > 0 && (
+                <div className="typing-indicator">
+                  <div className="typing-users">
+                    {channelTypingUsers.map(user => user.name).join(', ')} 
+                    {channelTypingUsers.length === 1 ? ' is' : ' are'} typing...
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </>
+          ) : (
+            <NoMessagesState channelName={channelData?.name || currentChannel} />
+          )}
         </div>
 
         {/* Message composer */}
         <div className="message-composer">
           <div className="composer-input-area">
-            <Input
-              placeholder="Type a message..."
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              size="md"
-              rightIcon={
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim()}
-                >
-                  Send
-                </Button>
-              }
-            />
+            <div className="input-wrapper">
+              <Input
+                ref={messageInputRef}
+                placeholder={`Type a message in #${channelData?.name || currentChannel}...`}
+                value={message}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                size="md"
+                disabled={!connected}
+                rightIcon={
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || !connected || isSending}
+                    loading={isSending}
+                  >
+                    {isSending ? 'Sending...' : 'Send'}
+                  </Button>
+                }
+              />
+              
+              {/* Mention autocomplete */}
+              <MentionAutocomplete
+                users={users}
+                onSelectMention={handleMentionSelect}
+                onClose={closeMention}
+                inputRef={messageInputRef as React.RefObject<HTMLInputElement | HTMLTextAreaElement>}
+                isOpen={mentionOpen}
+                query={mentionQuery}
+                position={mentionPosition}
+              />
+            </div>
           </div>
+          
+          {message.length > 1900 && (
+            <div className="character-count">
+              {message.length}/2000
+            </div>
+          )}
         </div>
       </div>
     </div>

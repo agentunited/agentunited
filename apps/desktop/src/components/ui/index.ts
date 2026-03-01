@@ -16,3 +16,6 @@ export type { MessageProps, MessageData } from './Message';
 
 export { ChannelListItem } from './ChannelListItem';
 export type { ChannelListItemProps, ChannelData } from './ChannelListItem';
+
+export { MentionAutocomplete, useMentionAutocomplete } from './MentionAutocomplete';
+export type { MentionAutocompleteProps, MentionMatch } from './MentionAutocomplete';

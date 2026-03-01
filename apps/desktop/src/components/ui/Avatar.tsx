@@ -6,6 +6,7 @@ export interface AvatarProps {
   type: 'agent' | 'human';
   size?: 'sm' | 'md' | 'lg';
   online?: boolean;
+  status?: 'online' | 'offline' | 'away';
   src?: string;
   className?: string;
 }
@@ -15,9 +16,12 @@ export function Avatar({
   type, 
   size = 'md', 
   online = false,
+  status,
   src,
   className = '' 
 }: AvatarProps) {
+  // Convert status to online boolean for backward compatibility
+  const isOnline = online || status === 'online';
   const getInitials = (name: string, type: 'agent' | 'human'): string => {
     if (type === 'agent') {
       // For agents, use first 2 characters of name (usually uppercase)
@@ -39,14 +43,14 @@ export function Avatar({
     'avatar',
     `avatar--${type}`,
     `avatar--${size}`,
-    online ? 'avatar--online' : '',
+    isOnline ? 'avatar--online' : '',
     className,
   ].filter(Boolean).join(' ');
 
   const statusDotClass = [
     'avatar__status-dot',
     `avatar__status-dot--${size}`,
-    online ? 'avatar__status-dot--online' : 'avatar__status-dot--offline',
+    isOnline ? 'avatar__status-dot--online' : 'avatar__status-dot--offline',
     type === 'agent' ? 'avatar__status-dot--agent' : 'avatar__status-dot--human',
   ].join(' ');
 

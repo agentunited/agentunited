@@ -217,3 +217,80 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Typing indicators */
+.typing-indicator {
+  padding: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0;
+}
+
+.typing-users {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.typing-users::after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  background-color: var(--color-text-secondary);
+  border-radius: var(--radius-full);
+  animation: pulse 1s infinite;
+}
+
+/* Character count */
+.character-count {
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+/* Input wrapper for mention positioning */
+.input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+/* Offline state */
+.main-content__offline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  gap: var(--space-4);
+}
+
+.main-content__offline .offline-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.main-content__offline h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.main-content__offline p {
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 300px;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.3;
+  }
+}

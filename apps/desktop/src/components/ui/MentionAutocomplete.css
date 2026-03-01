@@ -1,0 +1,174 @@
+/* Mention Autocomplete styles */
+.mention-autocomplete {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 280px;
+  max-height: 320px;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.mention-autocomplete__header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mention-autocomplete__title {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.mention-autocomplete__hint {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.mention-autocomplete__list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.mention-autocomplete__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.mention-autocomplete__item:hover,
+.mention-autocomplete__item--selected {
+  background-color: var(--color-rust);
+}
+
+.mention-autocomplete__item:hover .mention-autocomplete__name,
+.mention-autocomplete__item--selected .mention-autocomplete__name,
+.mention-autocomplete__item:hover .mention-autocomplete__type,
+.mention-autocomplete__item--selected .mention-autocomplete__type,
+.mention-autocomplete__item:hover .mention-autocomplete__shortcut,
+.mention-autocomplete__item--selected .mention-autocomplete__shortcut {
+  color: var(--color-text-primary);
+}
+
+.mention-autocomplete__avatar {
+  flex-shrink: 0;
+}
+
+.mention-autocomplete__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0; /* Allow text truncation */
+}
+
+.mention-autocomplete__name {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mention-autocomplete__type {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.mention-autocomplete__status {
+  color: var(--color-success);
+}
+
+.mention-autocomplete__shortcut {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-bg-tertiary);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling */
+.mention-autocomplete__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mention-autocomplete__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mention-autocomplete__list::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.mention-autocomplete__list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+/* Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mention-autocomplete {
+  animation: slideDown var(--duration-fast) var(--ease-out);
+}
+
+/* Keyboard focus states */
+.mention-autocomplete__item:focus-visible {
+  background-color: var(--color-rust);
+  outline: 2px solid var(--color-rust);
+  outline-offset: -2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mention-autocomplete {
+    animation: none;
+  }
+  
+  .mention-autocomplete__item {
+    transition: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .mention-autocomplete {
+    border: 2px solid var(--color-border);
+  }
+  
+  .mention-autocomplete__item--selected {
+    outline: 2px solid var(--color-rust);
+  }
+}
