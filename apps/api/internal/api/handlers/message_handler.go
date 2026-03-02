@@ -98,6 +98,13 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	h.webhookService.DispatchEvent(ctx, channelID, "message.created", webhookPayload)
 
+	// Populate author display info for broadcast
+	if message.AuthorEmail == "" {
+		if agentName, ok := middleware.GetAgentName(ctx); ok && agentName != "" {
+			message.AuthorEmail = agentName
+		}
+	}
+
 	// Broadcast to WebSocket clients
 	if h.hub != nil {
 		wsMessage := map[string]interface{}{

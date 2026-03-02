@@ -122,15 +122,15 @@ export class WebSocketService {
    */
   private handleServerMessage(data: any): void {
     switch (data.type) {
-      case 'message':
-        // Server sent a new message
-        if (data.message) {
-          const m = data.message;
+      case 'message': {
+        // Server broadcasts message fields at top level (not nested)
+        const m = data.message || data;
+        if (m.text || m.content) {
           const message: Message = {
-            id: m.id,
-            channelId: m.channel_id || m.channelId,
+            id: m.message_id || m.id || '',
+            channelId: m.channel_id || m.channelId || '',
             author: m.author_email || m.author?.name || 'Unknown',
-            authorId: m.author_id || m.author?.id || 'unknown',
+            authorId: m.author_id || m.user_id || m.author?.id || 'unknown',
             authorType: (m.author_type === 'agent') ? 'agent' : 'human',
             text: m.text || m.content,
             timestamp: m.created_at || m.timestamp || new Date().toISOString(),
@@ -142,6 +142,7 @@ export class WebSocketService {
             message
           });
         }
+      }
         break;
 
       case 'typing':

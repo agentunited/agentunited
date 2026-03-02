@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 )
 
 // Hub manages WebSocket connections and broadcasting.
@@ -30,6 +31,7 @@ func (h *Hub) Subscribe(ctx context.Context, channelID string, conn *websocket.C
 		h.channels[channelID] = make(map[*websocket.Conn]string)
 	}
 	h.channels[channelID][conn] = userID
+	log.Info().Str("channel_id", channelID).Str("user_id", userID).Int("total", len(h.channels[channelID])).Msg("hub subscribe")
 }
 
 // Unsubscribe removes a connection from all channels.
@@ -49,12 +51,17 @@ func (h *Hub) Unsubscribe(conn *websocket.Conn) {
 func (h *Hub) Broadcast(ctx context.Context, channelID string, message []byte) {
 	h.mu.RLock()
 	conns := h.channels[channelID]
+	numConns := len(conns)
 	h.mu.RUnlock()
+
+	log.Info().Str("channel_id", channelID).Int("subscribers", numConns).Msg("hub broadcast")
 	
 	for conn := range conns {
 		// Fire and forget - don't block on slow clients
 		go func(c *websocket.Conn) {
-			c.WriteMessage(websocket.TextMessage, message)
+			if err := c.WriteMessage(websocket.TextMessage, message); err != nil {
+				log.Error().Err(err).Msg("hub broadcast write failed")
+			}
 		}(conn)
 	}
 }
