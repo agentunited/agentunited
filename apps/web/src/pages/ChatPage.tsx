@@ -182,6 +182,18 @@ export function ChatPage() {
     setShowMembersPanel(prev => !prev);
   }, []);
 
+  const handleMessageUpdated = useCallback((messageId: string, newContent: string) => {
+    // TODO: Update the message in local state when WebSocket integration is enhanced
+    // For now, we rely on the API call in MessageItem
+    console.log(`Message ${messageId} updated to: ${newContent}`);
+  }, []);
+
+  const handleMessageDeleted = useCallback((messageId: string) => {
+    // TODO: Remove the message from local state when WebSocket integration is enhanced
+    // For now, we rely on the API call in MessageItem
+    console.log(`Message ${messageId} deleted`);
+  }, []);
+
   // Show loading state while channels are loading
   if (channelsLoading) {
     return (
@@ -280,7 +292,12 @@ export function ChatPage() {
               showMembersPanel={showMembersPanel}
             />
 
-            <MessageList messages={messages} />
+            <MessageList 
+              messages={messages} 
+              channelId={activeConversationId}
+              onMessageUpdated={handleMessageUpdated}
+              onMessageDeleted={handleMessageDeleted}
+            />
 
             {wsError && (
               <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
