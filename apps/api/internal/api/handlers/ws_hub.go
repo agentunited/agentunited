@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
@@ -50,17 +51,22 @@ func (h *Hub) Unsubscribe(conn *websocket.Conn) {
 // Broadcast sends a message to all connections in a channel.
 func (h *Hub) Broadcast(ctx context.Context, channelID string, message []byte) {
 	h.mu.RLock()
-	conns := h.channels[channelID]
-	numConns := len(conns)
+	// Copy connections to avoid holding lock during writes
+	conns := make(map[*websocket.Conn]string, len(h.channels[channelID]))
+	for c, uid := range h.channels[channelID] {
+		conns[c] = uid
+	}
 	h.mu.RUnlock()
 
-	log.Info().Str("channel_id", channelID).Int("subscribers", numConns).Msg("hub broadcast")
+	log.Info().Str("channel_id", channelID).Int("subscribers", len(conns)).Msg("hub broadcast")
 	
 	for conn := range conns {
-		// Fire and forget - don't block on slow clients
 		go func(c *websocket.Conn) {
+			c.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			if err := c.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Error().Err(err).Msg("hub broadcast write failed")
+				log.Warn().Err(err).Msg("hub broadcast write failed, removing dead connection")
+				h.Unsubscribe(c)
+				c.Close()
 			}
 		}(conn)
 	}
