@@ -49,7 +49,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get channel ID from URL param
-	channelID := chi.URLParam(r, "channel_id")
+	channelID := chi.URLParam(r, "id")
 	if channelID == "" {
 		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Channel ID is required"})
 		return

@@ -30,14 +30,19 @@ type MessageService interface {
 type messageService struct {
 	messageRepo repository.MessageRepository
 	channelRepo repository.ChannelRepository
+	agentRepo   repository.AgentRepository
 }
 
 // NewMessageService creates a new message service
-func NewMessageService(messageRepo repository.MessageRepository, channelRepo repository.ChannelRepository) MessageService {
-	return &messageService{
+func NewMessageService(messageRepo repository.MessageRepository, channelRepo repository.ChannelRepository, agentRepo ...repository.AgentRepository) MessageService {
+	svc := &messageService{
 		messageRepo: messageRepo,
 		channelRepo: channelRepo,
 	}
+	if len(agentRepo) > 0 {
+		svc.agentRepo = agentRepo[0]
+	}
+	return svc
 }
 
 // Send creates and saves a new message
@@ -188,8 +193,12 @@ func (s *messageService) EditMessage(ctx context.Context, messageID, userID, tex
 		return nil, fmt.Errorf("get message: %w", err)
 	}
 
-	// Check if user is the author (users can only edit their own messages)
-	if existingMessage.AuthorID != userID || existingMessage.AuthorType != "user" {
+	// Check if user is the author or the agent's owner
+	isAuthor := existingMessage.AuthorID == userID && existingMessage.AuthorType == "user"
+	if !isAuthor && existingMessage.AuthorType == "agent" {
+		isAuthor = s.isAgentOwner(ctx, existingMessage.AuthorID, userID)
+	}
+	if !isAuthor {
 		return nil, models.ErrUnauthorizedMessageEdit
 	}
 
@@ -226,8 +235,12 @@ func (s *messageService) DeleteMessage(ctx context.Context, messageID, userID st
 		return fmt.Errorf("get message: %w", err)
 	}
 
-	// Check if user is the author (users can only delete their own messages)
-	if existingMessage.AuthorID != userID || existingMessage.AuthorType != "user" {
+	// Check if user is the author or the agent's owner
+	isAuthor := existingMessage.AuthorID == userID && existingMessage.AuthorType == "user"
+	if !isAuthor && existingMessage.AuthorType == "agent" {
+		isAuthor = s.isAgentOwner(ctx, existingMessage.AuthorID, userID)
+	}
+	if !isAuthor {
 		return models.ErrUnauthorizedMessageDelete
 	}
 
@@ -290,4 +303,16 @@ func (s *messageService) SearchMessages(ctx context.Context, query, channelID, u
 func isValidMessageText(text string) bool {
 	length := len(text)
 	return length > 0 && length <= 10000
+}
+
+// isAgentOwner checks if the given user owns the given agent
+func (s *messageService) isAgentOwner(ctx context.Context, agentID, userID string) bool {
+	if s.agentRepo == nil {
+		return false
+	}
+	agent, err := s.agentRepo.Get(ctx, agentID)
+	if err != nil {
+		return false
+	}
+	return agent.OwnerID == userID
 }

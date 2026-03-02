@@ -68,7 +68,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	// Initialize services
 	authService := service.NewAuthService(userRepo, jwtSecret)
 	channelService := service.NewChannelService(channelRepo)
-	messageService := service.NewMessageService(messageRepo, channelRepo)
+	messageService := service.NewMessageService(messageRepo, channelRepo, agentRepo)
 	agentService := service.NewAgentService(agentRepo)
 	apiKeyService := service.NewAPIKeyService(apiKeyRepo, agentRepo)
 	webhookService := service.NewWebhookService(webhookRepo, agentRepo)
