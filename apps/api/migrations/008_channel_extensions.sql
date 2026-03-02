@@ -17,6 +17,7 @@ UPDATE messages SET search_vector = to_tsvector('english', text);
 CREATE INDEX IF NOT EXISTS idx_messages_search ON messages USING gin(search_vector);
 
 -- Create trigger to auto-update search_vector on message insert/update
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION update_message_search_vector()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -24,6 +25,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 CREATE TRIGGER update_message_search_trigger
     BEFORE INSERT OR UPDATE ON messages
@@ -31,7 +33,10 @@ CREATE TRIGGER update_message_search_trigger
     EXECUTE FUNCTION update_message_search_vector();
 
 -- Add updated_at column to messages for edit tracking
-ALTER TABLE messages ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT created_at;
+ALTER TABLE messages ADD COLUMN updated_at TIMESTAMPTZ;
+UPDATE messages SET updated_at = created_at;
+ALTER TABLE messages ALTER COLUMN updated_at SET NOT NULL;
+ALTER TABLE messages ALTER COLUMN updated_at SET DEFAULT now();
 
 -- Create trigger to update updated_at on message edits
 CREATE TRIGGER update_messages_updated_at

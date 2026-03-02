@@ -104,40 +104,44 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 		r.Route("/agents", func(r chi.Router) {
 			r.Post("/", agentHandler.Create)
 			r.Get("/", agentHandler.List)
-			r.Get("/{id}", agentHandler.Get)
-			r.Patch("/{id}", agentHandler.Update)
-			r.Delete("/{id}", agentHandler.Delete)
-			
-			// API key routes (nested under agents)
-			r.Post("/{agent_id}/keys", apiKeyHandler.Create)
-			r.Get("/{agent_id}/keys", apiKeyHandler.List)
-			r.Delete("/{agent_id}/keys/{key_id}", apiKeyHandler.Delete)
-			
-			// Webhook routes (nested under agents)
-			r.Post("/{agent_id}/webhooks", webhookHandler.Create)
-			r.Get("/{agent_id}/webhooks", webhookHandler.List)
-			r.Delete("/{agent_id}/webhooks/{webhook_id}", webhookHandler.Delete)
-			r.Get("/{agent_id}/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", agentHandler.Get)
+				r.Patch("/", agentHandler.Update)
+				r.Delete("/", agentHandler.Delete)
+				
+				// API key routes
+				r.Post("/keys", apiKeyHandler.Create)
+				r.Get("/keys", apiKeyHandler.List)
+				r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
+				
+				// Webhook routes
+				r.Post("/webhooks", webhookHandler.Create)
+				r.Get("/webhooks", webhookHandler.List)
+				r.Delete("/webhooks/{webhook_id}", webhookHandler.Delete)
+				r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
+			})
 		})
 		
 		// Channel routes
 		r.Route("/channels", func(r chi.Router) {
 			r.Post("/", channelHandler.Create)
 			r.Get("/", channelHandler.List)
-			r.Get("/{id}", channelHandler.Get)
-			r.Patch("/{id}", channelHandler.Update)
-			r.Delete("/{id}", channelHandler.Delete)
-			
-			// Channel member routes
-			r.Get("/{id}/members", channelHandler.GetMembers)
-			r.Post("/{id}/members", channelHandler.AddMember)
-			r.Delete("/{id}/members/{user_id}", channelHandler.RemoveMember)
-			
-			// Message routes (nested under channels)
-			r.Post("/{channel_id}/messages", messageHandler.Send)
-			r.Get("/{channel_id}/messages", messageHandler.GetMessages)
-			r.Patch("/{channel_id}/messages/{id}", messageHandler.EditMessage)
-			r.Delete("/{channel_id}/messages/{id}", messageHandler.DeleteMessage)
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", channelHandler.Get)
+				r.Patch("/", channelHandler.Update)
+				r.Delete("/", channelHandler.Delete)
+				
+				// Channel member routes
+				r.Get("/members", channelHandler.GetMembers)
+				r.Post("/members", channelHandler.AddMember)
+				r.Delete("/members/{user_id}", channelHandler.RemoveMember)
+				
+				// Message routes
+				r.Post("/messages", messageHandler.Send)
+				r.Get("/messages", messageHandler.GetMessages)
+				r.Patch("/messages/{message_id}", messageHandler.EditMessage)
+				r.Delete("/messages/{message_id}", messageHandler.DeleteMessage)
+			})
 		})
 
 		// Message search route
@@ -156,40 +160,44 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 		r.Route("/agents", func(r chi.Router) {
 			r.Post("/", agentHandler.Create)
 			r.Get("/", agentHandler.List)
-			r.Get("/{id}", agentHandler.Get)
-			r.Patch("/{id}", agentHandler.Update)
-			r.Delete("/{id}", agentHandler.Delete)
-			
-			// API key routes (nested under agents)
-			r.Post("/{agent_id}/keys", apiKeyHandler.Create)
-			r.Get("/{agent_id}/keys", apiKeyHandler.List)
-			r.Delete("/{agent_id}/keys/{key_id}", apiKeyHandler.Delete)
-			
-			// Webhook routes (nested under agents)
-			r.Post("/{agent_id}/webhooks", webhookHandler.Create)
-			r.Get("/{agent_id}/webhooks", webhookHandler.List)
-			r.Delete("/{agent_id}/webhooks/{webhook_id}", webhookHandler.Delete)
-			r.Get("/{agent_id}/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", agentHandler.Get)
+				r.Patch("/", agentHandler.Update)
+				r.Delete("/", agentHandler.Delete)
+				
+				// API key routes
+				r.Post("/keys", apiKeyHandler.Create)
+				r.Get("/keys", apiKeyHandler.List)
+				r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
+				
+				// Webhook routes
+				r.Post("/webhooks", webhookHandler.Create)
+				r.Get("/webhooks", webhookHandler.List)
+				r.Delete("/webhooks/{webhook_id}", webhookHandler.Delete)
+				r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
+			})
 		})
 		
 		// Channel routes
 		r.Route("/channels", func(r chi.Router) {
 			r.Post("/", channelHandler.Create)
 			r.Get("/", channelHandler.List)
-			r.Get("/{id}", channelHandler.Get)
-			r.Patch("/{id}", channelHandler.Update)
-			r.Delete("/{id}", channelHandler.Delete)
-			
-			// Channel member routes
-			r.Get("/{id}/members", channelHandler.GetMembers)
-			r.Post("/{id}/members", channelHandler.AddMember)
-			r.Delete("/{id}/members/{user_id}", channelHandler.RemoveMember)
-			
-			// Message routes (nested under channels)
-			r.Post("/{channel_id}/messages", messageHandler.Send)
-			r.Get("/{channel_id}/messages", messageHandler.GetMessages)
-			r.Patch("/{channel_id}/messages/{id}", messageHandler.EditMessage)
-			r.Delete("/{channel_id}/messages/{id}", messageHandler.DeleteMessage)
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", channelHandler.Get)
+				r.Patch("/", channelHandler.Update)
+				r.Delete("/", channelHandler.Delete)
+				
+				// Channel member routes
+				r.Get("/members", channelHandler.GetMembers)
+				r.Post("/members", channelHandler.AddMember)
+				r.Delete("/members/{user_id}", channelHandler.RemoveMember)
+				
+				// Message routes
+				r.Post("/messages", messageHandler.Send)
+				r.Get("/messages", messageHandler.GetMessages)
+				r.Patch("/messages/{message_id}", messageHandler.EditMessage)
+				r.Delete("/messages/{message_id}", messageHandler.DeleteMessage)
+			})
 		})
 
 		// Message search route

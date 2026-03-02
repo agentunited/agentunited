@@ -46,7 +46,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get channel ID from URL param
-	channelID := chi.URLParam(r, "channel_id")
+	channelID := chi.URLParam(r, "id")
 	if channelID == "" {
 		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Channel ID is required"})
 		return
@@ -134,7 +134,7 @@ func (h *MessageHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get channel ID from URL param
-	channelID := chi.URLParam(r, "channel_id")
+	channelID := chi.URLParam(r, "id")
 	if channelID == "" {
 		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Channel ID is required"})
 		return
@@ -183,7 +183,7 @@ func (h *MessageHandler) EditMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get message ID from URL param
-	messageID := chi.URLParam(r, "id")
+	messageID := chi.URLParam(r, "message_id")
 	if messageID == "" {
 		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Message ID is required"})
 		return
@@ -239,7 +239,7 @@ func (h *MessageHandler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get message ID from URL param
-	messageID := chi.URLParam(r, "id")
+	messageID := chi.URLParam(r, "message_id")
 	if messageID == "" {
 		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Message ID is required"})
 		return

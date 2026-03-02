@@ -29,7 +29,7 @@ func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 
 	var req models.CreateWebhookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -63,7 +63,7 @@ func (h *WebhookHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 
 	webhooks, err := h.service.ListWebhooks(r.Context(), agentID, userID)
 	if err != nil {
@@ -94,7 +94,7 @@ func (h *WebhookHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 	webhookID := chi.URLParam(r, "webhook_id")
 
 	err := h.service.DeleteWebhook(r.Context(), webhookID, agentID, userID)
@@ -121,7 +121,7 @@ func (h *WebhookHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 	webhookID := chi.URLParam(r, "webhook_id")
 
 	limitStr := r.URL.Query().Get("limit")

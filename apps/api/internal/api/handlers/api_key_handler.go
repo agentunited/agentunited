@@ -28,7 +28,7 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 
 	var req models.CreateAPIKeyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -62,7 +62,7 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 
 	keys, err := h.service.ListKeys(r.Context(), agentID, userID)
 	if err != nil {
@@ -93,7 +93,7 @@ func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	agentID := chi.URLParam(r, "agent_id")
+	agentID := chi.URLParam(r, "id")
 	keyID := chi.URLParam(r, "key_id")
 
 	err := h.service.DeleteKey(r.Context(), keyID, agentID, userID)
