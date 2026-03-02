@@ -48,6 +48,9 @@ export function LoginPage() {
       const result = await response.json();
       localStorage.setItem('auth-token', result.token);
       localStorage.setItem('user-email', data.email);
+      if (result.user_id) {
+        localStorage.setItem('user-id', result.user_id);
+      }
       
       // Navigate to chat
       navigate('/chat');

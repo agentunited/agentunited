@@ -23,6 +23,10 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
     let cancelled = false;
     
     async function loadMessages() {
+      if (!channelId) {
+        setMessages([]);
+        return;
+      }
       try {
         const msgs = await fetchMessages(channelId);
         if (!cancelled) {
@@ -42,6 +46,8 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
 
   // WebSocket connection
   useEffect(() => {
+    if (!channelId) return;
+    
     const token = localStorage.getItem('auth-token');
     if (!token) {
       setError('Not authenticated');
@@ -140,7 +146,7 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
   const sendMessage = useCallback((text: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'message',
+        type: 'send_message',
         channel_id: channelId,
         text,
       }));
