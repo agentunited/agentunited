@@ -34,8 +34,17 @@ export function SearchResultsPanel({ query, channels, onClose, onResultClick }: 
         setIsLoading(true);
         setError(null);
 
-        // Search across all channels
-        const searchResults = await chatApi.searchMessages(query.trim());
+        // Search across all channels by querying each one
+        const allResults: Message[] = [];
+        for (const ch of channels) {
+          try {
+            const chResults = await chatApi.searchMessages(query.trim(), ch.id);
+            allResults.push(...chResults);
+          } catch { /* skip channels that fail */ }
+        }
+        const searchResults = allResults.sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
         
         // Map channel IDs to names using loaded channels
         const enhancedResults = searchResults.map(result => {

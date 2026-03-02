@@ -278,10 +278,6 @@ func (h *MessageHandler) SearchMessages(w http.ResponseWriter, r *http.Request) 
 	}
 
 	channelID := r.URL.Query().Get("channel_id")
-	if channelID == "" {
-		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Channel ID is required"})
-		return
-	}
 
 	limitStr := r.URL.Query().Get("limit")
 	limit := 50 // Default
