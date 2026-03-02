@@ -126,8 +126,9 @@ func (h *ChannelHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // UpdateChannelRequest represents the update channel request body
 type UpdateChannelRequest struct {
-	Name  string `json:"name"`
-	Topic string `json:"topic"`
+	Name        *string `json:"name,omitempty"`
+	Topic       *string `json:"topic,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 // Update handles PATCH /api/v1/channels/{id}
@@ -156,8 +157,27 @@ func (h *ChannelHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get current channel to merge fields
+	current, err := h.channelService.Get(ctx, channelID, userID)
+	if err != nil {
+		h.handleChannelError(w, err, "get channel for update")
+		return
+	}
+	
+	name := current.Name
+	topic := current.Topic
+	if req.Name != nil {
+		name = *req.Name
+	}
+	if req.Topic != nil {
+		topic = *req.Topic
+	}
+	if req.Description != nil {
+		topic = *req.Description
+	}
+
 	// Call service
-	channel, err := h.channelService.Update(ctx, channelID, userID, req.Name, req.Topic)
+	channel, err := h.channelService.Update(ctx, channelID, userID, name, topic)
 	if err != nil {
 		h.handleChannelError(w, err, "update channel")
 		return
