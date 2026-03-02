@@ -71,6 +71,8 @@ export async function fetchMessages(channelId: string): Promise<Message[]> {
     text: msg.text,
     timestamp: msg.created_at,
     isOwnMessage: msg.author_id === currentUserId,
+    attachmentUrl: msg.attachment_url,
+    attachmentName: msg.attachment_name,
   }));
 }
 
@@ -95,5 +97,60 @@ export async function sendMessageApi(channelId: string, text: string): Promise<M
     text: msg.text,
     timestamp: msg.created_at,
     isOwnMessage: msg.author_id === currentUserId || true,
+    attachmentUrl: msg.attachment_url,
+    attachmentName: msg.attachment_name,
+  };
+}
+
+export async function sendMessageWithAttachment(channelId: string, text: string, file: File): Promise<Message> {
+  const token = getAuthToken();
+  const baseUrl = getApiBaseUrl();
+  
+  // Validate file size (max 10MB)
+  const maxSizeBytes = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSizeBytes) {
+    throw new Error('File size must be less than 10MB');
+  }
+
+  const formData = new FormData();
+  formData.append('text', text);
+  formData.append('file', file);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${baseUrl}/api/v1/channels/${channelId}/messages`, {
+    method: 'POST',
+    body: formData,
+    headers,
+  });
+
+  if (response.status === 401) {
+    localStorage.removeItem('auth-token');
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to send message: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const msg = data.message || data;
+  const currentUserId = getUserId();
+  
+  return {
+    id: msg.id,
+    channelId: msg.channel_id || channelId,
+    author: msg.author_email || 'You',
+    authorId: msg.author_id,
+    authorType: msg.author_type === 'agent' ? 'agent' as const : 'human' as const,
+    text: msg.text,
+    timestamp: msg.created_at,
+    isOwnMessage: msg.author_id === currentUserId || true,
+    attachmentUrl: msg.attachment_url,
+    attachmentName: msg.attachment_name,
   };
 }

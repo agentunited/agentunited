@@ -8,6 +8,8 @@ export interface Message {
   timestamp: string; // ISO 8601
   editedAt?: string; // ISO 8601
   isOwnMessage: boolean;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 export interface Channel {

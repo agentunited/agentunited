@@ -9,6 +9,7 @@ import { MemberListPanel } from '../components/chat/MemberListPanel';
 import { SearchResultsPanel } from '../components/chat/SearchResultsPanel';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { chatApi } from '../services/chatApi';
+import { sendMessageWithAttachment } from '../services/api';
 import type { Channel } from '../types/chat';
 
 interface DirectMessage {
@@ -129,13 +130,25 @@ export function ChatPage() {
   const selectedChannel = channels.find(ch => ch.id === selectedChannelId) || null;
   const selectedDM = directMessages.find(dm => dm.id === selectedDMId) || null;
 
-  const handleSendMessage = (text: string, mentions?: { userId: string; display: string }[]) => {
-    // TODO: Include mentions in the message when API supports it
-    // For now, just send the text
-    sendMessage(text);
+  const handleSendMessage = async (text: string, mentions?: { userId: string; display: string }[], attachment?: File) => {
+    if (!activeConversationId) return;
     
-    if (mentions && mentions.length > 0) {
-      console.log('Mentions in message:', mentions);
+    try {
+      if (attachment) {
+        // Use API directly for file uploads
+        await sendMessageWithAttachment(activeConversationId, text, attachment);
+      } else {
+        // Use WebSocket for text-only messages  
+        sendMessage(text);
+      }
+      
+      if (mentions && mentions.length > 0) {
+        console.log('Mentions in message:', mentions);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // Let MessageInput handle the error display
+      throw error;
     }
   };
 

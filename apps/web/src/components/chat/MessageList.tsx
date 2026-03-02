@@ -51,6 +51,10 @@ export function MessageList({
             timestamp={msg.timestamp}
             editedAt={msg.editedAt}
             isOwnMessage={msg.isOwnMessage}
+            attachment={msg.attachmentUrl && msg.attachmentName ? {
+              url: msg.attachmentUrl,
+              name: msg.attachmentName
+            } : undefined}
             onMessageUpdated={handleMessageUpdated}
             onMessageDeleted={handleMessageDeleted}
           />
