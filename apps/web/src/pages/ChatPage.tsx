@@ -6,6 +6,7 @@ import { MessageInput } from '../components/chat/MessageInput';
 import { CreateChannelModal } from '../components/chat/CreateChannelModal';
 import { NewDMModal } from '../components/chat/NewDMModal';
 import { MemberListPanel } from '../components/chat/MemberListPanel';
+import { SearchResultsPanel } from '../components/chat/SearchResultsPanel';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { chatApi } from '../services/chatApi';
 import type { Channel } from '../types/chat';
@@ -28,6 +29,8 @@ export function ChatPage() {
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showNewDM, setShowNewDM] = useState(false);
   const [showMembersPanel, setShowMembersPanel] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   
   // Determine if we're viewing a channel or DM
   const isViewingDM = !!selectedDMId;
@@ -114,9 +117,25 @@ export function ChatPage() {
     setSelectedDMId(''); // Clear DM selection
   }, []);
 
-  const handleSearch = useCallback(async (query: string) => {
-    console.log('Search not implemented yet:', query);
-    // TODO: Implement search functionality
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    setIsSearching(true);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setSearchQuery('');
+    setIsSearching(false);
+  }, []);
+
+  const handleSearchResultClick = useCallback((channelId: string, messageId: string) => {
+    // Navigate to the channel containing the message
+    setSelectedChannelId(channelId);
+    setSelectedDMId(''); // Clear DM selection
+    setIsSearching(false); // Close search
+    setSearchQuery('');
+    
+    // TODO: Scroll to specific message when message list supports it
+    console.log(`Navigate to message ${messageId} in channel ${channelId}`);
   }, []);
 
   const handleChannelUpdate = useCallback((updatedChannel: Channel) => {
@@ -242,33 +261,46 @@ export function ChatPage() {
       />
 
       <div className="flex-1 flex flex-col">
-        <ChatHeader
-          channelName={activeConversationName}
-          topic={activeConversationTopic}
-          isDM={isViewingDM}
-          onToggleMembers={handleToggleMembers}
-          showMembersPanel={showMembersPanel}
-        />
+        {isSearching ? (
+          // Show search results instead of normal chat
+          <SearchResultsPanel
+            query={searchQuery}
+            channels={channels}
+            onClose={handleCloseSearch}
+            onResultClick={handleSearchResultClick}
+          />
+        ) : (
+          // Show normal chat interface
+          <>
+            <ChatHeader
+              channelName={activeConversationName}
+              topic={activeConversationTopic}
+              isDM={isViewingDM}
+              onToggleMembers={handleToggleMembers}
+              showMembersPanel={showMembersPanel}
+            />
 
-        <MessageList messages={messages} />
+            <MessageList messages={messages} />
 
-        {wsError && (
-          <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
-            <div className="text-sm text-destructive">{wsError}</div>
-          </div>
+            {wsError && (
+              <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
+                <div className="text-sm text-destructive">{wsError}</div>
+              </div>
+            )}
+
+            <MessageInput
+              onSend={handleSendMessage}
+              placeholder={isViewingDM 
+                ? `Message ${selectedDM?.name || 'user'}`
+                : `Message #${selectedChannel?.name || 'general'}`
+              }
+            />
+          </>
         )}
-
-        <MessageInput
-          onSend={handleSendMessage}
-          placeholder={isViewingDM 
-            ? `Message ${selectedDM?.name || 'user'}`
-            : `Message #${selectedChannel?.name || 'general'}`
-          }
-        />
       </div>
 
-      {/* Member List Panel - only show for channels, not DMs */}
-      {!isViewingDM && showMembersPanel && selectedChannel && (
+      {/* Member List Panel - only show for channels, not DMs, and not during search */}
+      {!isViewingDM && !isSearching && showMembersPanel && selectedChannel && (
         <MemberListPanel
           isOpen={showMembersPanel}
           onClose={() => setShowMembersPanel(false)}
