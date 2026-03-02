@@ -23,9 +23,19 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	r.Use(middleware.RealIP)
 	r.Use(loggerMiddleware)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
-	
-	// CORS for local development
+	// Timeout for non-WebSocket routes (WS connections are long-lived)
+	r.Use(func(next http.Handler) http.Handler {
+		timeoutHandler := middleware.Timeout(60 * time.Second)(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/ws" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			timeoutHandler.ServeHTTP(w, r)
+		})
+	})
+
+	// CORS
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:*", "http://127.0.0.1:*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -72,7 +82,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 	wsHandler := handlers.NewWebSocketHandlerV2(messageService, channelService, jwtSecret, hub)
 
-	// WebSocket endpoint (query param auth, not middleware)
+	// WebSocket endpoint — no timeout middleware (long-lived connection)
 	r.Handle("/ws", wsHandler)
 
 	// Public routes (no authentication required)
