@@ -68,6 +68,10 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
         setError(null);
         reconnectAttemptsRef.current = 0;
         console.log('WebSocket connected');
+        // Subscribe to the current channel
+        if (channelId) {
+          ws.send(JSON.stringify({ type: 'subscribe', channel_id: channelId }));
+        }
       };
 
       ws.onmessage = (event) => {
@@ -85,7 +89,7 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
           if (data.type === 'message' || data.type === 'new_message' || data.type === 'message.created') {
             const d = data.data || data; // message.created wraps in { type, data }
             const msg: Message = {
-              id: d.id || d.message?.id || `ws-${Date.now()}`,
+              id: d.id || d.message_id || d.message?.id || `ws-${Date.now()}`,
               channelId: d.channel_id || d.message?.channel_id || channelId,
               author: d.author_email || d.author_type || 'Unknown',
               authorId: d.author_id || d.message?.author_id || '',

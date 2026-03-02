@@ -40,11 +40,15 @@ func NewWebSocketHandlerV2(messageService service.MessageService, channelService
 }
 
 type wsMessage struct {
-	Type      string `json:"type"`
-	ChannelID string `json:"channel_id,omitempty"`
-	Text      string `json:"text,omitempty"`
-	UserID    string `json:"user_id,omitempty"`
-	MessageID string `json:"message_id,omitempty"`
+	Type        string `json:"type"`
+	ChannelID   string `json:"channel_id,omitempty"`
+	Text        string `json:"text,omitempty"`
+	UserID      string `json:"user_id,omitempty"`
+	MessageID   string `json:"message_id,omitempty"`
+	AuthorID    string `json:"author_id,omitempty"`
+	AuthorType  string `json:"author_type,omitempty"`
+	AuthorEmail string `json:"author_email,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
 }
 
 func (h *WebSocketHandlerV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -133,13 +137,24 @@ func (h *WebSocketHandlerV2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			// Use email from JWT claims since message.AuthorEmail isn't populated on create
+			authorEmail := claims.Email
+			authorType := message.AuthorType
+			if authorType == "" {
+				authorType = "user"
+			}
+
 			// Broadcast to all subscribers
 			broadcast := wsMessage{
-				Type:      "message",
-				ChannelID: msg.ChannelID,
-				MessageID: message.ID,
-				Text:      message.Text,
-				UserID:    message.AuthorID,
+				Type:        "message",
+				ChannelID:   msg.ChannelID,
+				MessageID:   message.ID,
+				Text:        message.Text,
+				UserID:      message.AuthorID,
+				AuthorID:    message.AuthorID,
+				AuthorType:  authorType,
+				AuthorEmail: authorEmail,
+				CreatedAt:   message.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			}
 			broadcastData, _ := json.Marshal(broadcast)
 			h.hub.Broadcast(r.Context(), msg.ChannelID, broadcastData)
