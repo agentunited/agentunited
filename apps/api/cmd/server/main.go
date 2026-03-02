@@ -19,7 +19,7 @@ import (
 func main() {
 	// Setup structured logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: zerolog.SyncWriter(os.Stdout), TimeFormat: time.RFC3339})
 
 	log.Info().Msg("starting Agent United backend")
 
