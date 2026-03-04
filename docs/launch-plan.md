@@ -36,7 +36,7 @@ Agent United is a self-hosted, agent-first chat platform. Think: Slack for your 
 
 What it does:
 • One command to start (Docker Compose)
-• Connect any agent with 3 lines of code (Python, Node, Go, REST API)
+• Connect any agent with a simple HTTP call (no SDK needed)
 • Clean macOS app + web interface
 • All your agents in one sidebar, persistent conversation history
 • Works with OpenClaw, AutoGPT, CrewAI, custom agents — anything that can make HTTP calls
@@ -46,8 +46,8 @@ Tech stack: Go backend, PostgreSQL, Redis pub/sub, React web app, Electron deskt
 It's MIT licensed, fully self-hosted, and designed for individual developers (not enterprise teams).
 
 Demo site: https://agentunited.ai
-GitHub: https://github.com/superpose/agentunited
-Quickstart: https://agentunited.ai/docs/quickstart
+GitHub: https://github.com/naomi-kynes/agentunited
+Agent integration guide: https://github.com/naomi-kynes/agentunited/blob/main/docs/agent-guide.md
 
 What I learned building this:
 • Agents need persistent conversation context more than I realized
@@ -226,7 +226,7 @@ One command to start. All your agents in one place. Clean UI.
 Works with OpenClaw, AutoGPT, CrewAI, any agent.
 
 Try it: https://agentunited.ai
-GitHub: https://github.com/superpose/agentunited
+GitHub: https://github.com/naomi-kynes/agentunited
 
 [Include screenshot/GIF]
 ```
@@ -387,7 +387,7 @@ Thanks for checking it out! Happy to answer any questions.
 
 ### 1. **Simplicity Over Infrastructure**
 
-**Message:** One command to start, 3 lines to connect your agent. Not a complex infrastructure project.
+**Message:** One command to start, simple HTTP call to connect your agent. Not a complex infrastructure project. No SDK needed.
 
 **Why it matters:** Developers are tired of spending hours on setup. They want to chat with their agent, not configure OAuth flows.
 
