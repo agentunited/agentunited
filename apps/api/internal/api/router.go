@@ -77,7 +77,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 
 	// Initialize WebSocket hub first (needed by message handler)
 	hub := handlers.NewHub()
-	
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
@@ -87,6 +87,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	webhookHandler := handlers.NewWebhookHandler(webhookService)
 	bootstrapHandler := handlers.NewBootstrapHandler(bootstrapService)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
+	pairingHandler := handlers.NewPairingHandler()
 	wsHandler := handlers.NewWebSocketHandlerV2(messageService, channelService, jwtSecret, hub)
 
 	// WebSocket endpoint — no timeout middleware (long-lived connection)
@@ -96,17 +97,26 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	r.Post("/api/v1/bootstrap", bootstrapHandler.ServeHTTP)
 	r.Get("/api/v1/invite", inviteHandler.ValidateInvite)
 	r.Post("/api/v1/invite/accept", inviteHandler.AcceptInvite)
-	
+
+	// Pairing routes for M5 Tunneling
+	r.Get("/api/v1/pairing/code", pairingHandler.GetCode)
+	r.Get("/api/v1/pairing/verify", pairingHandler.VerifyCode)
+
 	// Public authentication routes
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
 	})
-	
+
 	// Protected API v1 routes (require JWT or API key authentication)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(mw.Auth(jwtSecret, apiKeyRepo, agentRepo))
-		
+
+		// Admin routes
+		r.Route("/admin", func(r chi.Router) {
+			r.Post("/pairing", pairingHandler.AdminPairing)
+		})
+
 		// Agent routes
 		r.Route("/agents", func(r chi.Router) {
 			r.Post("/", agentHandler.Create)
@@ -115,12 +125,12 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 				r.Get("/", agentHandler.Get)
 				r.Patch("/", agentHandler.Update)
 				r.Delete("/", agentHandler.Delete)
-				
+
 				// API key routes
 				r.Post("/keys", apiKeyHandler.Create)
 				r.Get("/keys", apiKeyHandler.List)
 				r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
-				
+
 				// Webhook routes
 				r.Post("/webhooks", webhookHandler.Create)
 				r.Get("/webhooks", webhookHandler.List)
@@ -128,7 +138,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 				r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
 			})
 		})
-		
+
 		// Channel routes
 		r.Route("/channels", func(r chi.Router) {
 			r.Post("/", channelHandler.Create)
@@ -137,12 +147,12 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 				r.Get("/", channelHandler.Get)
 				r.Patch("/", channelHandler.Update)
 				r.Delete("/", channelHandler.Delete)
-				
+
 				// Channel member routes
 				r.Get("/members", channelHandler.GetMembers)
 				r.Post("/members", channelHandler.AddMember)
 				r.Delete("/members/{user_id}", channelHandler.RemoveMember)
-				
+
 				// Message routes
 				r.Post("/messages", messageHandler.Send)
 				r.Get("/messages", messageHandler.GetMessages)
@@ -162,7 +172,12 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 	// Backward compatibility: Mount protected routes on /v1 as well
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(mw.Auth(jwtSecret, apiKeyRepo, agentRepo))
-		
+
+		// Admin routes
+		r.Route("/admin", func(r chi.Router) {
+			r.Post("/pairing", pairingHandler.AdminPairing)
+		})
+
 		// Agent routes
 		r.Route("/agents", func(r chi.Router) {
 			r.Post("/", agentHandler.Create)
@@ -171,12 +186,12 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 				r.Get("/", agentHandler.Get)
 				r.Patch("/", agentHandler.Update)
 				r.Delete("/", agentHandler.Delete)
-				
+
 				// API key routes
 				r.Post("/keys", apiKeyHandler.Create)
 				r.Get("/keys", apiKeyHandler.List)
 				r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
-				
+
 				// Webhook routes
 				r.Post("/webhooks", webhookHandler.Create)
 				r.Get("/webhooks", webhookHandler.List)
@@ -184,7 +199,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 				r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
 			})
 		})
-		
+
 		// Channel routes
 		r.Route("/channels", func(r chi.Router) {
 			r.Post("/", channelHandler.Create)
@@ -193,12 +208,12 @@ func NewRouter(db *repository.DB, cache *repository.Cache, jwtSecret string) *ch
 				r.Get("/", channelHandler.Get)
 				r.Patch("/", channelHandler.Update)
 				r.Delete("/", channelHandler.Delete)
-				
+
 				// Channel member routes
 				r.Get("/members", channelHandler.GetMembers)
 				r.Post("/members", channelHandler.AddMember)
 				r.Delete("/members/{user_id}", channelHandler.RemoveMember)
-				
+
 				// Message routes
 				r.Post("/messages", messageHandler.Send)
 				r.Get("/messages", messageHandler.GetMessages)

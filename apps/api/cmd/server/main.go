@@ -58,17 +58,18 @@ func main() {
 	}
 	log.Info().Msg("file storage initialized")
 
-	// Setup router
-	router := api.NewRouter(db, cache, cfg.JWT.Secret)
-
-	// Optional embedded relay client for tunnel deployment mode
+	// Initialize embedded relay manager (runtime-updatable)
+	relayManager := relay.NewManager(cfg.Relay.DeploymentMode, cfg.Relay.ServerURL, cfg.Relay.LocalAPIURL, cfg.Relay.Token)
+	relay.SetGlobalManager(relayManager)
 	relayCtx, relayCancel := context.WithCancel(context.Background())
 	defer relayCancel()
-	if cfg.Relay.DeploymentMode == "tunnel" && cfg.Relay.Token != "" {
-		rc := relay.NewClient(cfg.Relay.ServerURL, cfg.Relay.Token, cfg.Relay.LocalAPIURL)
-		go rc.Start(relayCtx)
-		log.Info().Str("relay_server", cfg.Relay.ServerURL).Msg("tunnel mode enabled; starting relay client")
+	relayManager.Start(relayCtx)
+	if cfg.Relay.DeploymentMode == "tunnel" {
+		log.Info().Str("relay_server", cfg.Relay.ServerURL).Msg("tunnel mode configured")
 	}
+
+	// Setup router
+	router := api.NewRouter(db, cache, cfg.JWT.Secret)
 
 	// HTTP server
 	server := &http.Server{

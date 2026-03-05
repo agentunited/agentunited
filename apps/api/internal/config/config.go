@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -29,6 +30,7 @@ type RelayConfig struct {
 	LocalAPIURL    string
 	Domain         string
 	ListenAddr     string
+	ConfigFile     string
 }
 
 // DatabaseConfig holds PostgreSQL connection settings
@@ -76,6 +78,20 @@ func Load() (*Config, error) {
 	}
 
 	serverPort := getEnv("SERVER_PORT", "8080")
+	relayConfigFile := getEnv("RELAY_CONFIG_FILE", "data/relay_config.json")
+	deploymentMode := getEnv("DEPLOYMENT_MODE", "self-hosted")
+	relayToken := getEnv("RELAY_TOKEN", "")
+	if relayToken == "" {
+		if persisted, err := loadPersistedRelayConfig(relayConfigFile); err == nil {
+			if persisted.RelayToken != "" {
+				relayToken = persisted.RelayToken
+			}
+			if deploymentMode == "self-hosted" && persisted.DeploymentMode != "" {
+				deploymentMode = persisted.DeploymentMode
+			}
+		}
+	}
+
 	cfg := &Config{
 		Server: ServerConfig{
 			Port: serverPort,
@@ -99,12 +115,13 @@ func Load() (*Config, error) {
 			Expiry: jwtExpiry,
 		},
 		Relay: RelayConfig{
-			DeploymentMode: getEnv("DEPLOYMENT_MODE", "self-hosted"),
-			Token:          getEnv("RELAY_TOKEN", ""),
+			DeploymentMode: deploymentMode,
+			Token:          relayToken,
 			ServerURL:      getEnv("RELAY_SERVER", "ws://localhost:8090/tunnel"),
 			LocalAPIURL:    getEnv("RELAY_LOCAL_API", fmt.Sprintf("http://127.0.0.1:%s", serverPort)),
 			Domain:         getEnv("RELAY_DOMAIN", "tunnel.agentunited.ai"),
 			ListenAddr:     getEnv("RELAY_LISTEN_ADDR", ":8090"),
+			ConfigFile:     relayConfigFile,
 		},
 	}
 
@@ -130,4 +147,21 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+type persistedRelayConfig struct {
+	DeploymentMode string `json:"deployment_mode"`
+	RelayToken     string `json:"relay_token"`
+}
+
+func loadPersistedRelayConfig(path string) (*persistedRelayConfig, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var out persistedRelayConfig
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
