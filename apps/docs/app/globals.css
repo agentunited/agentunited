@@ -71,10 +71,20 @@ a {
   box-shadow: 0 24px 60px -42px rgba(15, 23, 42, 0.35);
 }
 
-.dark html {
+html.dark {
   background:
     radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 28%),
     linear-gradient(180deg, rgba(2, 6, 23, 1), rgba(3, 7, 18, 1));
+}
+
+html.dark .docs-home .brand,
+html.dark .docs-home .top-nav,
+html.dark .docs-home .hero-title {
+  color: #f8fafc;
+}
+
+html.dark .docs-home .hero-copy {
+  color: #cbd5e1;
 }
 
 .dark .hero-panel {
