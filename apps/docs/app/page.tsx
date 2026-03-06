@@ -36,7 +36,7 @@ const docHighlights = [
 export default function Home() {
   return (
     <main className="relative overflow-hidden bg-white" data-theme="light">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_32%),radial-gradient(circle_at_80%_20%,_rgba(14,165,233,0.14),_transparent_24%),linear-gradient(180deg,_rgba(248,250,252,0.98),_rgba(255,255,255,1))]" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.35),_transparent_50%),radial-gradient(circle_at_80%_20%,_rgba(14,165,233,0.2),_transparent_40%),linear-gradient(180deg,_rgba(248,250,252,0.98),_rgba(255,255,255,1))]" />
       <section className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 pb-16 pt-8 sm:px-10 lg:px-12">
         <header className="flex items-center justify-between border-b border-white/70 pb-6">
           <Link
