@@ -60,6 +60,11 @@ services:
       DB_PORT: 5432
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      CENTRIFUGO_ENABLED: "true"
+      CENTRIFUGO_API_URL: "http://centrifugo:8000/api"
+      CENTRIFUGO_API_KEY: "dev-centrifugo-api-key"
+      CENTRIFUGO_TOKEN_HMAC_SECRET: "dev-centrifugo-token-secret"
+      CENTRIFUGO_CHANNEL_PREFIX: "channel:"
     ports:
       - "8080:8080"
     depends_on:
@@ -67,6 +72,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      centrifugo:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -79,6 +86,16 @@ services:
           memory: 128M
         reservations:
           memory: 64M
+
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    container_name: agentunited-centrifugo
+    restart: unless-stopped
+    command: centrifugo -c /centrifugo/config.json
+    volumes:
+      - ./config/centrifugo.json:/centrifugo/config.json:ro
+    ports:
+      - "8000:8000"
 
 volumes:
   postgres_data:
