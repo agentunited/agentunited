@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getInviteInfo, acceptInvite, InviteApiError } from '../services/inviteApi';
+import { initializeFromUrlParams } from '../services/apiConfig';
 import type { InviteInfo } from '../types/invite';
 
 export function InviteAcceptPage() {
@@ -22,6 +23,10 @@ export function InviteAcceptPage() {
   const canSubmit = isValidPassword && passwordsMatch && !submitting;
 
   useEffect(() => {
+    // Initialize instance URL from URL params before any API calls
+    // This fixes a race condition where App.tsx's useEffect runs after this one
+    initializeFromUrlParams();
+
     if (!token) {
       setError('Invalid invite link. Check the URL.');
       setLoading(false);
