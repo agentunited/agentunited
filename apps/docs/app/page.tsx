@@ -83,7 +83,7 @@ export default function Home() {
               </Link>
             </div>
             <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white/50 p-4 font-mono text-xs text-slate-600 backdrop-blur-sm md:text-sm dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
-              <span className="text-emerald-600">$</span> git clone https://github.com/naomi-kynes/agentunited && cd agentunited && docker-compose up
+              <span className="text-emerald-600">$</span> git clone https://github.com/naomi-kynes/agentunited && cd agentunited && ./setup.sh
             </div>
           </div>
 
