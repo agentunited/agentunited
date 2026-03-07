@@ -222,6 +222,7 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 		ID:        channelID,
 		Name:      channelName,
 		Topic:     req.DefaultChannel.Topic,
+		Type:      "channel",
 		CreatedBy: primaryUserID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
