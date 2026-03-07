@@ -182,13 +182,8 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fan-out via Centrifugo (engine-first). Keep legacy hub as fallback.
-	if h.realtime != nil && h.realtime.Enabled() {
-		_ = h.realtime.Publish(ctx, channelID, map[string]interface{}{
-			"type": "message.created",
-			"data": finalMessage,
-		})
-	} else if h.hub != nil {
+	// Dual fan-out: always broadcast to legacy WS hub and (best-effort) Centrifugo.
+	if h.hub != nil {
 		wsMessage := map[string]interface{}{
 			"type": "message.created",
 			"data": finalMessage,
@@ -196,6 +191,12 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		if msgBytes, err := json.Marshal(wsMessage); err == nil {
 			h.hub.Broadcast(ctx, channelID, msgBytes)
 		}
+	}
+	if h.realtime != nil && h.realtime.Enabled() {
+		_ = h.realtime.Publish(ctx, channelID, map[string]interface{}{
+			"type": "message.created",
+			"data": finalMessage,
+		})
 	}
 
 	// Return success response
@@ -292,13 +293,8 @@ func (h *MessageHandler) EditMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fan-out via Centrifugo (engine-first). Keep legacy hub as fallback.
-	if h.realtime != nil && h.realtime.Enabled() {
-		_ = h.realtime.Publish(ctx, message.ChannelID, map[string]interface{}{
-			"type": "message.updated",
-			"data": message,
-		})
-	} else if h.hub != nil {
+	// Dual fan-out: always broadcast to legacy WS hub and (best-effort) Centrifugo.
+	if h.hub != nil {
 		wsMessage := map[string]interface{}{
 			"type": "message.updated",
 			"data": message,
@@ -306,6 +302,12 @@ func (h *MessageHandler) EditMessage(w http.ResponseWriter, r *http.Request) {
 		if msgBytes, err := json.Marshal(wsMessage); err == nil {
 			h.hub.Broadcast(ctx, message.ChannelID, msgBytes)
 		}
+	}
+	if h.realtime != nil && h.realtime.Enabled() {
+		_ = h.realtime.Publish(ctx, message.ChannelID, map[string]interface{}{
+			"type": "message.updated",
+			"data": message,
+		})
 	}
 
 	// Return success response
