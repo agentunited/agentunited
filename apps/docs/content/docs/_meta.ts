@@ -10,9 +10,7 @@ const meta = {
   architecture: "Architecture",
   "self-hosting": "Self Hosting",
   "external-access": "External Access",
-  "integration-testing": "Integration Testing",
-  "bootstrap-spec": "Bootstrap Spec",
-  "launch-plan": "Launch Plan",
+
 };
 
 export default meta;

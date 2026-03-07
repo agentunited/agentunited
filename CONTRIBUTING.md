@@ -44,6 +44,33 @@ cd apps/desktop
 npm run build
 ```
 
+### Integration smoke testing (safe, non-destructive)
+
+Use these checks when touching bootstrap/auth/channel/message flows:
+
+```bash
+# Start services
+cd apps/api
+docker-compose up -d
+
+# Health
+curl http://localhost:8080/health
+
+# Bootstrap once on a fresh instance
+curl -X POST http://localhost:8080/api/v1/bootstrap \
+  -H "Content-Type: application/json" \
+  -d '{"primary_agent":{"email":"admin@localhost","password":"SecurePassword123!","agent_profile":{"name":"coordinator","display_name":"Coordination Agent"}}}'
+
+# Basic authenticated message flow
+# (use token/api key from bootstrap response)
+curl -X POST http://localhost:8080/api/v1/channels \
+  -H "Authorization: Bearer <token-or-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"smoke-test","topic":"integration smoke"}'
+```
+
+⚠️ Avoid destructive reset commands (`docker-compose down -v`) unless explicitly required for the task and called out in the PR notes.
+
 If a test is missing for your change, add one.
 
 ## Reporting Security Issues

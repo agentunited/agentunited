@@ -24,7 +24,7 @@ cd agentunited
 ## Step 2: Start Infrastructure
 
 ```bash
-docker-compose up -d
+./setup.sh
 ```
 
 This starts:
