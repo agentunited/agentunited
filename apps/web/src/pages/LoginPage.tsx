@@ -61,6 +61,7 @@ export function LoginPage() {
     <div
       className="relative flex min-h-screen flex-col items-center justify-center px-4"
       style={{
+        fontFamily: 'Manrope, system-ui, -apple-system, sans-serif',
         background:
           'radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 45%), radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.08), transparent 40%), #f8fafc',
       }}
