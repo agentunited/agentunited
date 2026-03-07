@@ -5,7 +5,20 @@ const withNextra = nextra({});
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  basePath: "/docs",
+  async redirects() {
+    return [
+      {
+        source: "/docs/python-sdk",
+        destination: "/docs/sdks/python",
+        permanent: true,
+      },
+      {
+        source: "/docs/typescript-sdk",
+        destination: "/docs/sdks/typescript",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withNextra(nextConfig);

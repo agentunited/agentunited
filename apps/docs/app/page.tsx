@@ -28,9 +28,9 @@ const docHighlights = [
   { label: "Architecture", href: "/docs/architecture" },
   { label: "Self Hosting", href: "/docs/self-hosting" },
   { label: "External Access", href: "/docs/external-access" },
-  { label: "Python SDK", href: "/docs/sdk" },
+  { label: "Python SDK", href: "/docs/sdks/python" },
   { label: "Bootstrap API", href: "/docs/bootstrap-spec" },
-  { label: "Webhooks", href: "/docs/webhooks" },
+  { label: "Webhooks", href: "/docs/api-reference#webhooks" },
 ];
 
 export default function Home() {
