@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Message } from '../types/chat';
 import { getApiBaseUrl } from '../services/apiConfig';
 import { fetchMessages } from '../services/api';
+import { getDisplayName } from '../lib/displayName';
 
 interface UseWebSocketReturn {
   isConnected: boolean;
@@ -97,7 +98,7 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
             const msg: Message = {
               id: d.id || d.message_id || d.message?.id || `ws-${Date.now()}`,
               channelId: d.channel_id || d.message?.channel_id || channelId,
-              author: d.author_email || d.author_type || 'Unknown',
+              author: getDisplayName(d.author_email || d.author_type || 'Unknown'),
               authorId: d.author_id || d.message?.author_id || '',
               authorType: (d.author_type === 'agent') ? 'agent' : 'human',
               text: d.text || d.message?.text || '',
