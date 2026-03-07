@@ -83,6 +83,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	meHandler := handlers.NewMeHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
 	messageHandler := handlers.NewMessageHandler(messageService, webhookService, hub, realtimeEngine)
 	agentHandler := handlers.NewAgentHandler(agentService)
@@ -101,7 +102,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	r.Post("/api/v1/bootstrap", bootstrapHandler.ServeHTTP)
 	r.Get("/api/v1/invite", inviteHandler.ValidateInvite)
 	r.Post("/api/v1/invite/accept", inviteHandler.AcceptInvite)
-	
+
 	// Pairing routes for M5 Tunneling (Publicly accessible from local web UI)
 	r.Get("/api/v1/pairing/code", pairingHandler.GetCode)
 	r.Get("/api/v1/pairing/verify", pairingHandler.VerifyCode)
@@ -115,6 +116,11 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	// Protected API v1 routes (require JWT or API key authentication)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo))
+
+		// Current user profile routes
+		r.Get("/me", meHandler.GetMe)
+		r.Put("/me", meHandler.UpdateMe)
+		r.Post("/me/password", meHandler.ChangePassword)
 
 		// Admin routes
 		r.Route("/admin", func(r chi.Router) {
@@ -188,6 +194,11 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	// Backward compatibility: Mount protected routes on /v1 as well
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo))
+
+		// Current user profile routes
+		r.Get("/me", meHandler.GetMe)
+		r.Put("/me", meHandler.UpdateMe)
+		r.Post("/me/password", meHandler.ChangePassword)
 
 		// Admin routes
 		r.Route("/admin", func(r chi.Router) {

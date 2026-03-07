@@ -32,6 +32,27 @@ func (m *MockAuthService) Login(ctx context.Context, email, password string) (st
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockAuthService) GetCurrentUser(ctx context.Context, userID string) (*models.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockAuthService) UpdateProfile(ctx context.Context, userID, displayName, avatarURL string) (*models.User, error) {
+	args := m.Called(ctx, userID, displayName, avatarURL)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockAuthService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	args := m.Called(ctx, userID, currentPassword, newPassword)
+	return args.Error(0)
+}
+
 // Test: Register with valid input returns 201 with user and token
 func TestAuthHandler_Register_Success(t *testing.T) {
 	mockService := new(MockAuthService)

@@ -16,6 +16,7 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	GetByID(ctx context.Context, id string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) error
+	UpdateProfile(ctx context.Context, id, displayName, avatarURL string) error
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -37,8 +38,8 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) 
 	if user.ID != "" {
 		// Use provided ID (for bootstrap scenarios)
 		query = `
-			INSERT INTO users (id, email, password_hash, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO users (id, email, display_name, avatar_url, password_hash, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING created_at, updated_at
 		`
 		err = r.db.Pool.QueryRow(
@@ -46,6 +47,8 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) 
 			query,
 			user.ID,
 			user.Email,
+			user.DisplayName,
+			user.AvatarURL,
 			user.PasswordHash,
 			user.CreatedAt,
 			user.UpdatedAt,
@@ -53,14 +56,16 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) 
 	} else {
 		// Let database generate ID
 		query = `
-			INSERT INTO users (email, password_hash, created_at, updated_at)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO users (email, display_name, avatar_url, password_hash, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, created_at, updated_at
 		`
 		err = r.db.Pool.QueryRow(
 			ctx,
 			query,
 			user.Email,
+			user.DisplayName,
+			user.AvatarURL,
 			user.PasswordHash,
 			user.CreatedAt,
 			user.UpdatedAt,
@@ -82,7 +87,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) 
 // GetByEmail retrieves a user by email address
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, email, password_hash, created_at, updated_at
+		SELECT id, email, COALESCE(display_name, ''), COALESCE(avatar_url, ''), password_hash, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -91,6 +96,8 @@ func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (
 	err := r.db.Pool.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
+		&user.DisplayName,
+		&user.AvatarURL,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -109,7 +116,7 @@ func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (
 // GetByID retrieves a user by ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*models.User, error) {
 	query := `
-		SELECT id, email, password_hash, created_at, updated_at
+		SELECT id, email, COALESCE(display_name, ''), COALESCE(avatar_url, ''), password_hash, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -118,6 +125,8 @@ func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*model
 	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
 		&user.ID,
 		&user.Email,
+		&user.DisplayName,
+		&user.AvatarURL,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -157,15 +166,35 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *models.User) 
 	return nil
 }
 
+// UpdateProfile modifies display name and avatar URL for an existing user
+func (r *PostgresUserRepository) UpdateProfile(ctx context.Context, id, displayName, avatarURL string) error {
+	query := `
+		UPDATE users
+		SET display_name = $2, avatar_url = $3, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.db.Pool.Exec(ctx, query, id, displayName, avatarURL)
+	if err != nil {
+		return fmt.Errorf("update profile: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return models.ErrUserNotFound
+	}
+
+	return nil
+}
+
 // Count returns the total number of users
 func (r *PostgresUserRepository) Count(ctx context.Context) (int64, error) {
 	query := `SELECT COUNT(*) FROM users`
-	
+
 	var count int64
 	err := r.db.Pool.QueryRow(ctx, query).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count users: %w", err)
 	}
-	
+
 	return count, nil
 }

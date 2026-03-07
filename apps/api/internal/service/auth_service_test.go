@@ -48,6 +48,11 @@ func (m *MockUserRepository) Update(ctx context.Context, user *models.User) erro
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) UpdateProfile(ctx context.Context, id, displayName, avatarURL string) error {
+	args := m.Called(ctx, id, displayName, avatarURL)
+	return args.Error(0)
+}
+
 // Test: Register with valid input should create user
 func TestAuthService_Register_ValidInput(t *testing.T) {
 	mockRepo := new(MockUserRepository)
@@ -105,11 +110,11 @@ func TestAuthService_Register_WeakPassword(t *testing.T) {
 	ctx := context.Background()
 
 	weakPasswords := []string{
-		"short",           // Too short
-		"12345678",        // No letters
-		"abcdefgh",        // No numbers
-		"",                // Empty
-		"abc123",          // Too short
+		"short",    // Too short
+		"12345678", // No letters
+		"abcdefgh", // No numbers
+		"",         // Empty
+		"abc123",   // Too short
 	}
 
 	for _, password := range weakPasswords {

@@ -25,6 +25,9 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-
 type AuthService interface {
 	Register(ctx context.Context, email, password string) (*models.User, error)
 	Login(ctx context.Context, email, password string) (string, error)
+	GetCurrentUser(ctx context.Context, userID string) (*models.User, error)
+	UpdateProfile(ctx context.Context, userID, displayName, avatarURL string) (*models.User, error)
+	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 }
 
 // authService implements AuthService
@@ -169,6 +172,61 @@ func isStrongPassword(password string) bool {
 	}
 
 	return hasLetter && hasNumber
+}
+
+// GetCurrentUser returns the current user profile
+func (s *authService) GetCurrentUser(ctx context.Context, userID string) (*models.User, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = ""
+	return user, nil
+}
+
+// UpdateProfile updates display name and avatar URL for a user
+func (s *authService) UpdateProfile(ctx context.Context, userID, displayName, avatarURL string) (*models.User, error) {
+	if err := s.userRepo.UpdateProfile(ctx, userID, displayName, avatarURL); err != nil {
+		return nil, err
+	}
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = ""
+	return user, nil
+}
+
+// ChangePassword updates a user's password after validating current password
+func (s *authService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	if !isStrongPassword(newPassword) {
+		return models.ErrWeakPassword
+	}
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return models.ErrInvalidCredentials
+		}
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
+		return models.ErrInvalidCredentials
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), BcryptCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+
+	user.PasswordHash = string(hashedPassword)
+	user.UpdatedAt = time.Now()
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // JWTClaims represents JWT token claims

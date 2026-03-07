@@ -45,6 +45,11 @@ func (m *mockUserRepository) Update(ctx context.Context, user *models.User) erro
 	return args.Error(0)
 }
 
+func (m *mockUserRepository) UpdateProfile(ctx context.Context, id, displayName, avatarURL string) error {
+	args := m.Called(ctx, id, displayName, avatarURL)
+	return args.Error(0)
+}
+
 type mockAgentRepository struct {
 	mock.Mock
 }
@@ -254,7 +259,7 @@ func TestBootstrapService_Bootstrap_HappyPath(t *testing.T) {
 	}
 
 	// Mock all the expected repository calls
-	userRepo.On("Create", ctx, mock.AnythingOfType("*models.User")).Return(nil).Times(2) // primary + human
+	userRepo.On("Create", ctx, mock.AnythingOfType("*models.User")).Return(nil).Times(2)   // primary + human
 	agentRepo.On("Create", ctx, mock.AnythingOfType("*models.Agent")).Return(nil).Times(2) // primary + worker
 	apiKeyRepo.On("Create", ctx, mock.AnythingOfType("*models.APIKey"), mock.AnythingOfType("string")).Return(nil).Times(2)
 	inviteRepo.On("Create", ctx, mock.AnythingOfType("*models.Invite"), mock.AnythingOfType("string")).Return(nil)
@@ -271,16 +276,16 @@ func TestBootstrapService_Bootstrap_HappyPath(t *testing.T) {
 	assert.Equal(t, "admin@example.com", resp.PrimaryAgent.Email)
 	assert.NotEmpty(t, resp.PrimaryAgent.JWTToken)
 	assert.NotEmpty(t, resp.PrimaryAgent.APIKey)
-	
+
 	assert.Len(t, resp.Agents, 1)
 	assert.Equal(t, "worker", resp.Agents[0].Name)
 	assert.NotEmpty(t, resp.Agents[0].APIKey)
-	
+
 	assert.Len(t, resp.Humans, 1)
 	assert.Equal(t, "human@example.com", resp.Humans[0].Email)
 	assert.NotEmpty(t, resp.Humans[0].InviteToken)
 	assert.NotEmpty(t, resp.Humans[0].InviteURL)
-	
+
 	assert.Equal(t, "general", resp.Channel.Name)
 	assert.NotEmpty(t, resp.Channel.ChannelID)
 	assert.Len(t, resp.Channel.Members, 2)
