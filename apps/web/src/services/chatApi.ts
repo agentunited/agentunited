@@ -30,6 +30,13 @@ interface ApiAgent {
   email?: string;
 }
 
+interface ApiUser {
+  id: string;
+  email?: string;
+  display_name?: string;
+  type?: 'human' | 'agent';
+}
+
 interface SendMessageRequest {
   text: string;
 }
@@ -295,6 +302,12 @@ export const chatApi = {
     const response = await apiRequest<{ agents?: ApiAgent[] } | ApiAgent[]>('/api/v1/agents');
     if (Array.isArray(response)) return response;
     return response.agents || [];
+  },
+
+  async getUsers(): Promise<ApiUser[]> {
+    const response = await apiRequest<{ users?: ApiUser[] } | ApiUser[]>('/api/v1/users');
+    if (Array.isArray(response)) return response;
+    return response.users || [];
   },
 
   /**

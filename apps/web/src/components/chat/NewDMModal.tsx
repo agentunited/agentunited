@@ -34,18 +34,14 @@ export function NewDMModal({ isOpen, onClose, onDMCreated }: NewDMModalProps) {
         setIsLoading(true);
         setError(null);
         
-        // TODO: Replace with actual API endpoint when available
-        // For now, get members from general channel as a workaround
-        const members = await chatApi.getMembers('general');
-        
-        const userList: User[] = members.map(member => ({
-          id: member.id,
-          name: member.email.includes('@agentunited.local') 
-            ? member.email.split('@')[0] 
-            : member.email,
-          email: member.email,
-          type: member.email.includes('@agentunited.local') ? 'agent' : 'human',
-          online: Math.random() > 0.3 // TODO: Replace with real online status
+        const apiUsers = await chatApi.getUsers();
+
+        const userList: User[] = apiUsers.map((user) => ({
+          id: user.id,
+          name: user.display_name || (user.email ? user.email.split('@')[0] : 'Unknown'),
+          email: user.email || '',
+          type: user.type === 'agent' ? 'agent' : 'human',
+          online: false,
         }));
         
         // Remove current user from the list
