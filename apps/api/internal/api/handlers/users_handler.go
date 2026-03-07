@@ -9,12 +9,11 @@ import (
 )
 
 type UsersHandler struct {
-	userRepo  repository.UserRepository
-	agentRepo repository.AgentRepository
+	userRepo repository.UserRepository
 }
 
-func NewUsersHandler(userRepo repository.UserRepository, agentRepo repository.AgentRepository) *UsersHandler {
-	return &UsersHandler{userRepo: userRepo, agentRepo: agentRepo}
+func NewUsersHandler(userRepo repository.UserRepository) *UsersHandler {
+	return &UsersHandler{userRepo: userRepo}
 }
 
 func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -50,19 +49,6 @@ func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
 			t = "human"
 		}
 		out = append(out, listItem{ID: u.ID, Email: u.Email, DisplayName: dn, Type: t})
-	}
-
-	agents, err := h.agentRepo.ListAll(r.Context())
-	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
-		return
-	}
-	for _, a := range agents {
-		dn := strings.TrimSpace(a.DisplayName)
-		if dn == "" {
-			dn = a.Name
-		}
-		out = append(out, listItem{ID: a.ID, Email: "", DisplayName: dn, Type: "agent"})
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"users": out})

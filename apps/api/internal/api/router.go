@@ -99,7 +99,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	webhookHandler := handlers.NewWebhookHandler(webhookService)
 	bootstrapHandler := handlers.NewBootstrapHandler(bootstrapService)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
-	usersHandler := handlers.NewUsersHandler(userRepo, agentRepo)
+	usersHandler := handlers.NewUsersHandler(userRepo)
 	pairingHandler := handlers.NewPairingHandler()
 	centrifugoHandler := handlers.NewCentrifugoHandler(realtimeEngine, channelService)
 	wsHandler := handlers.NewWebSocketHandlerV2(messageService, channelService, cfg.JWT.Secret, hub)
