@@ -8,11 +8,6 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/",
-        destination: "/docs",
-        permanent: false,
-      },
-      {
         source: "/docs/python-sdk",
         destination: "/docs/sdks/python",
         permanent: true,
