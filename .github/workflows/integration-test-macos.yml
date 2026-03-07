@@ -1,0 +1,136 @@
+name: Integration Test (macOS self-hosted)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  integration:
+    runs-on: [self-hosted, macos-local]
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure setup.sh is executable
+        run: chmod +x ./setup.sh
+
+      - name: Run setup
+        run: ./setup.sh
+
+      - name: Wait for services healthy
+        run: |
+          set -euo pipefail
+          echo "Waiting for docker compose services to become healthy/running..."
+          for i in $(seq 1 30); do
+            STATUS_JSON="$(docker compose ps --format json || true)"
+            if [ -n "$STATUS_JSON" ] && echo "$STATUS_JSON" | python3 - <<'PY'
+import json,sys
+raw=sys.stdin.read().strip()
+if not raw:
+    raise SystemExit(1)
+rows=json.loads(raw)
+if isinstance(rows, dict):
+    rows=[rows]
+if not rows:
+    raise SystemExit(1)
+ok=True
+for r in rows:
+    state=(r.get('State') or '').lower()
+    health=(r.get('Health') or '').lower()
+    if health:
+        if health != 'healthy':
+            ok=False
+            break
+    else:
+        if state not in ('running','healthy'):
+            ok=False
+            break
+if not ok:
+    raise SystemExit(1)
+PY
+            then
+              echo "✅ Services are healthy/running"
+              docker compose ps
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "❌ Services did not become healthy in time"
+              docker compose ps
+              docker compose logs --tail=200
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Smoke tests
+        run: |
+          set -euo pipefail
+          BASE="http://localhost:8080"
+          EMAIL="ci.$(date +%s)@example.com"
+          PASS='StrongPass123!'
+
+          code=$(curl -s -o /tmp/health.json -w '%{http_code}' "$BASE/health")
+          test "$code" = "200"
+
+          code=$(curl -s -o /tmp/register.json -w '%{http_code}' -X POST "$BASE/api/v1/auth/register" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
+          test "$code" = "201"
+          TOKEN=$(python3 - <<'PY'
+import json
+print(json.load(open('/tmp/register.json'))['token'])
+PY
+)
+
+          code=$(curl -s -o /tmp/login.json -w '%{http_code}' -X POST "$BASE/api/v1/auth/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
+          test "$code" = "200"
+
+          code=$(curl -s -o /tmp/channel.json -w '%{http_code}' -X POST "$BASE/api/v1/channels" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"ci-smoke","topic":"integration"}')
+          test "$code" = "201"
+          CHANNEL_ID=$(python3 - <<'PY'
+import json
+print(json.load(open('/tmp/channel.json'))['channel']['id'])
+PY
+)
+
+          code=$(curl -s -o /tmp/message.json -w '%{http_code}' -X POST "$BASE/api/v1/channels/$CHANNEL_ID/messages" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"text":"hello from ci"}')
+          test "$code" = "201"
+
+          code=$(curl -s -o /tmp/messages.json -w '%{http_code}' "$BASE/api/v1/channels/$CHANNEL_ID/messages" \
+            -H "Authorization: Bearer $TOKEN")
+          test "$code" = "200"
+          python3 - <<'PY'
+import json
+msgs=json.load(open('/tmp/messages.json')).get('messages',[])
+assert any((m.get('text')=='hello from ci') for m in msgs), 'message not found in channel history'
+PY
+
+          BOOT_EMAIL="bootstrap.$(date +%s)@example.com"
+          code=$(curl -s -o /tmp/bootstrap.json -w '%{http_code}' -X POST "$BASE/api/v1/bootstrap" \
+            -H 'Content-Type: application/json' \
+            -d "{\"primary_agent\":{\"email\":\"$BOOT_EMAIL\",\"password\":\"BootstrapPass123!\",\"agent_profile\":{\"name\":\"cloudy\",\"display_name\":\"Cloudy\"}},\"humans\":[{\"email\":\"human.$(date +%s)@example.com\",\"display_name\":\"CI Human\",\"role\":\"member\"}],\"default_channel\":{\"name\":\"general\",\"topic\":\"CI bootstrap\"}}")
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "Unexpected bootstrap status: $code"
+            cat /tmp/bootstrap.json
+            exit 1
+          fi
+          python3 - <<'PY'
+import json
+j=json.load(open('/tmp/bootstrap.json'))
+humans=j.get('humans',[])
+assert humans and humans[0].get('invite_url'), 'invite_url missing'
+PY
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down

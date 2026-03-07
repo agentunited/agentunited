@@ -36,30 +36,17 @@ echo ""
 echo "Starting Agent United..."
 echo ""
 
+# Detect active Docker socket (works for Docker Desktop, Colima, OrbStack, etc.)
+DOCKER_SOCK=$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null | sed 's|unix://||')
+if [ -z "$DOCKER_SOCK" ] || [ ! -S "$DOCKER_SOCK" ]; then
+  DOCKER_SOCK="/var/run/docker.sock"
+fi
+export DOCKER_HOST="unix://$DOCKER_SOCK"
+
+# Verify Docker daemon is responsive
 if ! docker info > /dev/null 2>&1; then
-  echo "❌ Docker is not running."
-  # On macOS: try to start Docker Desktop automatically
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "⏳ Starting Docker Desktop..."
-    open -a Docker
-    echo -n "Waiting for Docker to be ready"
-    for i in $(seq 1 30); do
-      sleep 2
-      echo -n "."
-      if docker info > /dev/null 2>&1; then
-        echo " ✓"
-        break
-      fi
-    done
-    if ! docker info > /dev/null 2>&1; then
-      echo ""
-      echo "❌ Docker did not start in time. Please start Docker Desktop manually and re-run ./setup.sh"
-      exit 1
-    fi
-  else
-    echo "Please start the Docker daemon and re-run ./setup.sh"
-    exit 1
-  fi
+  echo "❌ Docker is not running. Please start Docker (Docker Desktop, Colima, OrbStack, etc.) and re-run ./setup.sh"
+  exit 1
 fi
 
 # Support both docker-compose (v1) and docker compose (v2)
