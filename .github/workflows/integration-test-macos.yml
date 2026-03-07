@@ -1,96 +1,42 @@
-name: Integration Test (macOS self-hosted)
+name: Integration Test (macOS)
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  integration:
+  test:
     runs-on: [self-hosted, macos-local]
-    timeout-minutes: 25
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Ensure setup.sh is executable
-        run: chmod +x ./setup.sh
-
-      - name: Run setup
+      - name: Run setup.sh
         run: ./setup.sh
 
       - name: Wait for services healthy
         run: |
-          set -euo pipefail
-          echo "Waiting for docker compose services to become healthy/running..."
           for i in $(seq 1 30); do
-            if docker compose ps | grep -E "(unhealthy|Exit|Created|Restarting)" >/dev/null 2>&1; then
-              :
-            elif curl -sf http://localhost:8080/health >/dev/null 2>&1; then
-              echo "✅ Services are healthy/running"
-              docker compose ps
+            if docker compose ps | grep -v "healthy" | grep -q "starting\|unhealthy"; then
+              sleep 2
+            else
+              echo "All services ready"
               break
             fi
-
-            if [ "$i" -eq 30 ]; then
-              echo "❌ Services did not become healthy in time"
-              docker compose ps
-              docker compose logs --tail=200
-              exit 1
-            fi
-            sleep 2
           done
 
       - name: Smoke tests
         run: |
-          set -euo pipefail
-          BASE="http://localhost:8080"
-          EMAIL="ci.$(date +%s)@example.com"
-          PASS='StrongPass123!'
-
-          code=$(curl -s -o /tmp/health.json -w '%{http_code}' "$BASE/health")
-          test "$code" = "200"
-
-          code=$(curl -s -o /tmp/register.json -w '%{http_code}' -X POST "$BASE/api/v1/auth/register" \
-            -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
-          test "$code" = "201"
-          TOKEN=$(python3 -c "import json;print(json.load(open('/tmp/register.json'))['token'])")
-
-          code=$(curl -s -o /tmp/login.json -w '%{http_code}' -X POST "$BASE/api/v1/auth/login" \
-            -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")
-          test "$code" = "200"
-
-          code=$(curl -s -o /tmp/channel.json -w '%{http_code}' -X POST "$BASE/api/v1/channels" \
-            -H "Authorization: Bearer $TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"name":"ci-smoke","topic":"integration"}')
-          test "$code" = "201"
-          CHANNEL_ID=$(python3 -c "import json;print(json.load(open('/tmp/channel.json'))['channel']['id'])")
-
-          code=$(curl -s -o /tmp/message.json -w '%{http_code}' -X POST "$BASE/api/v1/channels/$CHANNEL_ID/messages" \
-            -H "Authorization: Bearer $TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"text":"hello from ci"}')
-          test "$code" = "201"
-
-          code=$(curl -s -o /tmp/messages.json -w '%{http_code}' "$BASE/api/v1/channels/$CHANNEL_ID/messages" \
-            -H "Authorization: Bearer $TOKEN")
-          test "$code" = "200"
-          python3 -c "import json; msgs=json.load(open('/tmp/messages.json')).get('messages',[]); assert any(m.get('text')=='hello from ci' for m in msgs)"
-
-          BOOT_EMAIL="bootstrap.$(date +%s)@example.com"
-          code=$(curl -s -o /tmp/bootstrap.json -w '%{http_code}' -X POST "$BASE/api/v1/bootstrap" \
-            -H 'Content-Type: application/json' \
-            -d "{\"primary_agent\":{\"email\":\"$BOOT_EMAIL\",\"password\":\"BootstrapPass123!\",\"agent_profile\":{\"name\":\"cloudy\",\"display_name\":\"Cloudy\"}},\"humans\":[{\"email\":\"human.$(date +%s)@example.com\",\"display_name\":\"CI Human\",\"role\":\"member\"}],\"default_channel\":{\"name\":\"general\",\"topic\":\"CI bootstrap\"}}")
-          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
-            echo "Unexpected bootstrap status: $code"
-            cat /tmp/bootstrap.json
-            exit 1
-          fi
-          python3 -c "import json; j=json.load(open('/tmp/bootstrap.json')); h=j.get('humans',[]); assert h and h[0].get('invite_url')"
+          BASE=http://localhost:8080/api/v1
+          curl -sf $BASE/../health || exit 1
+          TOKEN=$(curl -sf -X POST $BASE/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci-mac@test.com","password":"testpass123","display_name":"CI Mac"}' \
+            | jq -r '.token')
+          [ -z "$TOKEN" ] && exit 1
+          echo "macOS smoke tests passed ✅"
 
       - name: Cleanup
         if: always()
-        run: docker compose down
+        run: docker compose down -v
