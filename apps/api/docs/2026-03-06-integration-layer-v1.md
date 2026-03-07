@@ -24,6 +24,11 @@ Added authenticated integration management routes:
 - `POST /api/v1/integrations`
 - `DELETE /api/v1/integrations/{id}`
 
+### QA fixes (Moon pass)
+- `POST /api/v1/integrations` now includes `name` in the returned integration object.
+- `event_subscriptions` now reliably persists and returns as an array (never null when values are provided).
+- Backward compatibility: create now also accepts `events` as an alias for `event_subscriptions`.
+
 Same routes are mounted on `/v1` compatibility path.
 
 ## Event routing + outbound signing

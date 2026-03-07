@@ -58,8 +58,16 @@ func (s *integrationService) Create(ctx context.Context, workspaceID string, req
 		}
 	}
 
+	events := req.EventSubscriptions
+	if len(events) == 0 && len(req.Events) > 0 {
+		events = req.Events
+	}
+	if events == nil {
+		events = []string{}
+	}
+
 	apiKey := generateToken("au_int_")
-	i := &models.Integration{WorkspaceID: workspaceID, Platform: string(platform), APIKey: apiKey, WebhookURL: req.WebhookURL, EventSubscriptions: req.EventSubscriptions, Active: true}
+	i := &models.Integration{WorkspaceID: workspaceID, Name: req.Name, Platform: string(platform), APIKey: apiKey, WebhookURL: req.WebhookURL, EventSubscriptions: events, Active: true}
 	if err := s.repo.Create(ctx, i); err != nil {
 		return nil, err
 	}

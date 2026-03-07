@@ -21,13 +21,13 @@ func NewIntegrationRepository(db *DB) IntegrationRepository { return &integratio
 
 func (r *integrationRepository) Create(ctx context.Context, i *models.Integration) error {
 	eventsJSON, _ := json.Marshal(i.EventSubscriptions)
-	q := `INSERT INTO integrations (workspace_id, platform, api_key, webhook_url, event_subscriptions, active)
-	      VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, created_at`
-	return r.db.Pool.QueryRow(ctx, q, i.WorkspaceID, i.Platform, i.APIKey, i.WebhookURL, eventsJSON, i.Active).Scan(&i.ID, &i.CreatedAt)
+	q := `INSERT INTO integrations (workspace_id, name, platform, api_key, webhook_url, event_subscriptions, active)
+	      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, created_at`
+	return r.db.Pool.QueryRow(ctx, q, i.WorkspaceID, i.Name, i.Platform, i.APIKey, i.WebhookURL, eventsJSON, i.Active).Scan(&i.ID, &i.CreatedAt)
 }
 
 func (r *integrationRepository) ListByWorkspace(ctx context.Context, workspaceID string) ([]*models.Integration, error) {
-	q := `SELECT id, workspace_id, platform, api_key, webhook_url, event_subscriptions, active, created_at
+	q := `SELECT id, workspace_id, name, platform, api_key, webhook_url, event_subscriptions, active, created_at
 	      FROM integrations WHERE workspace_id = $1 ORDER BY created_at DESC`
 	rows, err := r.db.Pool.Query(ctx, q, workspaceID)
 	if err != nil {
@@ -39,10 +39,17 @@ func (r *integrationRepository) ListByWorkspace(ctx context.Context, workspaceID
 	for rows.Next() {
 		var i models.Integration
 		var raw []byte
-		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.Platform, &i.APIKey, &i.WebhookURL, &raw, &i.Active, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.Name, &i.Platform, &i.APIKey, &i.WebhookURL, &raw, &i.Active, &i.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan integration: %w", err)
 		}
-		_ = json.Unmarshal(raw, &i.EventSubscriptions)
+		if len(raw) == 0 {
+			i.EventSubscriptions = []string{}
+		} else {
+			_ = json.Unmarshal(raw, &i.EventSubscriptions)
+			if i.EventSubscriptions == nil {
+				i.EventSubscriptions = []string{}
+			}
+		}
 		out = append(out, &i)
 	}
 	return out, rows.Err()
@@ -54,7 +61,7 @@ func (r *integrationRepository) Delete(ctx context.Context, id, workspaceID stri
 }
 
 func (r *integrationRepository) ListActiveByEvent(ctx context.Context, workspaceID, eventType string) ([]*models.Integration, error) {
-	q := `SELECT id, workspace_id, platform, api_key, webhook_url, event_subscriptions, active, created_at
+	q := `SELECT id, workspace_id, name, platform, api_key, webhook_url, event_subscriptions, active, created_at
 	      FROM integrations
 	      WHERE workspace_id = $1 AND active = true AND event_subscriptions @> to_jsonb(ARRAY[$2]::text[])`
 	rows, err := r.db.Pool.Query(ctx, q, workspaceID, eventType)
@@ -67,10 +74,17 @@ func (r *integrationRepository) ListActiveByEvent(ctx context.Context, workspace
 	for rows.Next() {
 		var i models.Integration
 		var raw []byte
-		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.Platform, &i.APIKey, &i.WebhookURL, &raw, &i.Active, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.Name, &i.Platform, &i.APIKey, &i.WebhookURL, &raw, &i.Active, &i.CreatedAt); err != nil {
 			return nil, err
 		}
-		_ = json.Unmarshal(raw, &i.EventSubscriptions)
+		if len(raw) == 0 {
+			i.EventSubscriptions = []string{}
+		} else {
+			_ = json.Unmarshal(raw, &i.EventSubscriptions)
+			if i.EventSubscriptions == nil {
+				i.EventSubscriptions = []string{}
+			}
+		}
 		out = append(out, &i)
 	}
 	return out, rows.Err()
