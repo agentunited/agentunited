@@ -38,57 +38,41 @@ jobs:
         run: |
           set -euo pipefail
           BASE=http://localhost:8080/api/v1
+          TS=$(date +%s)
 
-          # Health check
-          curl -sf http://localhost:8080/health >/dev/null
+          code=$(curl -s -o /tmp/health.json -w '%{http_code}' http://localhost:8080/health)
+          [ "$code" = "200" ] || { cat /tmp/health.json; exit 1; }
 
-          # Bootstrap first (must run before creating users/channels)
-          BOOTSTRAP=$(curl -sf -X POST $BASE/bootstrap \
+          BOOT_EMAIL="agent+$TS@example.com"
+          HUMAN_EMAIL="human+$TS@example.com"
+          code=$(curl -s -o /tmp/bootstrap.json -w '%{http_code}' -X POST $BASE/bootstrap \
             -H "Content-Type: application/json" \
-            -d '{
-              "primary_agent": {
-                "email": "agent@example.com",
-                "password": "BootstrapPass123!",
-                "agent_profile": {
-                  "name": "ci-agent",
-                  "display_name": "CI Agent"
-                }
-              },
-              "humans": [
-                {
-                  "email": "human@example.com",
-                  "display_name": "CI Human",
-                  "role": "member"
-                }
-              ],
-              "default_channel": {
-                "name": "general",
-                "topic": "CI bootstrap"
-              }
-            }')
-          INVITE=$(echo "$BOOTSTRAP" | jq -r '.invite_url // .humans[0].invite_url // empty')
-          [ -z "$INVITE" ] && { echo "bootstrap parse failed: $BOOTSTRAP"; exit 1; }
+            -d "{\"primary_agent\":{\"email\":\"$BOOT_EMAIL\",\"password\":\"BootstrapPass123!\",\"agent_profile\":{\"name\":\"ci-agent\",\"display_name\":\"CI Agent\"}},\"humans\":[{\"email\":\"$HUMAN_EMAIL\",\"display_name\":\"CI Human\",\"role\":\"member\"}],\"default_channel\":{\"name\":\"general\",\"topic\":\"CI bootstrap\"}}")
+          ([ "$code" = "200" ] || [ "$code" = "201" ]) || { cat /tmp/bootstrap.json; exit 1; }
+          INVITE=$(jq -r '.invite_url // .humans[0].invite_url // empty' /tmp/bootstrap.json)
+          [ -n "$INVITE" ] || { cat /tmp/bootstrap.json; exit 1; }
 
-          # Register
-          REGISTER=$(curl -sf -X POST $BASE/auth/register \
+          REG_EMAIL="ci+$TS@example.com"
+          code=$(curl -s -o /tmp/register.json -w '%{http_code}' -X POST $BASE/auth/register \
             -H "Content-Type: application/json" \
-            -d '{"email":"ci@test.com","password":"testpass123"}')
-          TOKEN=$(echo "$REGISTER" | jq -r '.token // empty')
-          [ -z "$TOKEN" ] && { echo "register failed: $REGISTER"; exit 1; }
+            -d "{\"email\":\"$REG_EMAIL\",\"password\":\"testpass123\"}")
+          [ "$code" = "201" ] || { cat /tmp/register.json; exit 1; }
+          TOKEN=$(jq -r '.token // empty' /tmp/register.json)
+          [ -n "$TOKEN" ] || { cat /tmp/register.json; exit 1; }
 
-          # Create channel
-          CHANNEL_RESP=$(curl -sf -X POST $BASE/channels \
+          code=$(curl -s -o /tmp/channel.json -w '%{http_code}' -X POST $BASE/channels \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"name":"ci-test","topic":"CI test channel"}')
-          CHANNEL_ID=$(echo "$CHANNEL_RESP" | jq -r '.channel.id // .id // empty')
-          [ -z "$CHANNEL_ID" ] && { echo "channel create failed: $CHANNEL_RESP"; exit 1; }
+          [ "$code" = "201" ] || { cat /tmp/channel.json; exit 1; }
+          CHANNEL_ID=$(jq -r '.channel.id // .id // empty' /tmp/channel.json)
+          [ -n "$CHANNEL_ID" ] || { cat /tmp/channel.json; exit 1; }
 
-          # Send message
-          curl -sf -X POST $BASE/channels/$CHANNEL_ID/messages \
+          code=$(curl -s -o /tmp/message.json -w '%{http_code}' -X POST $BASE/channels/$CHANNEL_ID/messages \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"text":"hello from CI"}' >/dev/null
+            -d '{"text":"hello from CI"}')
+          [ "$code" = "201" ] || { cat /tmp/message.json; exit 1; }
 
           echo "All smoke tests passed ✅"
 
