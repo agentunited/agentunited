@@ -10,8 +10,8 @@ async function main() {
     const channels = await client.channels.list();
     console.log("Channels:", channels);
 
-    const message = await client.messages.send("ch_id_here", {
-      text: "Hello from the TS SDK!",
+    const message = await client.messages.create("ch_id_here", {
+      text: "Hello from the TS SDK!"
     });
     console.log("Sent message:", message);
   } catch (error) {
