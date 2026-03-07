@@ -7,6 +7,7 @@ import { CreateChannelModal } from '../components/chat/CreateChannelModal';
 import { NewDMModal } from '../components/chat/NewDMModal';
 import { MemberListPanel } from '../components/chat/MemberListPanel';
 import { SearchResultsPanel } from '../components/chat/SearchResultsPanel';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { chatApi } from '../services/chatApi';
 import { sendMessageWithAttachment } from '../services/api';
@@ -367,19 +368,25 @@ export function ChatPage() {
         />
       )}
 
-      <ChatSidebar
-        channels={channels}
-        directMessages={directMessages}
-        activeChannelId={activeConversationId}
-        isOpen={sidebarOpen}
-        onChannelSelect={handleSelectChannel}
-        onDMSelect={handleDMSelect}
-        onCreateChannel={() => setShowCreateChannel(true)}
-        onNewDM={() => setShowNewDM(true)}
-        onSearch={handleSearch}
-        onChannelUpdate={handleChannelUpdate}
-        onChannelDelete={handleChannelDelete}
-      />
+      <ErrorBoundary
+        title="Sidebar error"
+        message="Navigation hit an error. Reload to recover the sidebar."
+        className="w-64 shrink-0"
+      >
+        <ChatSidebar
+          channels={channels}
+          directMessages={directMessages}
+          activeChannelId={activeConversationId}
+          isOpen={sidebarOpen}
+          onChannelSelect={handleSelectChannel}
+          onDMSelect={handleDMSelect}
+          onCreateChannel={() => setShowCreateChannel(true)}
+          onNewDM={() => setShowNewDM(true)}
+          onSearch={handleSearch}
+          onChannelUpdate={handleChannelUpdate}
+          onChannelDelete={handleChannelDelete}
+        />
+      </ErrorBoundary>
 
       <CreateChannelModal
         isOpen={showCreateChannel}
@@ -393,55 +400,61 @@ export function ChatPage() {
         onDMCreated={handleDMCreated}
       />
 
-      <div className="flex-1 flex flex-col">
-        {isSearching ? (
-          // Show search results instead of normal chat
-          <SearchResultsPanel
-            query={searchQuery}
-            channels={channels}
-            onClose={handleCloseSearch}
-            onResultClick={handleSearchResultClick}
-          />
-        ) : (
-          // Show normal chat interface
-          <>
-            <ChatHeader
-              channelName={activeConversationName}
-              topic={activeConversationTopic}
-              isDM={isViewingDM}
-              onToggleMembers={handleToggleMembers}
-              showMembersPanel={showMembersPanel}
-              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-              sidebarOpen={sidebarOpen}
+      <ErrorBoundary
+        title="Chat panel error"
+        message="The chat panel hit an error. Sidebar navigation should still work."
+        className="flex-1"
+      >
+        <div className="flex-1 flex flex-col">
+          {isSearching ? (
+            // Show search results instead of normal chat
+            <SearchResultsPanel
+              query={searchQuery}
+              channels={channels}
+              onClose={handleCloseSearch}
+              onResultClick={handleSearchResultClick}
             />
+          ) : (
+            // Show normal chat interface
+            <>
+              <ChatHeader
+                channelName={activeConversationName}
+                topic={activeConversationTopic}
+                isDM={isViewingDM}
+                onToggleMembers={handleToggleMembers}
+                showMembersPanel={showMembersPanel}
+                onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+                sidebarOpen={sidebarOpen}
+              />
 
-            <MessageList 
-              messages={messages} 
-              channelId={activeConversationId}
-              channelName={activeConversationName}
-              isDM={isViewingDM}
-              onMessageUpdated={handleMessageUpdated}
-              onMessageDeleted={handleMessageDeleted}
-            />
+              <MessageList
+                messages={messages}
+                channelId={activeConversationId}
+                channelName={activeConversationName}
+                isDM={isViewingDM}
+                onMessageUpdated={handleMessageUpdated}
+                onMessageDeleted={handleMessageDeleted}
+              />
 
-            {wsError && (
-              <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
-                <div className="text-sm text-destructive">{wsError}</div>
-              </div>
-            )}
+              {wsError && (
+                <div className="border-t border-destructive/20 bg-destructive/10 px-4 py-2">
+                  <div className="text-sm text-destructive">{wsError}</div>
+                </div>
+              )}
 
-            <MessageInput
-              onSend={handleSendMessage}
-              members={isViewingDM ? [] : channelMembers}
-              placeholder={isViewingDM 
-                ? `Message ${selectedDM?.name || 'user'}`
-                : `Message #${selectedChannel?.name || 'general'}`
-              }
-              className="chat-message-input"
-            />
-          </>
-        )}
-      </div>
+              <MessageInput
+                onSend={handleSendMessage}
+                members={isViewingDM ? [] : channelMembers}
+                placeholder={isViewingDM
+                  ? `Message ${selectedDM?.name || 'user'}`
+                  : `Message #${selectedChannel?.name || 'general'}`
+                }
+                className="chat-message-input"
+              />
+            </>
+          )}
+        </div>
+      </ErrorBoundary>
 
       {/* Member List Panel - only show for channels, not DMs, and not during search */}
       {!isViewingDM && !isSearching && showMembersPanel && selectedChannel && (

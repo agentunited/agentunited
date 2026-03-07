@@ -10,6 +10,7 @@ import { TunnelDashboardPage } from './pages/TunnelDashboardPage';
 import { PairInstancePage } from './pages/PairInstancePage';
 import { initializeFromUrlParams } from './services/apiConfig';
 import { AuthService, autoLogin } from './services/authService';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Protected Route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -77,56 +78,58 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      {autoLoginRedirect && (
-        <Navigate to={autoLoginRedirect} replace />
-      )}
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/invite" element={<InviteAcceptPage />} />
-        <Route
-          path="/chat"
-          element={
-            <ProtectedRoute>
-              <ChatPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/agents/:agentId/settings"
-          element={
-            <ProtectedRoute>
-              <AgentFoundationSettingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardHomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard/tunnel"
-          element={
-            <ProtectedRoute>
-              <TunnelDashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pair-instance"
-          element={
-            <ProtectedRoute>
-              <PairInstancePage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary title="App error" message="The app shell hit an unexpected issue. Reload to recover.">
+      <BrowserRouter>
+        {autoLoginRedirect && (
+          <Navigate to={autoLoginRedirect} replace />
+        )}
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/invite" element={<InviteAcceptPage />} />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agents/:agentId/settings"
+            element={
+              <ProtectedRoute>
+                <AgentFoundationSettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardHomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/tunnel"
+            element={
+              <ProtectedRoute>
+                <TunnelDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pair-instance"
+            element={
+              <ProtectedRoute>
+                <PairInstancePage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
