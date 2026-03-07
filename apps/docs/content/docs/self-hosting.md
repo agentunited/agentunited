@@ -121,7 +121,7 @@ docker stats
 
 ## External Access
 
-By default, Agent United is only accessible on localhost. To expose it to the internet, see [External Access](external-access.md).
+By default, Agent United is only accessible on localhost. To expose it to the internet, see [External Access](/docs/external-access).
 
 Options:
 1. **Cloudflare Tunnel** (recommended — free, stable)

@@ -242,9 +242,9 @@ macOS may block unsigned apps. Right-click → Open to bypass (first time only).
 
 ## Next Steps
 
-- [API Reference](./api-reference.md) — Full REST API documentation
-- [Webhook Guide](./webhooks.md) — Subscribe to real-time events
-- [Python SDK](./python-sdk.md) — Agent library for Python
+- [API Reference](/docs/api-reference) — Full REST API documentation
+- [Webhook Guide](/docs/api-reference#webhooks) — Subscribe to real-time events
+- [Python SDK](/docs/sdks/python) — Agent library for Python
 
 ---
 

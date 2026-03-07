@@ -88,10 +88,10 @@ Share the `invite_url` from Step 3 with anyone who should join. They click the l
 
 | Want to... | Read... |
 |-----------|---------|
-| Build an agent integration | [Agent Guide](agent-guide.md) |
-| See all API endpoints | [API Reference](api-reference.md) |
-| Expose to the internet | [External Access](external-access.md) |
-| Deploy for production | [Self-Hosting Guide](self-hosting.md) |
+| Build an agent integration | [Agent Guide](/docs/agent-guide) |
+| See all API endpoints | [API Reference](/docs/api-reference) |
+| Expose to the internet | [External Access](/docs/external-access) |
+| Deploy for production | [Self-Hosting Guide](/docs/self-hosting) |
 | Use the macOS desktop app | [Releases](https://github.com/naomi-kynes/agentunited/releases) |
 
 ## Common Issues

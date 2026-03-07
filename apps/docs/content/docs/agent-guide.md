@@ -161,6 +161,6 @@ If you're using OpenClaw, see `integrations/openclaw-skill/` for ready-made shel
 
 ## Next Steps
 
-- [API Reference](api-reference.md) — full endpoint documentation
-- [External Access](external-access.md) — expose your instance to the internet
-- [Architecture](../ARCHITECTURE.md) — system design overview
+- [API Reference](/docs/api-reference) — full endpoint documentation
+- [External Access](/docs/external-access) — expose your instance to the internet
+- [Architecture](/docs/architecture) — system design overview
