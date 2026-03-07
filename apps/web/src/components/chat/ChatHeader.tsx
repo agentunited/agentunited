@@ -1,4 +1,4 @@
-import { Hash, MoreVertical, Search, Users } from "lucide-react"
+import { Hash, Menu, MoreVertical, Search, Users } from "lucide-react"
 import { cn } from "../../lib/utils"
 
 interface ChatHeaderProps {
@@ -7,6 +7,8 @@ interface ChatHeaderProps {
   isDM?: boolean
   onToggleMembers?: () => void
   showMembersPanel?: boolean
+  onToggleSidebar?: () => void
+  sidebarOpen?: boolean
 }
 
 export function ChatHeader({
@@ -15,9 +17,22 @@ export function ChatHeader({
   isDM = false,
   onToggleMembers,
   showMembersPanel = false,
+  onToggleSidebar,
+  sidebarOpen = false,
 }: ChatHeaderProps) {
   return (
     <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-white/80 px-5 py-3 backdrop-blur-sm dark:bg-card/90">
+      {onToggleSidebar && (
+        <button
+          onClick={onToggleSidebar}
+          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+          aria-label="Open navigation"
+          aria-expanded={sidebarOpen}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
+
       {isDM ? (
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300">
           {channelName.charAt(0).toUpperCase()}

@@ -19,6 +19,7 @@ interface ChatSidebarProps {
   channels: Channel[]
   directMessages: DirectMessage[]
   activeChannelId?: string
+  isOpen?: boolean
   onChannelSelect: (id: string) => void
   onDMSelect: (id: string) => void
   onCreateChannel?: () => void
@@ -43,6 +44,7 @@ export function ChatSidebar({
   channels,
   directMessages,
   activeChannelId,
+  isOpen = false,
   onChannelSelect,
   onDMSelect,
   onCreateChannel,
@@ -80,7 +82,15 @@ export function ChatSidebar({
     directMessages.reduce((sum, dm) => sum + (dm.unread || 0), 0)
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside
+      aria-label="Navigation"
+      className={cn(
+        "flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
+        "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-in-out",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        "md:static md:z-auto md:shrink-0 md:translate-x-0 md:!transform-none"
+      )}
+    >
       <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-3.5">
         <div className="relative flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.35)]">
           <div className="h-2 w-2 rounded-full bg-emerald-500" />

@@ -36,6 +36,7 @@ export function ChatPage() {
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showNewDM, setShowNewDM] = useState(false);
   const [showMembersPanel, setShowMembersPanel] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [channelMembers, setChannelMembers] = useState<{ id: string; name: string; email: string; type: 'agent' | 'human'; online: boolean }[]>([]);
@@ -161,11 +162,13 @@ export function ChatPage() {
   const handleSelectChannel = (channelId: string) => {
     setSelectedChannelId(channelId);
     setSelectedDMId(''); // Clear DM selection
+    setSidebarOpen(false);
   };
 
   const handleDMSelect = (dmId: string) => {
     setSelectedDMId(dmId);
     setSelectedChannelId(''); // Clear channel selection
+    setSidebarOpen(false);
   };
 
   const handleCreateChannel = useCallback(async (name: string, description: string) => {
@@ -263,8 +266,9 @@ export function ChatPage() {
         setShowNewDM(true);
       }
 
-      // ESC to close modals/search
+      // ESC to close modals/search/sidebar
       if (e.key === 'Escape') {
+        if (sidebarOpen) setSidebarOpen(false);
         if (isSearching) handleCloseSearch();
         if (showCreateChannel) setShowCreateChannel(false);
         if (showNewDM) setShowNewDM(false);
@@ -288,7 +292,7 @@ export function ChatPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearching, showCreateChannel, showNewDM, showMembersPanel, handleCloseSearch]);
+  }, [isSearching, showCreateChannel, showNewDM, showMembersPanel, sidebarOpen, handleCloseSearch]);
 
   const handleMessageUpdated = useCallback((messageId: string, newContent: string) => {
     // TODO: Update the message in local state when WebSocket integration is enhanced
@@ -355,10 +359,19 @@ export function ChatPage() {
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <ChatSidebar
         channels={channels}
         directMessages={directMessages}
         activeChannelId={activeConversationId}
+        isOpen={sidebarOpen}
         onChannelSelect={handleSelectChannel}
         onDMSelect={handleDMSelect}
         onCreateChannel={() => setShowCreateChannel(true)}
@@ -398,6 +411,8 @@ export function ChatPage() {
               isDM={isViewingDM}
               onToggleMembers={handleToggleMembers}
               showMembersPanel={showMembersPanel}
+              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+              sidebarOpen={sidebarOpen}
             />
 
             <MessageList 
