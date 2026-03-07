@@ -13,7 +13,6 @@ export default async function DocsLayout({
   return (
     <Layout
       darkMode
-      defaultTheme="light"
       docsRepositoryBase="https://github.com/agentunited/agentunited-docs/tree/main/content/docs"
       editLink={null}
       feedback={{ content: null }}
