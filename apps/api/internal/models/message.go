@@ -8,7 +8,7 @@ type Message struct {
 	ChannelID      string    `json:"channel_id"`
 	AuthorID       string    `json:"author_id"`
 	AuthorType     string    `json:"author_type"`
-	AuthorEmail    string    `json:"author_email,omitempty"` // Joined from users table
+	AuthorEmail    string    `json:"author_email,omitempty"` // Display-resolved author label (display_name -> email prefix fallback for users)
 	Text           string    `json:"text"`
 	AttachmentURL  string    `json:"attachment_url,omitempty"`
 	AttachmentName string    `json:"attachment_name,omitempty"`
