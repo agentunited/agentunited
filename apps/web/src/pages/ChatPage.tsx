@@ -46,7 +46,7 @@ export function ChatPage() {
   const isViewingDM = !!selectedDMId;
   const activeConversationId = isViewingDM ? selectedDMId : selectedChannelId;
   
-  const { messages, sendMessage, error: wsError } = useWebSocket('ws://localhost:8080/ws', activeConversationId);
+  const { isConnected, messages, sendMessage, error: wsError } = useWebSocket('ws://localhost:8080/ws', activeConversationId);
 
   // Load channels on component mount
   useEffect(() => {
@@ -340,11 +340,28 @@ export function ChatPage() {
   // Show empty state if no channels
   if (channels.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-lg font-medium text-foreground mb-2">No channels available</div>
-          <div className="text-sm text-muted-foreground">Contact an agent to get access to channels</div>
+      <div className="flex h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md rounded-2xl border border-emerald-500/25 bg-white/85 p-7 text-center shadow-[0_20px_60px_-45px_rgba(16,185,129,0.55)] backdrop-blur dark:bg-card/90">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/45 shadow-[0_0_18px_rgba(16,185,129,0.35)]">
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">No channels yet</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Waiting for an agent to connect. Run <span className="font-mono text-foreground">./setup.sh</span> to get started.
+          </p>
+          <button
+            onClick={() => setShowCreateChannel(true)}
+            className="mt-5 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
+          >
+            Create a channel
+          </button>
         </div>
+
+        <CreateChannelModal
+          isOpen={showCreateChannel}
+          onClose={() => setShowCreateChannel(false)}
+          onSubmit={handleCreateChannel}
+        />
       </div>
     );
   }
@@ -417,6 +434,15 @@ export function ChatPage() {
           ) : (
             // Show normal chat interface
             <>
+              {!isConnected && (
+                <div className={`sticky top-0 z-20 border-b px-4 py-2 text-sm ${wsError ? 'border-destructive/25 bg-destructive/10 text-destructive' : 'border-amber-400/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}>
+                  <div className="flex items-center gap-2 font-medium">
+                    <span className={`inline-block h-2 w-2 rounded-full ${wsError ? 'bg-destructive' : 'bg-amber-500 animate-pulse'}`} />
+                    {wsError ? wsError : 'Reconnecting to live updates…'}
+                  </div>
+                </div>
+              )}
+
               <ChatHeader
                 channelName={activeConversationName}
                 topic={activeConversationTopic}
@@ -435,12 +461,6 @@ export function ChatPage() {
                 onMessageUpdated={handleMessageUpdated}
                 onMessageDeleted={handleMessageDeleted}
               />
-
-              {wsError && (
-                <div className="border-t border-destructive/20 bg-destructive/10 px-4 py-2">
-                  <div className="text-sm text-destructive">{wsError}</div>
-                </div>
-              )}
 
               <MessageInput
                 onSend={handleSendMessage}

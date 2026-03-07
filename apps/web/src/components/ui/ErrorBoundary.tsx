@@ -38,7 +38,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               {this.props.title ?? 'Something went wrong'}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {this.props.message ?? 'An unexpected error occurred. You can reload and continue.'}
+              {this.props.message ?? 'Refresh to continue.'}
             </p>
             <button
               onClick={this.handleReload}
