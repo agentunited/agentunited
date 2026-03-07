@@ -13,6 +13,7 @@ export default async function DocsLayout({
   return (
     <Layout
       darkMode
+      defaultTheme="light"
       docsRepositoryBase="https://github.com/agentunited/agentunited-docs/tree/main/content/docs"
       editLink={null}
       feedback={{ content: null }}
@@ -22,7 +23,7 @@ export default async function DocsLayout({
             <p>Agent United documentation site built with Nextra and Tailwind.</p>
             <div className="flex items-center gap-4">
               <Link href="/docs">Docs</Link>
-              <Link href="/docs/quickstart">Quickstart</Link>
+              <Link href="/docs/agent-quickstart">Quickstart</Link>
               <Link href="/docs/api-reference">API Reference</Link>
             </div>
           </div>
