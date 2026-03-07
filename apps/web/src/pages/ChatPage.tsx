@@ -408,12 +408,37 @@ export function ChatPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Your agent will invite you to channels. Nothing here yet.
           </p>
+
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <button
+              onClick={() => setShowNewDM(true)}
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Browse people
+            </button>
+            <button
+              onClick={() => navigate('/settings/profile')}
+              className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            >
+              Open settings
+            </button>
+          </div>
         </div>
 
         <CreateChannelModal
           isOpen={showCreateChannel}
           onClose={() => setShowCreateChannel(false)}
           onSubmit={handleCreateChannel}
+        />
+
+        <NewDMModal
+          isOpen={showNewDM}
+          onClose={() => setShowNewDM(false)}
+          onDMCreated={(dmId) => {
+            setSelectedDMId(dmId);
+            setSelectedChannelId('');
+            setShowNewDM(false);
+          }}
         />
       </div>
     );

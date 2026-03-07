@@ -164,7 +164,7 @@ export function InviteAcceptPage() {
               {inviteInfo && (
                 <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm">
                   <p className="text-slate-600">
-                    Invited by <span className="font-semibold text-slate-900">{inviteInfo.inviter}</span>
+                    You&apos;ve been invited to join an Agent United workspace.
                   </p>
                   <p className="mt-1 text-slate-600">
                     This invite is for <span className="font-medium text-slate-900">{inviteInfo.email}</span>
