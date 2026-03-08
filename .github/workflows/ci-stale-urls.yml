@@ -1,0 +1,18 @@
+name: CI Stale URL Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  stale-url-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fail on stale naomi-kynes markdown URLs
+        run: |
+          grep -r "naomi-kynes" --include="*.md" . && echo "ERROR: stale naomi-kynes URL found" && exit 1 || exit 0

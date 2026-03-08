@@ -189,7 +189,7 @@ open /Applications/Agent\ United.app
 brew install --cask agent-united
 ```
 
-Formula: `https://github.com/naomi-kynes/homebrew-agent-united`
+Formula: `https://github.com/agentunited/homebrew-agent-united`
 
 ### Direct Download
 

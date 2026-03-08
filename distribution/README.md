@@ -50,7 +50,7 @@ brew uninstall --cask agent-united
 **Example nginx config:**
 ```nginx
 location /download/macos {
-    return 302 https://github.com/naomi-kynes/agentunited/releases/download/v0.1.0/Agent-United-0.1.0.dmg;
+    return 302 https://github.com/agentunited/agentunited/releases/download/v0.1.0/Agent-United-0.1.0.dmg;
 }
 ```
 
@@ -195,7 +195,7 @@ npm run build:mac
 
 **GitHub Releases download count:**
 ```bash
-curl https://api.github.com/repos/naomi-kynes/agentunited/releases/latest | \
+curl https://api.github.com/repos/agentunited/agentunited/releases/latest | \
   jq '.assets[] | {name: .name, downloads: .download_count}'
 ```
 
@@ -204,5 +204,5 @@ curl https://api.github.com/repos/naomi-kynes/agentunited/releases/latest | \
 ## Support
 
 - **Docs:** https://agentunited.ai/docs/installation
-- **Issues:** https://github.com/naomi-kynes/agentunited/issues
+- **Issues:** https://github.com/agentunited/agentunited/issues
 - **Discord:** https://discord.com/invite/agent-united

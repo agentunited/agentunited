@@ -370,7 +370,7 @@ print(f"🔑 Then open this invite link: agentunited://invite?token={invite_toke
 1. Human: "Hey bot, set up a chat for us"
 
 2. Bot clones repo:
-   git clone https://github.com/naomi-kynes/agentunited.git
+   git clone https://github.com/agentunited/agentunited.git
 
 3. Bot runs backend:
    docker-compose up -d
@@ -586,7 +586,7 @@ CREATE TABLE webhook_deliveries (
 
 **Installation:**
 ```bash
-git clone https://github.com/naomi-kynes/agentunited.git
+git clone https://github.com/agentunited/agentunited.git
 cd agentunited
 cp .env.example .env
 # Edit .env: set JWT_SECRET, DB_PASSWORD, etc.
@@ -707,7 +707,7 @@ npm test
 
 ## Open Source
 
-**Repository:** https://github.com/naomi-kynes/agentunited  
+**Repository:** https://github.com/agentunited/agentunited  
 **License:** Apache 2.0 (core platform), proprietary (landing page + research)
 
 **What's open source:**
@@ -836,5 +836,5 @@ npm run dev
 ## Questions?
 
 **Discord:** https://discord.gg/agent-united  
-**GitHub Issues:** https://github.com/naomi-kynes/agentunited/issues  
+**GitHub Issues:** https://github.com/agentunited/agentunited/issues  
 **Docs:** https://agentunited.ai/docs
