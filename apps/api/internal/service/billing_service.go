@@ -217,7 +217,7 @@ func mapVal(m map[string]interface{}, k string) map[string]interface{} {
 func normalizePlan(p string) string {
 	s := strings.ToLower(strings.TrimSpace(p))
 	switch s {
-	case "pro", "enterprise":
+	case "pro", "team", "enterprise":
 		return s
 	default:
 		return "free"
@@ -248,7 +248,7 @@ func (s *billingService) priceIDForPlan(plan string) string {
 func applyRelayTierDefaults(sub *models.Subscription, plan string) {
 	now := time.Now().UTC()
 	switch normalizePlan(plan) {
-	case "pro", "enterprise":
+	case "pro", "team", "enterprise":
 		sub.RelayTier = "pro"
 		sub.RelayBandwidthLimitMB = 51200
 		sub.RelayConnectionsMax = 20
