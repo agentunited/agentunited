@@ -80,7 +80,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	webhookService := service.NewWebhookService(webhookRepo, agentRepo)
 	integrationService := service.NewIntegrationService(integrationRepo, webhookService)
 	billingProvider := billing.NewStub(cfg.Stripe.SecretKey != "" && cfg.Stripe.PriceIDPro != "")
-	billingService := service.NewBillingService(subscriptionRepo, billingProvider, cfg.Stripe.WebhookSecret, cfg.Stripe.PriceIDPro)
+	billingService := service.NewBillingService(subscriptionRepo, userRepo, billingProvider, cfg.Stripe.WebhookSecret, cfg.Stripe.PriceIDPro, cfg.Stripe.PriceIDTeam)
 	bootstrapService := service.NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, subscriptionRepo, cfg.JWT.Secret, "https://agentunited.ai", cfg.Relay.Domain, cache.Client)
 	inviteService := service.NewInviteService(userRepo, inviteRepo, cfg.JWT.Secret, "http://localhost:3001")
 	relayService := service.NewRelayService(subscriptionRepo, cfg.Relay.Domain)
@@ -146,6 +146,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 		r.Delete("/integrations/{id}", integrationHandler.Delete)
 
 		// Billing routes
+		r.Post("/billing/checkout", billingHandler.Checkout)
 		r.Get("/billing/checkout", billingHandler.Checkout)
 		r.Get("/billing/portal", billingHandler.Portal)
 
@@ -242,6 +243,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 		r.Delete("/integrations/{id}", integrationHandler.Delete)
 
 		// Billing routes
+		r.Post("/billing/checkout", billingHandler.Checkout)
 		r.Get("/billing/checkout", billingHandler.Checkout)
 		r.Get("/billing/portal", billingHandler.Portal)
 

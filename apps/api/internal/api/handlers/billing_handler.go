@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -13,6 +14,18 @@ type BillingHandler struct {
 	svc service.BillingService
 }
 
+type checkoutRequest struct {
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+	Plan       string `json:"plan"`
+	SuccessURL string `json:"success_url"`
+	CancelURL  string `json:"cancel_url"`
+}
+
+type portalRequest struct {
+	ReturnURL string `json:"return_url"`
+}
+
 func NewBillingHandler(svc service.BillingService) *BillingHandler { return &BillingHandler{svc: svc} }
 
 func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
@@ -21,18 +34,29 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
 		return
 	}
-	email := r.URL.Query().Get("email")
-	name := r.URL.Query().Get("name")
-	successURL := r.URL.Query().Get("success_url")
-	if successURL == "" {
-		successURL = "http://localhost:3001/billing/success"
+
+	req := checkoutRequest{
+		Email:      r.URL.Query().Get("email"),
+		Name:       r.URL.Query().Get("name"),
+		Plan:       r.URL.Query().Get("plan"),
+		SuccessURL: r.URL.Query().Get("success_url"),
+		CancelURL:  r.URL.Query().Get("cancel_url"),
 	}
-	cancelURL := r.URL.Query().Get("cancel_url")
-	if cancelURL == "" {
-		cancelURL = "http://localhost:3001/billing/cancel"
+	if r.Method == http.MethodPost {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid JSON"})
+			return
+		}
 	}
 
-	url, err := h.svc.GetCheckoutURL(r.Context(), workspaceID, email, name, successURL, cancelURL)
+	if req.SuccessURL == "" {
+		req.SuccessURL = "https://agentunited.ai/billing/success"
+	}
+	if req.CancelURL == "" {
+		req.CancelURL = "https://agentunited.ai/billing/cancel"
+	}
+
+	url, err := h.svc.GetCheckoutURL(r.Context(), workspaceID, req.Email, req.Name, req.Plan, req.SuccessURL, req.CancelURL)
 	if err != nil {
 		if err == billing.ErrNotConfigured {
 			respondJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: "billing not configured"})
@@ -41,7 +65,7 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"url": url})
+	respondJSON(w, http.StatusOK, map[string]string{"checkout_url": url})
 }
 
 func (h *BillingHandler) Portal(w http.ResponseWriter, r *http.Request) {
@@ -50,11 +74,19 @@ func (h *BillingHandler) Portal(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
 		return
 	}
-	returnURL := r.URL.Query().Get("return_url")
-	if returnURL == "" {
-		returnURL = "http://localhost:3001/settings/billing"
+
+	req := portalRequest{ReturnURL: r.URL.Query().Get("return_url")}
+	if r.Method == http.MethodPost {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid JSON"})
+			return
+		}
 	}
-	url, err := h.svc.GetPortalURL(r.Context(), workspaceID, returnURL)
+	if req.ReturnURL == "" {
+		req.ReturnURL = "https://agentunited.ai/settings/billing"
+	}
+
+	url, err := h.svc.GetPortalURL(r.Context(), workspaceID, req.ReturnURL)
 	if err != nil {
 		if err == billing.ErrNotConfigured {
 			respondJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: "billing not configured"})
@@ -63,7 +95,28 @@ func (h *BillingHandler) Portal(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]string{"url": url})
+	respondJSON(w, http.StatusOK, map[string]string{"portal_url": url})
+}
+
+func (h *BillingHandler) Status(w http.ResponseWriter, r *http.Request) {
+	workspaceID, ok := mw.GetUserID(r.Context())
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+	sub, entityCount, err := h.svc.GetStatus(r.Context(), workspaceID)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{
+		"plan":                  sub.Plan,
+		"subscription_status":   sub.Status,
+		"entity_count":          entityCount,
+		"relay_tier":            sub.RelayTier,
+		"relay_subdomain":       sub.RelaySubdomain,
+		"relay_bandwidth_limit": sub.RelayBandwidthLimitMB,
+	})
 }
 
 func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {

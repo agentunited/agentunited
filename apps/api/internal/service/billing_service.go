@@ -21,28 +21,34 @@ import (
 var ErrInvalidWebhookSignature = errors.New("invalid webhook signature")
 
 type BillingService interface {
-	GetCheckoutURL(ctx context.Context, workspaceID, email, name, successURL, cancelURL string) (string, error)
+	GetCheckoutURL(ctx context.Context, workspaceID, email, name, plan, successURL, cancelURL string) (string, error)
 	GetPortalURL(ctx context.Context, workspaceID, returnURL string) (string, error)
+	GetStatus(ctx context.Context, workspaceID string) (*models.Subscription, int64, error)
 	HandleWebhook(ctx context.Context, body []byte, signature string) error
 }
 
 type billingService struct {
 	repo          repository.SubscriptionRepository
+	userRepo      repository.UserRepository
 	provider      billing.Service
 	webhookSecret string
 	priceIDPro    string
+	priceIDTeam   string
 }
 
-func NewBillingService(repo repository.SubscriptionRepository, provider billing.Service, webhookSecret, priceIDPro string) BillingService {
-	return &billingService{repo: repo, provider: provider, webhookSecret: webhookSecret, priceIDPro: priceIDPro}
+func NewBillingService(repo repository.SubscriptionRepository, userRepo repository.UserRepository, provider billing.Service, webhookSecret, priceIDPro, priceIDTeam string) BillingService {
+	return &billingService{repo: repo, userRepo: userRepo, provider: provider, webhookSecret: webhookSecret, priceIDPro: priceIDPro, priceIDTeam: priceIDTeam}
 }
 
-func (s *billingService) GetCheckoutURL(ctx context.Context, workspaceID, email, name, successURL, cancelURL string) (string, error) {
+func (s *billingService) GetCheckoutURL(ctx context.Context, workspaceID, email, name, plan, successURL, cancelURL string) (string, error) {
 	customerID := ""
 	if existing, err := s.repo.GetByWorkspace(ctx, workspaceID); err == nil {
 		customerID = existing.StripeCustomerID
 	}
 	var err error
+	if plan == "" {
+		plan = "pro"
+	}
 	if customerID == "" {
 		customerID, err = s.provider.CreateCustomer(ctx, email, name)
 		if err != nil {
@@ -50,7 +56,21 @@ func (s *billingService) GetCheckoutURL(ctx context.Context, workspaceID, email,
 		}
 		_ = s.repo.UpsertByWorkspace(ctx, &models.Subscription{WorkspaceID: workspaceID, StripeCustomerID: customerID, Plan: "free", Status: "active"})
 	}
-	return s.provider.CreateCheckoutSession(ctx, customerID, s.priceIDPro, successURL, cancelURL)
+	priceID := s.priceIDForPlan(plan)
+	return s.provider.CreateCheckoutSession(ctx, customerID, priceID, successURL, cancelURL)
+}
+
+func (s *billingService) GetStatus(ctx context.Context, workspaceID string) (*models.Subscription, int64, error) {
+	sub, err := s.repo.GetByWorkspace(ctx, workspaceID)
+	if err != nil {
+		// Default free status if not yet present.
+		sub = &models.Subscription{WorkspaceID: workspaceID, Plan: "free", Status: "free", RelayTier: "free", RelayBandwidthLimitMB: 1024, RelayConnectionsMax: 3}
+	}
+	users, err := s.userRepo.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return sub, users, nil
 }
 
 func (s *billingService) GetPortalURL(ctx context.Context, workspaceID, returnURL string) (string, error) {
@@ -193,6 +213,18 @@ func normalizeStatus(s string) string {
 		return s
 	default:
 		return "active"
+	}
+}
+
+func (s *billingService) priceIDForPlan(plan string) string {
+	switch strings.ToLower(strings.TrimSpace(plan)) {
+	case "team":
+		if s.priceIDTeam != "" {
+			return s.priceIDTeam
+		}
+		return s.priceIDPro
+	default:
+		return s.priceIDPro
 	}
 }
 

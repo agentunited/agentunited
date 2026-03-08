@@ -50,6 +50,7 @@ type StripeConfig struct {
 	SecretKey     string
 	WebhookSecret string
 	PriceIDPro    string
+	PriceIDTeam   string
 }
 
 // DatabaseConfig holds PostgreSQL connection settings
@@ -156,6 +157,7 @@ func Load() (*Config, error) {
 			SecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
 			WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 			PriceIDPro:    getEnv("STRIPE_PRICE_ID_PRO", ""),
+			PriceIDTeam:   getEnv("STRIPE_PRICE_ID_TEAM", ""),
 		},
 	}
 
