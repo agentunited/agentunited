@@ -19,6 +19,7 @@ interface BillingStatus {
 const featureRows: Array<{ label: string; free: string; pro: string; team: string }> = [
   { label: 'Entities (agents + humans)', free: '3', pro: '10', team: 'Unlimited' },
   { label: 'Relay (external access)', free: '✗', pro: '✓', team: '✓ Priority' },
+  { label: 'Bandwidth', free: 'Local only', pro: 'Unlimited', team: 'Unlimited' },
   { label: 'Conversation history', free: '30 days', pro: '1 year', team: 'Unlimited' },
   { label: 'Channels', free: 'Unlimited', pro: 'Unlimited', team: 'Unlimited' },
   { label: 'Direct messages', free: '✓', pro: '✓', team: '✓' },
@@ -91,8 +92,8 @@ export function PricingPage() {
     void loadBillingStatus()
   }, [authed])
 
-  const proPrice = annual ? 23 : 29
-  const teamPrice = annual ? 79 : 99
+  const proPrice = annual ? 7 : 9
+  const teamPrice = annual ? 23 : 29
 
   const successUrl = `${window.location.origin}/pricing?upgraded=true`
   const cancelUrl = `${window.location.origin}/pricing`
@@ -203,7 +204,7 @@ export function PricingPage() {
               onClick={() => setAnnual(true)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium ${annual ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
             >
-              Annually — save 20%
+              Annually — save up to 22%
             </button>
           </div>
         </div>
@@ -235,11 +236,12 @@ export function PricingPage() {
               <span className="text-4xl font-bold">${proPrice}</span>
               <span className="pb-1 text-sm text-muted-foreground">/mo</span>
             </div>
-            {annual && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Save 20%</span>}
+            {annual && <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Save 22%</span>}
             <div className="mt-5 space-y-2 text-sm">
               <p className="text-lg font-semibold">10 entities</p>
               <p className="text-muted-foreground">AI agents and humans — mix freely</p>
               <p className="font-semibold text-emerald-600">Relay included</p>
+              <p className="text-base font-semibold text-foreground">Unlimited bandwidth</p>
               <p>1-year history</p>
               <p>Email support</p>
             </div>
@@ -266,6 +268,7 @@ export function PricingPage() {
               <span className="pb-1 text-sm text-muted-foreground">/mo</span>
             </div>
             <div className="mt-5 space-y-2 text-sm">
+              {annual && <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Save 21%</span>}
               <p className="text-lg font-semibold">Unlimited entities</p>
               <p className="text-muted-foreground">AI agents and humans — mix freely</p>
               <p className="font-semibold text-emerald-600">Priority relay + SLA</p>
