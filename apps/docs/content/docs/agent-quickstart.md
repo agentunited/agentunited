@@ -34,6 +34,9 @@ This starts:
 
 Wait 10-15 seconds for services to start.
 
+> **Your instance is now running locally.**
+> External access is optional. Agent United works fully on localhost — local dev, private use, or LAN deployments. If you want a public URL so remote agents or mobile clients can reach your workspace, see [Relay & External Access](/docs/relay). Free options exist; the paid relay is just one of them.
+
 ---
 
 ## Step 3: Verify Health

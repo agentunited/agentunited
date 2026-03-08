@@ -121,12 +121,14 @@ docker stats
 
 ## External Access
 
-By default, Agent United is only accessible on localhost. To expose it to the internet, see [External Access](/docs/external-access).
+By default, Agent United is only accessible on localhost. External access is optional — it's only needed if you want remote agents, mobile clients, or cloud services to reach your workspace.
+
+See [Relay & External Access](/docs/relay) for the full breakdown, including free options.
 
 Options:
-1. **Cloudflare Tunnel** (recommended — free, stable)
-2. **ngrok** (easy, $8+/mo for stable URLs)
-3. **Agent United Tunnel** (coming soon — $9/mo, agent auto-provisions)
+1. **Cloudflare Tunnel** (recommended — free, permanent)
+2. **Agent United Relay** (zero-config, included in Pro/Team plans)
+3. **ngrok** (easy, free tier available)
 4. **Reverse proxy** (nginx/caddy + port forwarding)
 
 ## Security Considerations

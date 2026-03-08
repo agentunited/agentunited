@@ -10,13 +10,19 @@ const meta = {
     title: "Quick Start",
     display: "hidden",
   },
-  sdks: "SDKs",
+  sdk: {
+    display: "hidden",
+  },
+  sdks: {
+    title: "SDKs",
+  },
   integrations: "Integrations",
   "api-reference": "API Reference",
   "api-playground": "API Playground",
   architecture: "Architecture",
   "self-hosting": "Self Hosting",
   "external-access": "External Access",
+  relay: "Relay & Pricing",
   tutorials: "Tutorials",
 };
 
