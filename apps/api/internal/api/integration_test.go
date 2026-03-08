@@ -40,7 +40,11 @@ func setupIntegrationTest(t *testing.T) (*repository.DB, *httptest.Server) {
 
 	// Create router
 	cache := &repository.Cache{} // Mock cache for tests
-	router := NewRouter(db, cache, "test-jwt-secret")
+	appCfg := &config.Config{
+		JWT: config.JWTConfig{Secret: "test-jwt-secret"},
+		Relay: config.RelayConfig{Domain: "tunnel.agentunited.ai"},
+	}
+	router := NewRouter(db, cache, appCfg)
 
 	server := httptest.NewServer(router)
 	return db, server
@@ -194,18 +198,19 @@ func TestBootstrapIntegration_Idempotency(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, resp1.StatusCode)
 
-	// Second call - should return 409 Conflict
+	// Second call - recovery path should return 201 Created
 	jsonBody2, _ := json.Marshal(bootstrapReq)
 	resp2, err := http.Post(server.URL+"/api/v1/bootstrap", "application/json", bytes.NewBuffer(jsonBody2))
 	require.NoError(t, err)
 	defer resp2.Body.Close()
 
-	assert.Equal(t, http.StatusConflict, resp2.StatusCode)
+	assert.Equal(t, http.StatusCreated, resp2.StatusCode)
 
-	var errorResp map[string]string
-	err = json.NewDecoder(resp2.Body).Decode(&errorResp)
+	var respBody2 map[string]interface{}
+	err = json.NewDecoder(resp2.Body).Decode(&respBody2)
 	require.NoError(t, err)
-	assert.Contains(t, errorResp["error"], "already been bootstrapped")
+	assert.Contains(t, respBody2, "primary_agent")
+	assert.Contains(t, respBody2, "relay_url")
 }
 
 func TestInviteIntegration_ErrorCases(t *testing.T) {
