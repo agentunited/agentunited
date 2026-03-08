@@ -10,8 +10,8 @@ type BootstrapRequest struct {
 
 // BootstrapPrimaryAgent represents the admin agent user
 type BootstrapPrimaryAgent struct {
-	Email        string                 `json:"email" validate:"required,email"`
-	Password     string                 `json:"password" validate:"required,min=12"`
+	Email        string                `json:"email" validate:"required,email"`
+	Password     string                `json:"password" validate:"required,min=12"`
 	AgentProfile BootstrapAgentProfile `json:"agent_profile" validate:"required"`
 }
 
@@ -48,21 +48,26 @@ type BootstrapChannel struct {
 
 // BootstrapResponse represents the complete bootstrap response
 type BootstrapResponse struct {
-	PrimaryAgent BootstrapPrimaryAgentResponse `json:"primary_agent"`
-	Agents       []BootstrapAgentResponse      `json:"agents"`
-	Humans       []BootstrapHumanResponse      `json:"humans"`
-	Channel      BootstrapChannelResponse      `json:"channel"`
-	InstanceID   string                        `json:"instance_id"`
+	PrimaryAgent          BootstrapPrimaryAgentResponse `json:"primary_agent"`
+	Agents                []BootstrapAgentResponse      `json:"agents"`
+	Humans                []BootstrapHumanResponse      `json:"humans"`
+	Channel               BootstrapChannelResponse      `json:"channel"`
+	InstanceID            string                        `json:"instance_id"`
+	RelayToken            string                        `json:"relay_token,omitempty"`
+	RelaySubdomain        string                        `json:"relay_subdomain,omitempty"`
+	RelayURL              string                        `json:"relay_url,omitempty"`
+	RelayTier             string                        `json:"relay_tier,omitempty"`
+	RelayBandwidthLimitMB int                           `json:"relay_bandwidth_limit_mb,omitempty"`
 }
 
 // BootstrapPrimaryAgentResponse represents primary agent credentials
 type BootstrapPrimaryAgentResponse struct {
-	UserID    string `json:"user_id"`
-	AgentID   string `json:"agent_id"`
-	Email     string `json:"email"`
-	JWTToken  string `json:"jwt_token"`
-	APIKey    string `json:"api_key"`
-	APIKeyID  string `json:"api_key_id"`
+	UserID   string `json:"user_id"`
+	AgentID  string `json:"agent_id"`
+	Email    string `json:"email"`
+	JWTToken string `json:"jwt_token"`
+	APIKey   string `json:"api_key"`
+	APIKeyID string `json:"api_key_id"`
 }
 
 // BootstrapAgentResponse represents agent credentials
