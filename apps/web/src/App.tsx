@@ -10,6 +10,7 @@ import { TunnelDashboardPage } from './pages/TunnelDashboardPage';
 import { PairInstancePage } from './pages/PairInstancePage';
 import { UserSettingsPage } from './pages/UserSettingsPage';
 import { IntegrationSettingsPage } from './pages/IntegrationSettingsPage';
+import { PricingPage } from './pages/PricingPage';
 import { initializeFromUrlParams } from './services/apiConfig';
 import { AuthService, autoLogin } from './services/authService';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -89,6 +90,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/invite" element={<InviteAcceptPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route
             path="/chat"
             element={
