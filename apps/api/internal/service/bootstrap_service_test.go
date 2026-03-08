@@ -50,6 +50,11 @@ func (m *mockUserRepository) UpdateProfile(ctx context.Context, id, displayName,
 	return args.Error(0)
 }
 
+func (m *mockUserRepository) List(ctx context.Context) ([]*models.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*models.User), args.Error(1)
+}
+
 type mockAgentRepository struct {
 	mock.Mock
 }
@@ -69,6 +74,11 @@ func (m *mockAgentRepository) Get(ctx context.Context, id string) (*models.Agent
 
 func (m *mockAgentRepository) ListByOwner(ctx context.Context, ownerID string) ([]*models.Agent, error) {
 	args := m.Called(ctx, ownerID)
+	return args.Get(0).([]*models.Agent), args.Error(1)
+}
+
+func (m *mockAgentRepository) ListAll(ctx context.Context) ([]*models.Agent, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]*models.Agent), args.Error(1)
 }
 
@@ -184,6 +194,28 @@ func (m *mockChannelRepository) IsMember(ctx context.Context, channelID, userID 
 	return args.Get(0).(bool), args.Get(1).(string), args.Error(2)
 }
 
+type mockSubscriptionRepository struct {
+	mock.Mock
+}
+
+func (m *mockSubscriptionRepository) GetByWorkspace(ctx context.Context, workspaceID string) (*models.Subscription, error) {
+	args := m.Called(ctx, workspaceID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Subscription), args.Error(1)
+}
+
+func (m *mockSubscriptionRepository) UpsertByWorkspace(ctx context.Context, sub *models.Subscription) error {
+	args := m.Called(ctx, sub)
+	return args.Error(0)
+}
+
+func (m *mockSubscriptionRepository) UpsertByStripeSubscriptionID(ctx context.Context, sub *models.Subscription) error {
+	args := m.Called(ctx, sub)
+	return args.Error(0)
+}
+
 func TestBootstrapService_Bootstrap_InstanceAlreadyBootstrapped(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	agentRepo := &mockAgentRepository{}
@@ -191,10 +223,12 @@ func TestBootstrapService_Bootstrap_InstanceAlreadyBootstrapped(t *testing.T) {
 	inviteRepo := &mockInviteRepository{}
 	channelRepo := &mockChannelRepository{}
 
-	service := NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, "test-jwt-secret", "http://localhost:8080")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, subscriptionRepo, "test-jwt-secret", "https://agentunited.ai", "tunnel.agentunited.ai", nil)
 
 	ctx := context.Background()
 
+	userRepo.On("GetByEmail", ctx, "admin@example.com").Return(nil, models.ErrUserNotFound)
 	// Mock existing users (instance already bootstrapped)
 	userRepo.On("Count", ctx).Return(int64(1), nil)
 
@@ -223,10 +257,12 @@ func TestBootstrapService_Bootstrap_HappyPath(t *testing.T) {
 	inviteRepo := &mockInviteRepository{}
 	channelRepo := &mockChannelRepository{}
 
-	service := NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, "test-jwt-secret", "http://localhost:8080")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, subscriptionRepo, "test-jwt-secret", "https://agentunited.ai", "tunnel.agentunited.ai", nil)
 
 	ctx := context.Background()
 
+	userRepo.On("GetByEmail", ctx, "admin@example.com").Return(nil, models.ErrUserNotFound)
 	// Mock empty instance
 	userRepo.On("Count", ctx).Return(int64(0), nil)
 
@@ -264,7 +300,8 @@ func TestBootstrapService_Bootstrap_HappyPath(t *testing.T) {
 	apiKeyRepo.On("Create", ctx, mock.AnythingOfType("*models.APIKey"), mock.AnythingOfType("string")).Return(nil).Times(2)
 	inviteRepo.On("Create", ctx, mock.AnythingOfType("*models.Invite"), mock.AnythingOfType("string")).Return(nil)
 	channelRepo.On("Create", ctx, mock.AnythingOfType("*models.Channel")).Return(nil)
-	channelRepo.On("AddMember", ctx, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Times(2) // primary + human
+	channelRepo.On("AddMember", ctx, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Times(1) // human
+	subscriptionRepo.On("UpsertByWorkspace", ctx, mock.AnythingOfType("*models.Subscription")).Return(nil)
 
 	resp, err := service.Bootstrap(ctx, req)
 	require.NoError(t, err)
@@ -289,10 +326,14 @@ func TestBootstrapService_Bootstrap_HappyPath(t *testing.T) {
 	assert.Equal(t, "general", resp.Channel.Name)
 	assert.NotEmpty(t, resp.Channel.ChannelID)
 	assert.Len(t, resp.Channel.Members, 2)
+	assert.NotEmpty(t, resp.RelayURL)
+	assert.Equal(t, "free", resp.RelayTier)
+	assert.Equal(t, 1024, resp.RelayBandwidthLimitMB)
 
 	userRepo.AssertExpectations(t)
 	agentRepo.AssertExpectations(t)
 	apiKeyRepo.AssertExpectations(t)
 	inviteRepo.AssertExpectations(t)
 	channelRepo.AssertExpectations(t)
+	subscriptionRepo.AssertExpectations(t)
 }

@@ -90,6 +90,7 @@ JWT_TOKEN=$(echo "$BOOTSTRAP_JSON" | grep -o '"jwt_token":"[^"]*"' | head -1 | c
 PRIMARY_API_KEY=$(echo "$BOOTSTRAP_JSON" | grep -o '"api_key":"[^"]*"' | head -1 | cut -d'"' -f4)
 CHANNEL_ID=$(echo "$BOOTSTRAP_JSON" | grep -o '"channel_id":"[^"]*"' | head -1 | cut -d'"' -f4)
 INVITE_TOKEN=$(echo "$BOOTSTRAP_JSON" | grep -o '"invite_token":"[^"]*"' | head -1 | cut -d'"' -f4)
+RELAY_URL_1=$(echo "$BOOTSTRAP_JSON" | grep -o '"relay_url":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 if [ -z "$JWT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
     echo -e "${RED}✗ Failed to extract credentials from bootstrap response${NC}"
@@ -101,18 +102,47 @@ echo "  API Key: ${PRIMARY_API_KEY:0:20}..."
 echo "  Channel: $CHANNEL_ID"
 echo "  Invite:  ${INVITE_TOKEN:0:20}..."
 
-# Test 3: Idempotency
-echo -e "\n${YELLOW}[Test 3] Bootstrap Idempotency${NC}"
+# Test 3: Idempotency Recovery
+echo -e "\n${YELLOW}[Test 3] Bootstrap Recovery Idempotency${NC}"
 IDEMPOTENCY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST $BASE_URL/api/v1/bootstrap \
   -H "Content-Type: application/json" \
   -d @test-config.json)
 
 IDEMPOTENCY_CODE=$(echo "$IDEMPOTENCY_RESPONSE" | tail -n1)
+IDEMPOTENCY_JSON=$(echo "$IDEMPOTENCY_RESPONSE" | sed '$d')
+RELAY_URL_2=$(echo "$IDEMPOTENCY_JSON" | grep -o '"relay_url":"[^"]*"' | head -1 | cut -d'"' -f4)
 
-if [ "$IDEMPOTENCY_CODE" = "409" ]; then
-    echo -e "${GREEN}✓ Idempotency check passed (409 Conflict)${NC}"
+if [ "$IDEMPOTENCY_CODE" = "201" ]; then
+    echo -e "${GREEN}✓ Idempotency recovery check passed (201 Created)${NC}"
 else
-    echo -e "${RED}✗ Expected 409, got HTTP $IDEMPOTENCY_CODE${NC}"
+    echo -e "${RED}✗ Expected 201, got HTTP $IDEMPOTENCY_CODE${NC}"
+    exit 1
+fi
+
+if [ -z "$RELAY_URL_1" ] || [ -z "$RELAY_URL_2" ] || [ "$RELAY_URL_1" != "$RELAY_URL_2" ]; then
+    echo -e "${RED}✗ Relay URL mismatch on recovery bootstrap${NC}"
+    echo "  first:  $RELAY_URL_1"
+    echo "  second: $RELAY_URL_2"
+    exit 1
+else
+    echo -e "${GREEN}✓ Relay URL stable across bootstrap recovery${NC}"
+fi
+
+# Test 3b: Relay status after recovery
+echo -e "\n${YELLOW}[Test 3b] Relay Status${NC}"
+RELAY_STATUS_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/api/v1/relay/status" \
+  -H "Authorization: Bearer $JWT_TOKEN")
+RELAY_STATUS_CODE=$(echo "$RELAY_STATUS_RESPONSE" | tail -n1)
+RELAY_STATUS_JSON=$(echo "$RELAY_STATUS_RESPONSE" | sed '$d')
+
+if [ "$RELAY_STATUS_CODE" = "200" ] && \
+   echo "$RELAY_STATUS_JSON" | grep -q '"relay_subdomain"' && \
+   echo "$RELAY_STATUS_JSON" | grep -q '"bandwidth_limit_mb"' && \
+   echo "$RELAY_STATUS_JSON" | grep -q '"relay_tier"'; then
+    echo -e "${GREEN}✓ Relay status contains required fields${NC}"
+else
+    echo -e "${RED}✗ Relay status failed or missing required fields (HTTP $RELAY_STATUS_CODE)${NC}"
+    echo "$RELAY_STATUS_JSON"
     exit 1
 fi
 
@@ -212,10 +242,10 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "\nTest Results:"
 echo -e "  ${GREEN}✓${NC} Health check"
 echo -e "  ${GREEN}✓${NC} Bootstrap API (201 Created)"
-echo -e "  ${GREEN}✓${NC} Idempotency (409 Conflict)"
+echo -e "  ${GREEN}✓${NC} Idempotency recovery (201 Created + same relay URL)"
+echo -e "  ${GREEN}✓${NC} Relay status fields"
 echo -e "  ${GREEN}✓${NC} Create channel"
 echo -e "  ${GREEN}✓${NC} Post message"
-echo -e "  ${GREEN}✓${NC} List messages"
 echo -e "  ${GREEN}✓${NC} Error handling (401)"
 
 echo -e "\n${YELLOW}Next Steps:${NC}"

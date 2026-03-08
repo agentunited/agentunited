@@ -22,18 +22,48 @@ type BootstrapService interface {
 }
 
 // BootstrapHandler handles bootstrap requests
-type BootstrapHandler struct {
-	service     BootstrapService
-	validator   *validator.Validate
+type bootstrapRateLimiter interface {
+	Allow(ctx context.Context, ip string) (blocked bool, err error)
+}
+
+type redisBootstrapRateLimiter struct {
 	redisClient *redis.Client
+}
+
+func (l *redisBootstrapRateLimiter) Allow(ctx context.Context, ip string) (bool, error) {
+	if l == nil || l.redisClient == nil || ip == "" {
+		return false, nil
+	}
+	now := time.Now().UTC()
+	key := fmt.Sprintf("rate:bootstrap:%s:%s", ip, now.Format("2006-01-02"))
+	count, err := l.redisClient.Incr(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	if count == 1 {
+		expires := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
+		_ = l.redisClient.ExpireAt(ctx, key, expires).Err()
+	}
+	return count > 3, nil
+}
+
+// BootstrapHandler handles bootstrap requests
+type BootstrapHandler struct {
+	service   BootstrapService
+	validator *validator.Validate
+	limiter   bootstrapRateLimiter
 }
 
 // NewBootstrapHandler creates a new bootstrap handler
 func NewBootstrapHandler(service BootstrapService, redisClient *redis.Client) *BootstrapHandler {
+	return NewBootstrapHandlerWithLimiter(service, &redisBootstrapRateLimiter{redisClient: redisClient})
+}
+
+func NewBootstrapHandlerWithLimiter(service BootstrapService, limiter bootstrapRateLimiter) *BootstrapHandler {
 	return &BootstrapHandler{
-		service:     service,
-		validator:   validator.New(),
-		redisClient: redisClient,
+		service:   service,
+		validator: validator.New(),
+		limiter:   limiter,
 	}
 }
 
@@ -85,20 +115,10 @@ func (h *BootstrapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BootstrapHandler) rateLimitBootstrap(ctx context.Context, ip string) (bool, error) {
-	if h.redisClient == nil || ip == "" {
+	if h.limiter == nil {
 		return false, nil
 	}
-	now := time.Now().UTC()
-	key := fmt.Sprintf("rate:bootstrap:%s:%s", ip, now.Format("2006-01-02"))
-	count, err := h.redisClient.Incr(ctx, key).Result()
-	if err != nil {
-		return false, err
-	}
-	if count == 1 {
-		expires := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
-		_ = h.redisClient.ExpireAt(ctx, key, expires).Err()
-	}
-	return count > 3, nil
+	return h.limiter.Allow(ctx, ip)
 }
 
 func clientIP(r *http.Request) string {

@@ -18,6 +18,15 @@ type mockBootstrapService struct {
 	mock.Mock
 }
 
+type mockBootstrapRateLimiter struct {
+	mock.Mock
+}
+
+func (m *mockBootstrapRateLimiter) Allow(ctx context.Context, ip string) (bool, error) {
+	args := m.Called(ctx, ip)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *mockBootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapRequest) (*models.BootstrapResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
@@ -63,7 +72,11 @@ func TestBootstrapHandler_Bootstrap_HappyPath(t *testing.T) {
 			Topic:     "General discussion",
 			Members:   []string{"user-123", "user-789"},
 		},
-		InstanceID: "instance-123",
+		InstanceID:            "instance-123",
+		RelayURL:              "https://abc123.tunnel.agentunited.ai",
+		RelayTier:             "free",
+		RelayBandwidthLimitMB: 1024,
+		RelaySubdomain:        "abc123",
 	}
 
 	mockService.On("Bootstrap", mock.Anything, mock.AnythingOfType("*models.BootstrapRequest")).Return(mockResp, nil)
@@ -116,6 +129,9 @@ func TestBootstrapHandler_Bootstrap_HappyPath(t *testing.T) {
 	assert.Len(t, resp.Humans, 1)
 	assert.Equal(t, "human@example.com", resp.Humans[0].Email)
 	assert.Equal(t, "general", resp.Channel.Name)
+	assert.Equal(t, "https://abc123.tunnel.agentunited.ai", resp.RelayURL)
+	assert.Equal(t, "free", resp.RelayTier)
+	assert.Equal(t, 1024, resp.RelayBandwidthLimitMB)
 
 	mockService.AssertExpectations(t)
 }
@@ -170,6 +186,41 @@ func TestBootstrapHandler_Bootstrap_InvalidJSON(t *testing.T) {
 	err := json.Unmarshal(rr.Body.Bytes(), &errResp)
 	require.NoError(t, err)
 	assert.Contains(t, errResp["error"], "invalid JSON")
+}
+
+func TestBootstrapHandler_Bootstrap_RateLimited(t *testing.T) {
+	mockService := &mockBootstrapService{}
+	mockLimiter := &mockBootstrapRateLimiter{}
+	handler := NewBootstrapHandlerWithLimiter(mockService, mockLimiter)
+
+	reqBody := models.BootstrapRequest{
+		PrimaryAgent: models.BootstrapPrimaryAgent{
+			Email:    "admin@example.com",
+			Password: "supersecurepassword123",
+			AgentProfile: models.BootstrapAgentProfile{
+				Name:        "coordinator",
+				DisplayName: "Coordinator Agent",
+			},
+		},
+	}
+
+	jsonBody, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", "/api/v1/bootstrap", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "203.0.113.10:9999"
+
+	mockLimiter.On("Allow", mock.Anything, "203.0.113.10").Return(true, nil)
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusTooManyRequests, rr.Code)
+	var errResp map[string]string
+	err := json.Unmarshal(rr.Body.Bytes(), &errResp)
+	require.NoError(t, err)
+	assert.Contains(t, errResp["error"], "max 3 requests per IP per day")
+	mockService.AssertNotCalled(t, "Bootstrap", mock.Anything, mock.Anything)
+	mockLimiter.AssertExpectations(t)
 }
 
 func TestBootstrapHandler_Bootstrap_ValidationError(t *testing.T) {
