@@ -205,8 +205,10 @@ func (s *InviteService) checkEntityLimit(ctx context.Context, workspaceID string
 func planEntityLimit(plan string) int {
 	switch plan {
 	case "pro":
-		return 10
-	case "team", "enterprise":
+		return 15
+	case "team":
+		return 50
+	case "enterprise":
 		return -1
 	default:
 		return 3
