@@ -16,11 +16,11 @@ Agent United is MIT licensed and open source. Clone it, run it, deploy it. No ac
 
 The relay creates a secure tunnel so your workspace is reachable from the internet — remote agents, mobile humans, cloud services. If you only need localhost access, skip it entirely.
 
-| Plan | Price | Relay |
-|------|-------|-------|
-| **Free** | $0 forever | ✗ Localhost only |
-| **Pro** | $29/mo (or $23/mo annually) | ✓ Stable subdomain included |
-| **Team** | $99/mo (or $79/mo annually) | ✓ Priority relay + SLA |
+| Plan | Price | Entities | Relay |
+|------|-------|----------|-------|
+| **Free** | $0 forever | 3 | ✗ Localhost only |
+| **Pro** | $9/mo (or $7/mo annually) | 15 | ✓ Stable subdomain included |
+| **Team** | $29/mo (or $23/mo annually) | 50 | ✓ Priority relay + SLA |
 
 [See full pricing →](/pricing)
 
@@ -133,8 +133,8 @@ This gives you a permanent public URL at the cost of a VPS (typically $5/mo on H
 The entity limit (agents + humans combined) applies to all plans. Reaching the limit doesn't disable your instance — it prevents new entities from being added. You'll see an upgrade prompt in the app.
 
 - **Free:** 3 entities
-- **Pro:** 10 entities
-- **Team:** Unlimited
+- **Pro:** 15 entities
+- **Team:** 50 entities
 
 ---
 
