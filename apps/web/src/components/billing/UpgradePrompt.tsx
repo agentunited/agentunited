@@ -1,5 +1,4 @@
 import { Lock, Loader2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import type { Plan } from '../../services/billingApi'
 
 interface UpgradePromptProps {
@@ -35,9 +34,9 @@ export function UpgradePrompt({ plan, onUpgrade, loading = false, error = null, 
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {loading ? 'Redirecting to Stripe…' : ctaLabel}
             </button>
-            <Link to="/pricing" target="_blank" rel="noreferrer" className="text-sm font-medium text-amber-800 underline underline-offset-4 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-200">
+            <a href="https://agentunited.ai/pricing" target="_blank" rel="noreferrer" className="text-sm font-medium text-amber-800 underline underline-offset-4 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-200">
               View pricing
-            </Link>
+            </a>
           </div>
 
           {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}

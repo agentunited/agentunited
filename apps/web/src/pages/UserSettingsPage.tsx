@@ -80,7 +80,7 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
   const [passwordSaved, setPasswordSaved] = useState(false)
 
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null)
-  const [billingLoading, setBillingLoading] = useState(false)
+  const [billingLoading, setBillingLoading] = useState(true)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<'pro' | 'team' | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)

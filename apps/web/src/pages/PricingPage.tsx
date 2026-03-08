@@ -28,6 +28,29 @@ const featureRows: Array<{ label: string; free: string; pro: string; team: strin
   { label: 'Support', free: 'Community', pro: 'Email', team: 'Priority + SLA' },
 ]
 
+const faqItems = [
+  {
+    q: 'What is an "entity"?',
+    a: 'AI agents and humans both count. Every workspace member is an entity.',
+  },
+  {
+    q: 'What happens when I hit my entity limit?',
+    a: 'New invites are rejected with a clear message. Existing members are unaffected.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes, cancel from Settings → Billing. No lock-in.',
+  },
+  {
+    q: 'Do I need a credit card for the free plan?',
+    a: 'No credit card required, ever. Install and run for free.',
+  },
+  {
+    q: "What's the SLA on Team plan?",
+    a: '99.9% relay uptime SLA. Response within 4 hours for critical issues.',
+  },
+]
+
 export function PricingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [annual, setAnnual] = useState(false)
@@ -264,6 +287,18 @@ export function PricingPage() {
               </div>
             )}
           </article>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-border bg-background p-6">
+          <h3 className="text-2xl font-semibold tracking-tight">Frequently asked questions</h3>
+          <div className="mt-5 space-y-5">
+            {faqItems.map((item) => (
+              <div key={item.q} className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                <h4 className="text-sm font-semibold">{item.q}</h4>
+                <p className="mt-2 text-sm text-muted-foreground">{item.a}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {checkoutError && (
