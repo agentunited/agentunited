@@ -135,7 +135,15 @@ function App() {
             path="/settings/profile"
             element={
               <ProtectedRoute>
-                <UserSettingsPage />
+                <UserSettingsPage initialTab="profile" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/billing"
+            element={
+              <ProtectedRoute>
+                <UserSettingsPage initialTab="billing" />
               </ProtectedRoute>
             }
           />

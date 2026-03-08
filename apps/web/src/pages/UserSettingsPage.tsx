@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ChevronLeft, Pencil } from 'lucide-react'
+import { Check, ChevronLeft, Circle, Loader2, Pencil } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
 import { userApi, type MeProfile } from '../services/userApi'
+import { billingApi, type BillingStatus, type Plan } from '../services/billingApi'
+import { UpgradePrompt } from '../components/billing/UpgradePrompt'
+
+interface UserSettingsPageProps {
+  initialTab?: 'profile' | 'password' | 'billing'
+}
+
+type SettingsTab = 'profile' | 'password' | 'billing'
 
 function initialsFor(email?: string, displayName?: string) {
   const source = (displayName || email || 'U').trim()
@@ -31,8 +39,28 @@ function getPasswordStrength(password: string): { label: 'Weak' | 'Good' | 'Stro
   return { label: 'Good', width: '66%', color: 'oklch(0.769 0.137 72)' }
 }
 
-export function UserSettingsPage() {
+function formatRenewalDate(raw?: string | null) {
+  if (!raw) return null
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function planBadgeClass(plan: Plan) {
+  if (plan === 'pro') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+  if (plan === 'team') return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+  return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+}
+
+function usageBarClass(ratio: number) {
+  if (ratio >= 1) return 'bg-red-500'
+  if (ratio >= 0.8) return 'bg-amber-400'
+  return 'bg-emerald-500'
+}
+
+export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
 
   const [profile, setProfile] = useState<MeProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,6 +79,17 @@ export function UserSettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSaved, setPasswordSaved] = useState(false)
 
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<'pro' | 'team' | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [billingActionError, setBillingActionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
+
   useEffect(() => {
     async function loadMe() {
       try {
@@ -67,8 +106,26 @@ export function UserSettingsPage() {
       }
     }
 
-    loadMe()
+    void loadMe()
   }, [])
+
+  const loadBilling = async () => {
+    try {
+      setBillingLoading(true)
+      setBillingError(null)
+      const status = await billingApi.getStatus()
+      setBillingStatus(status)
+    } catch {
+      setBillingError('Unable to load billing info. Try refreshing.')
+    } finally {
+      setBillingLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab !== 'billing' || billingStatus) return
+    void loadBilling()
+  }, [activeTab, billingStatus])
 
   useEffect(() => {
     if (!profileSaved) return
@@ -122,7 +179,7 @@ export function UserSettingsPage() {
     reader.readAsDataURL(file)
   }
 
-  const saveProfile = async (e: React.FormEvent) => {
+  const saveProfile = async (e: FormEvent) => {
     e.preventDefault()
     try {
       setSavingProfile(true)
@@ -140,7 +197,7 @@ export function UserSettingsPage() {
     }
   }
 
-  const savePassword = async (e: React.FormEvent) => {
+  const savePassword = async (e: FormEvent) => {
     e.preventDefault()
 
     if (newPassword.length < 12) {
@@ -171,6 +228,35 @@ export function UserSettingsPage() {
     }
   }
 
+  const checkout = async (plan: 'pro' | 'team') => {
+    try {
+      setBillingActionError(null)
+      setCheckoutLoadingPlan(plan)
+      const success_url = `${window.location.origin}/settings/billing?upgraded=true`
+      const cancel_url = `${window.location.origin}/settings/billing`
+      const { checkout_url } = await billingApi.createCheckoutSession({ plan, success_url, cancel_url })
+      window.location.href = checkout_url
+    } catch (error) {
+      setBillingActionError(error instanceof Error ? error.message : 'Something went wrong. Try again.')
+    } finally {
+      setCheckoutLoadingPlan(null)
+    }
+  }
+
+  const openPortal = async () => {
+    try {
+      setBillingActionError(null)
+      setPortalLoading(true)
+      const { portal_url } = await billingApi.createPortalSession()
+      if (!portal_url) throw new Error('Billing portal unavailable. Try again.')
+      window.location.href = portal_url
+    } catch (error) {
+      setBillingActionError(error instanceof Error ? error.message : 'Failed to open billing portal.')
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading settings…</div>
   }
@@ -189,6 +275,13 @@ export function UserSettingsPage() {
     )
   }
 
+  const ratio = billingStatus ? Math.min(1, billingStatus.entity_count / Math.max(1, billingStatus.entity_limit)) : 0
+  const renewal = formatRenewalDate(billingStatus?.subscription_period_end)
+  const showUpgradePrompt =
+    billingStatus &&
+    ((billingStatus.plan === 'free' && billingStatus.entity_count >= billingStatus.entity_limit) ||
+      (billingStatus.plan === 'pro' && billingStatus.entity_count >= billingStatus.entity_limit))
+
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <Link
@@ -199,9 +292,28 @@ export function UserSettingsPage() {
         Back to chat
       </Link>
 
-      <h1 className="mb-8 text-2xl font-semibold text-foreground">Profile Settings</h1>
+      <h1 className="mb-4 text-2xl font-semibold text-foreground">Settings</h1>
 
-      <div className="space-y-4">
+      <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-3">
+        {([
+          ['profile', 'Profile'],
+          ['password', 'Password'],
+          ['billing', 'Billing'],
+        ] as Array<[SettingsTab, string]>).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              activeTab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'profile' ? (
         <Card className="p-6">
           <h2 className="mb-1 text-base font-semibold text-foreground">Profile</h2>
           <p className="mb-6 text-sm text-muted-foreground">Update your display details.</p>
@@ -240,7 +352,7 @@ export function UserSettingsPage() {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
-                onChange={(e) => handleAvatarFile(e.target.files?.[0])}
+                onChange={(e) => void handleAvatarFile(e.target.files?.[0])}
               />
               <p className="mt-2 text-xs text-muted-foreground">Click to change · JPG, PNG, WebP · Max 5MB</p>
             </div>
@@ -267,7 +379,9 @@ export function UserSettingsPage() {
             </div>
           </form>
         </Card>
+      ) : null}
 
+      {activeTab === 'password' ? (
         <Card className="p-6">
           <h2 className="mb-1 text-base font-semibold text-foreground">Password</h2>
           <p className="mb-6 text-sm text-muted-foreground">Change your password securely.</p>
@@ -321,8 +435,125 @@ export function UserSettingsPage() {
             </div>
           </form>
         </Card>
+      ) : null}
 
-        <Card className="p-6">
+      {activeTab === 'billing' ? (
+        <Card className="space-y-4 p-6">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Current Plan</h2>
+            <p className="text-sm text-muted-foreground">Live plan, usage, and relay status.</p>
+          </div>
+
+          {billingLoading ? (
+            <div className="space-y-3">
+              <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-2 w-full animate-pulse rounded bg-muted" />
+              <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+            </div>
+          ) : billingError ? (
+            <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              <p>{billingError}</p>
+              <button className="mt-2 underline" onClick={() => void loadBilling()}>
+                Retry
+              </button>
+            </div>
+          ) : billingStatus ? (
+            <>
+              <div className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${planBadgeClass(billingStatus.plan)}`}>
+                {billingStatus.plan}
+              </div>
+
+              {billingStatus.subscription_status === 'past_due' ? (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                  ⚠ Payment failed. Update your payment method to avoid service interruption.
+                </div>
+              ) : null}
+
+              <div>
+                <p className="text-sm font-medium text-foreground">Entities used</p>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full ${usageBarClass(ratio)}`} style={{ width: `${ratio * 100}%` }} />
+                </div>
+                <p className="mt-2 text-sm text-foreground">
+                  {billingStatus.entity_count} of {billingStatus.entity_limit} entities used
+                </p>
+                <p className="text-xs text-muted-foreground">AI agents and humans count together.</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-foreground">Relay status</p>
+                <p
+                  className={`mt-1 inline-flex items-center gap-2 text-sm ${
+                    billingStatus.relay_enabled ? 'text-emerald-600' : 'text-slate-500'
+                  }`}
+                >
+                  <Circle className="h-3 w-3 fill-current" />
+                  {billingStatus.subscription_status === 'past_due'
+                    ? 'Service may be interrupted'
+                    : billingStatus.relay_enabled
+                      ? billingStatus.relay_hostname || 'Active'
+                      : 'Not active (localhost only)'}
+                </p>
+                {renewal ? (
+                  <p className={`mt-1 text-sm ${billingStatus.subscription_status === 'past_due' ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                    {billingStatus.subscription_status === 'past_due' ? 'Payment due' : 'Renewal'}: {renewal}
+                  </p>
+                ) : null}
+              </div>
+
+              {billingActionError ? <p className="text-sm text-destructive">{billingActionError}</p> : null}
+
+              {billingStatus.plan === 'free' ? (
+                <button
+                  type="button"
+                  onClick={() => void checkout('pro')}
+                  disabled={checkoutLoadingPlan !== null}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
+                >
+                  {checkoutLoadingPlan === 'pro' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {checkoutLoadingPlan === 'pro' ? 'Redirecting to Stripe…' : 'Upgrade to Pro — $29/mo →'}
+                </button>
+              ) : null}
+
+              {billingStatus.plan !== 'free' ? (
+                <button
+                  type="button"
+                  onClick={() => void openPortal()}
+                  disabled={portalLoading}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                >
+                  {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {portalLoading ? 'Opening billing portal…' : 'Manage billing →'}
+                </button>
+              ) : null}
+
+              {billingStatus.plan === 'pro' ? (
+                <button
+                  type="button"
+                  onClick={() => void checkout('team')}
+                  disabled={checkoutLoadingPlan !== null}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
+                >
+                  {checkoutLoadingPlan === 'team' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {checkoutLoadingPlan === 'team' ? 'Redirecting to Stripe…' : 'Upgrade to Team — $99/mo →'}
+                </button>
+              ) : null}
+
+              {showUpgradePrompt ? (
+                <UpgradePrompt
+                  plan={billingStatus.plan}
+                  onUpgrade={() => checkout(billingStatus.plan === 'pro' ? 'team' : 'pro')}
+                  loading={checkoutLoadingPlan !== null}
+                  error={billingActionError}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {activeTab !== 'billing' ? (
+        <Card className="mt-4 p-6">
           <h2 className="mb-1 text-base font-semibold text-foreground">Account info</h2>
           <p className="mb-6 text-sm text-muted-foreground">Read-only account details.</p>
           <hr className="mb-6 border-border" />
@@ -342,7 +573,7 @@ export function UserSettingsPage() {
             </div>
           </dl>
         </Card>
-      </div>
+      ) : null}
     </div>
   )
 }
