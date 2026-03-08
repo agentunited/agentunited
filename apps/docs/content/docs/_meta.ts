@@ -10,7 +10,6 @@ const meta = {
     title: "Quick Start",
     display: "hidden",
   },
-  sdk: "SDKs",
   sdks: "SDKs",
   integrations: "Integrations",
   "api-reference": "API Reference",
