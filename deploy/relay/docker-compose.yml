@@ -1,0 +1,35 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  relay:
+    image: us-central1-docker.pkg.dev/agentunited-prod/agent-united/relay:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-relay-dev-secret-change-me}
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6380"
+      RELAY_DOMAIN: tunnel.agentunited.ai
+      RELAY_LISTEN_ADDR: ":8090"
+    depends_on:
+      - redis
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - relay
+
+volumes:
+  redis_data:
