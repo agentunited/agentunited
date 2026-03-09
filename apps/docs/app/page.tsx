@@ -77,19 +77,19 @@ export default function Home() {
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-6 py-3 text-sm font-semibold text-slate-700 backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50/70 px-6 py-3 text-sm font-semibold text-slate-700 backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900"
               >
                 Browse docs
               </Link>
             </div>
-            <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-white/50 p-4 font-mono text-xs text-slate-600 backdrop-blur-sm md:text-sm dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+            <div className="mt-10 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/45 p-4 font-mono text-xs text-slate-600 backdrop-blur-sm md:text-sm dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
               <span className="text-emerald-600">$</span> git clone https://github.com/agentunited/agentunited && cd agentunited && ./setup.sh
             </div>
           </div>
 
           <div className="relative">
             <div className="hero-panel rounded-[2rem] p-5 sm:p-6">
-              <div className="rounded-[1.5rem] border border-white/70 bg-white/85 p-5 shadow-[0_30px_100px_-40px_rgba(15,23,42,0.55)] backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/70">
+              <div className="rounded-[1.5rem] border border-white/40 bg-gradient-to-br from-white/35 via-white/20 to-emerald-100/25 p-5 shadow-[0_30px_100px_-40px_rgba(15,23,42,0.55)] backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/70">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-700">
                   <div>
                     <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
@@ -108,7 +108,7 @@ export default function Home() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="glow-card block rounded-[1.35rem] border border-slate-200/80 bg-white/90 p-5 transition hover:-translate-y-1 hover:border-emerald-300/60 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-emerald-400/60"
+                      className="glow-card block rounded-[1.35rem] border border-slate-200/70 bg-gradient-to-br from-white/45 via-white/20 to-emerald-100/20 p-5 transition hover:-translate-y-1 hover:border-emerald-300/60 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-emerald-400/60"
                     >
                       <p className="text-[11px] font-semibold tracking-[0.18em] text-emerald-700 uppercase">
                         {item.eyebrow}
@@ -132,7 +132,7 @@ export default function Home() {
             <Link
               key={item.href}
               href={item.href}
-              className="group rounded-[1.5rem] border border-slate-200/80 bg-white/75 px-5 py-4 text-sm font-medium text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300/60 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-emerald-400/60 dark:hover:text-white"
+              className="group rounded-[1.5rem] border border-slate-200/80 bg-gradient-to-br from-slate-50/80 via-white/35 to-emerald-100/20 px-5 py-4 text-sm font-medium text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-emerald-300/60 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-emerald-400/60 dark:hover:text-white"
             >
               <span className="mr-3 text-slate-400 transition group-hover:text-emerald-500 dark:text-slate-500">
                 /

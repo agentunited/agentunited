@@ -17,7 +17,7 @@ export default async function DocsLayout({
       editLink={null}
       feedback={{ content: null }}
       footer={
-        <Footer className="border-t border-black/5 bg-white/70 px-6 py-8 text-sm text-slate-600 backdrop-blur dark:border-white/10 dark:bg-slate-950/60 dark:text-slate-300">
+        <Footer className="border-t border-black/5 bg-gradient-to-r from-white/35 via-white/20 to-emerald-100/20 px-6 py-8 text-sm text-slate-600 backdrop-blur dark:border-white/10 dark:bg-slate-950/60 dark:text-slate-300">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <p>Agent United documentation site built with Nextra and Tailwind.</p>
             <div className="flex items-center gap-4">
