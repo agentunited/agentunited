@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,7 +12,9 @@ import (
 	"time"
 
 	"github.com/agentunited/backend/internal/api"
+	"github.com/agentunited/backend/internal/config"
 	"github.com/agentunited/backend/internal/models"
+	"github.com/agentunited/backend/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -170,15 +173,53 @@ func TestOpenClawIntegration_MessageRoundTrip(t *testing.T) {
 // setupIntegrationTest creates a test server with a test database
 func setupIntegrationTest(t *testing.T) *httptest.Server {
 	// Skip if DATABASE_URL not set for integration tests
-	if os.Getenv("INTEGRATION_TEST_DB") == "" {
-		t.Skip("INTEGRATION_TEST_DB not set - skipping integration test")
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		t.Skip("DATABASE_URL not set - skipping integration test")
 	}
 
-	// Create test server using the API router
-	// This is a simplified version - the full implementation would
-	// connect to a real test database
-	router := api.NewRouter()
+	ctx := context.Background()
+
+	// Parse config from environment
+	cfg := &config.Config{
+		Database: config.DatabaseConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnv("DB_PORT", "5432"),
+			User:     getEnv("DB_USER", "postgres"),
+			Password: getEnv("DB_PASSWORD", "postgres"),
+			Database: getEnv("DB_NAME", "agentunited_test"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+		},
+		Redis: config.RedisConfig{
+			Addr: getEnv("REDIS_ADDR", "localhost:6379"),
+		},
+		JWT: config.JWTConfig{
+			Secret:     "test-secret-for-integration-tests",
+			Expiration: 24 * time.Hour,
+		},
+	}
+
+	// Connect to database
+	db, err := repository.NewDB(ctx, &cfg.Database)
+	require.NoError(t, err, "Failed to connect to test database")
+
+	// Connect to cache
+	cache, err := repository.NewCache(ctx, cfg.Redis.Addr)
+	require.NoError(t, err, "Failed to connect to Redis")
+
+	// Reset schema and run migrations
+	_, err = db.Pool.Exec(ctx, "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")
+	require.NoError(t, err, "Failed to reset schema")
+
+	err = db.RunMigrations(ctx, "../../migrations")
+	require.NoError(t, err, "Failed to run migrations")
+
+	// Create router with dependencies
+	router := api.NewRouter(db, cache, cfg)
 	server := httptest.NewServer(router)
+
+	// Store resources for cleanup
+	server.Config.SetContext(ctx)
 	return server
 }
 
@@ -187,4 +228,12 @@ func cleanupIntegrationTest(t *testing.T, server *httptest.Server) {
 	if server != nil {
 		server.Close()
 	}
+}
+
+// getEnv returns environment variable or default
+func getEnv(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
 }
