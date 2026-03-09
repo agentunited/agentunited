@@ -207,8 +207,7 @@ func setupIntegrationTest(t *testing.T) *httptest.Server {
 	require.NoError(t, err, "Failed to connect to test database")
 
 	// Connect to cache
-	redisAddr := cfg.Redis.Host + ":" + cfg.Redis.Port
-	cache, err := repository.NewCache(ctx, redisAddr)
+	cache, err := repository.NewCache(ctx, &cfg.Redis)
 	require.NoError(t, err, "Failed to connect to Redis")
 
 	// Reset schema and run migrations
