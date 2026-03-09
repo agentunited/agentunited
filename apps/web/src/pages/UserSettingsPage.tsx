@@ -511,7 +511,7 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
                 >
                   {checkoutLoadingPlan === 'pro' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {checkoutLoadingPlan === 'pro' ? 'Redirecting to Stripe…' : 'Upgrade to Pro — $29/mo →'}
+                  {checkoutLoadingPlan === 'pro' ? 'Redirecting to Stripe…' : 'Upgrade to Pro — $9/mo →'}
                 </button>
               ) : null}
 
@@ -535,7 +535,7 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
                 >
                   {checkoutLoadingPlan === 'team' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {checkoutLoadingPlan === 'team' ? 'Redirecting to Stripe…' : 'Upgrade to Team — $99/mo →'}
+                  {checkoutLoadingPlan === 'team' ? 'Redirecting to Stripe…' : 'Upgrade to Team — $29/mo →'}
                 </button>
               ) : null}
 
