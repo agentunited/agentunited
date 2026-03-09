@@ -127,6 +127,9 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	// Public billing webhook route
 	r.Post("/api/v1/billing/webhook", billingHandler.Webhook)
 
+	// Public integration inbound webhook route
+	r.Post("/api/v1/webhooks/integration/*", handlers.IntegrationInboundHandler)
+
 	// Protected API v1 routes (require JWT or API key authentication)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo, userRepo))
