@@ -22,6 +22,11 @@ jobs:
       - name: Start deps (Postgres + Redis)
         run: docker compose up -d postgres redis
 
+      - name: Create test database
+        run: |
+          sleep 3
+          docker compose exec -T postgres psql -U postgres -c "CREATE DATABASE agentunited_test;" || true
+
       - name: Run OpenClaw integration test
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/agentunited_test?sslmode=disable
