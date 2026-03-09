@@ -2,17 +2,16 @@ package integration
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/agentunited/backend/internal/config"
+	"github.com/agentunited/backend/internal/api"
 	"github.com/agentunited/backend/internal/models"
-	"github.com/agentunited/backend/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,10 +25,8 @@ import (
 // 6. Verify outbound webhook delivered to mock receiver
 func TestOpenClawIntegration_MessageRoundTrip(t *testing.T) {
 	// Skip if no test database available
-	db, server := setupIntegrationTest(t)
-	defer cleanupIntegrationTest(t, db, server)
-
-	ctx := context.Background()
+	server := setupIntegrationTest(t)
+	defer cleanupIntegrationTest(t, server)
 
 	// Step 1: Bootstrap workspace
 	bootstrapReq := models.BootstrapRequest{
@@ -98,7 +95,7 @@ func TestOpenClawIntegration_MessageRoundTrip(t *testing.T) {
 	resp.Body.Close()
 	require.NoError(t, err)
 
-	integrationAPIKey := integrationResp.APIKey
+	_ = integrationResp.APIKey // Available for future assertions
 
 	// Step 4: Send inbound message via integration webhook
 	inboundPayload := map[string]string{
@@ -138,7 +135,7 @@ func TestOpenClawIntegration_MessageRoundTrip(t *testing.T) {
 
 	foundInbound := false
 	for _, msg := range messagesResp.Messages {
-		if msg.Content == "Hello from OpenClaw integration test" {
+		if msg.Text == "Hello from OpenClaw integration test" {
 			foundInbound = true
 			break
 		}
@@ -167,5 +164,27 @@ func TestOpenClawIntegration_MessageRoundTrip(t *testing.T) {
 	if receivedOutboundWebhook {
 		assert.Equal(t, "message.created", outboundPayload["event_type"])
 		assert.Equal(t, workspaceID, outboundPayload["workspace_id"])
+	}
+}
+
+// setupIntegrationTest creates a test server with a test database
+func setupIntegrationTest(t *testing.T) *httptest.Server {
+	// Skip if DATABASE_URL not set for integration tests
+	if os.Getenv("INTEGRATION_TEST_DB") == "" {
+		t.Skip("INTEGRATION_TEST_DB not set - skipping integration test")
+	}
+
+	// Create test server using the API router
+	// This is a simplified version - the full implementation would
+	// connect to a real test database
+	router := api.NewRouter()
+	server := httptest.NewServer(router)
+	return server
+}
+
+// cleanupIntegrationTest cleans up the test server
+func cleanupIntegrationTest(t *testing.T, server *httptest.Server) {
+	if server != nil {
+		server.Close()
 	}
 }
