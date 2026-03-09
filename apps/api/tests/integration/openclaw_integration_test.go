@@ -191,11 +191,14 @@ func setupIntegrationTest(t *testing.T) *httptest.Server {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Redis: config.RedisConfig{
-			Addr: getEnv("REDIS_ADDR", "localhost:6379"),
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnv("REDIS_PORT", "6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       0,
 		},
 		JWT: config.JWTConfig{
-			Secret:     "test-secret-for-integration-tests",
-			Expiration: 24 * time.Hour,
+			Secret: "test-secret-for-integration-tests",
+			Expiry: 24 * time.Hour,
 		},
 	}
 
@@ -204,7 +207,8 @@ func setupIntegrationTest(t *testing.T) *httptest.Server {
 	require.NoError(t, err, "Failed to connect to test database")
 
 	// Connect to cache
-	cache, err := repository.NewCache(ctx, cfg.Redis.Addr)
+	redisAddr := cfg.Redis.Host + ":" + cfg.Redis.Port
+	cache, err := repository.NewCache(ctx, redisAddr)
 	require.NoError(t, err, "Failed to connect to Redis")
 
 	// Reset schema and run migrations
@@ -217,9 +221,6 @@ func setupIntegrationTest(t *testing.T) *httptest.Server {
 	// Create router with dependencies
 	router := api.NewRouter(db, cache, cfg)
 	server := httptest.NewServer(router)
-
-	// Store resources for cleanup
-	server.Config.SetContext(ctx)
 	return server
 }
 
