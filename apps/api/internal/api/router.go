@@ -128,7 +128,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	r.Post("/api/v1/billing/webhook", billingHandler.Webhook)
 
 	// Public integration inbound webhook route
-	integrationInboundHandler := handlers.NewIntegrationInboundHandler(messageService)
+	integrationInboundHandler := handlers.NewIntegrationInboundHandler(messageService, agentRepo)
 	r.Post("/api/v1/webhooks/integration/*", integrationInboundHandler.ServeHTTP)
 
 	// Protected API v1 routes (require JWT or API key authentication)
