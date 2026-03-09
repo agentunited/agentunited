@@ -23,6 +23,16 @@ jobs:
         run: docker compose up -d postgres redis
 
       - name: Run OpenClaw integration test
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/agentunited_test?sslmode=disable
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: agentunited_test
+          DB_SSLMODE: disable
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
         run: go test ./tests/integration -run TestOpenClawIntegration_MessageRoundTrip -count=1 -v
 
       - name: Tear down
