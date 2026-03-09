@@ -20,12 +20,11 @@ jobs:
           go-version-file: apps/api/go.mod
 
       - name: Start deps (Postgres + Redis)
-        run: docker compose up -d postgres redis
-
-      - name: Create test database
+        env:
+          DB_NAME: agentunited_test
         run: |
-          sleep 3
-          docker compose exec -T postgres psql -U postgres -c "CREATE DATABASE agentunited_test;" || true
+          docker compose up -d postgres redis
+          sleep 5
 
       - name: Run OpenClaw integration test
         env:
