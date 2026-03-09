@@ -11,6 +11,7 @@ import { PairInstancePage } from './pages/PairInstancePage';
 import { UserSettingsPage } from './pages/UserSettingsPage';
 import { IntegrationSettingsPage } from './pages/IntegrationSettingsPage';
 import { PricingPage } from './pages/PricingPage';
+import { SettingsBillingPage } from './pages/settings/billing';
 import { initializeFromUrlParams } from './services/apiConfig';
 import { AuthService, autoLogin } from './services/authService';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -143,7 +144,7 @@ function App() {
             path="/settings/billing"
             element={
               <ProtectedRoute>
-                <UserSettingsPage initialTab="billing" />
+                <SettingsBillingPage />
               </ProtectedRoute>
             }
           />
