@@ -4,11 +4,24 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/agentunited/backend/internal/service"
 	"github.com/agentunited/backend/pkg/integrations"
 )
 
 // IntegrationInboundHandler handles inbound webhooks from external integrations
-func IntegrationInboundHandler(w http.ResponseWriter, r *http.Request) {
+type IntegrationInboundHandler struct {
+	messageService service.MessageService
+}
+
+// NewIntegrationInboundHandler creates a new integration inbound handler
+func NewIntegrationInboundHandler(messageService service.MessageService) *IntegrationInboundHandler {
+	return &IntegrationInboundHandler{
+		messageService: messageService,
+	}
+}
+
+// ServeHTTP handles the inbound webhook request
+func (h *IntegrationInboundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Extract platform from URL path
 	// Expected path: /api/v1/webhooks/integration/{platform}
 	path := r.URL.Path
@@ -49,13 +62,25 @@ func IntegrationInboundHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For now, just acknowledge receipt
-	// Full implementation would call message service to create the message
+	// Create the message via the message service
+	// For agent-originated messages from integrations, use SendAsAgent
+	agentCtx := service.AgentContext{
+		AgentID:     inbound.AgentID,
+		DisplayName: inbound.AgentID, // Use AgentID as display name (adapter doesn't provide name separately)
+	}
+
+	createdMessage, err := h.messageService.SendAsAgent(ctx, inbound.ChannelID, inbound.AgentID, agentCtx, inbound.Text)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "failed to create message: " + err.Error()})
+		return
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"status":     "received",
 		"platform":   platform,
 		"channel_id": inbound.ChannelID,
 		"agent_id":   inbound.AgentID,
+		"message_id": createdMessage.ID,
 		"text":       inbound.Text,
 	})
 }
