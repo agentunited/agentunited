@@ -31,7 +31,7 @@ export default async function DocsLayout({
       navbar={
         <Navbar
           logo={
-            <span className="flex items-center gap-3">
+            <span className="flex items-center gap-3 bg-transparent">
               <span className="inline-flex size-9 items-center justify-center rounded-full border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.4)] dark:shadow-[0_0_12px_rgba(16,185,129,0.5)]">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
               </span>

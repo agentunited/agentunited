@@ -102,9 +102,15 @@ a {
 }
 
 /* "Pick your path" heading + label inside panel — always dark text */
-.docs-home .hero-panel h2,
-.docs-home .hero-panel p {
+html:not(.dark) .docs-home .hero-panel h2,
+html:not(.dark) .docs-home .hero-panel p {
   color: #1e293b;
+}
+
+.docs-home .nextra-navbar-blur {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48)),
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 45%) !important;
 }
 
 .docs-home .hero-panel .text-\[11px\] {
@@ -149,6 +155,21 @@ html.dark .docs-home .hero-title {
 
 html.dark .docs-home .hero-copy {
   color: #cbd5e1;
+}
+
+html.dark .docs-home .hero-panel h2,
+html.dark .docs-home .hero-panel p {
+  color: #e2e8f0;
+}
+
+html.dark .docs-home .hero-panel .text-\[11px\] {
+  color: #34d399;
+}
+
+html.dark .docs-home .nextra-navbar-blur {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.55)),
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 36%) !important;
 }
 
 .dark .hero-panel {
