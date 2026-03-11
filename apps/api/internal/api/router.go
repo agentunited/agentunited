@@ -79,7 +79,17 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	apiKeyService := service.NewAPIKeyService(apiKeyRepo, agentRepo)
 	webhookService := service.NewWebhookService(webhookRepo, agentRepo)
 	integrationService := service.NewIntegrationService(integrationRepo, webhookService)
-	billingProvider := billing.NewStub(cfg.Stripe.SecretKey != "" && cfg.Stripe.PriceIDPro != "")
+
+	// Initialize billing provider - use real Stripe if configured, otherwise stub
+	var billingProvider billing.Service
+	if cfg.Stripe.SecretKey != "" {
+		billingProvider = billing.NewStripeProvider(cfg.Stripe.SecretKey, cfg.Stripe.WebhookSecret)
+		log.Info().Msg("Using real Stripe billing provider")
+	} else {
+		billingProvider = billing.NewStub(false)
+		log.Warn().Msg("Stripe not configured - using stub billing provider")
+	}
+
 	billingService := service.NewBillingService(subscriptionRepo, userRepo, billingProvider, cfg.Stripe.WebhookSecret, cfg.Stripe.PriceIDPro, cfg.Stripe.PriceIDTeam)
 	bootstrapService := service.NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, subscriptionRepo, cfg.JWT.Secret, "https://agentunited.ai", cfg.Relay.Domain, cache.Client)
 	inviteService := service.NewInviteService(userRepo, inviteRepo, subscriptionRepo, cfg.JWT.Secret, "http://localhost:3001")
