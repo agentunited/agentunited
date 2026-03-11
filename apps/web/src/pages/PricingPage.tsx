@@ -6,6 +6,11 @@ import { getAuthToken, isAuthenticated } from '../services/authService'
 
 type Plan = 'free' | 'pro' | 'team'
 
+const STRIPE_PRICE_IDS = {
+  pro: 'price_1T8leTJep8wNHLzTS1wP6gOF',
+  team: 'price_1T8leoJep8wNHLzTjB8gVZSj',
+} as const
+
 interface BillingStatus {
   plan: Plan
   entity_count: number
@@ -56,6 +61,7 @@ export function PricingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [annual, setAnnual] = useState(false)
   const [bannerOpen, setBannerOpen] = useState(searchParams.get('upgraded') === 'true')
+  const [cancelOpen, setCancelOpen] = useState(searchParams.get('canceled') === 'true')
 
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null)
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<Plan | null>(null)
@@ -63,12 +69,19 @@ export function PricingPage() {
 
   const authed = isAuthenticated()
   const currentPlan = billingStatus?.plan
+  const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || import.meta.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
   useEffect(() => {
     if (!bannerOpen) return
     const timeout = window.setTimeout(() => setBannerOpen(false), 8000)
     return () => window.clearTimeout(timeout)
   }, [bannerOpen])
+
+  useEffect(() => {
+    if (!cancelOpen) return
+    const timeout = window.setTimeout(() => setCancelOpen(false), 8000)
+    return () => window.clearTimeout(timeout)
+  }, [cancelOpen])
 
   useEffect(() => {
     if (!authed) return
@@ -92,11 +105,23 @@ export function PricingPage() {
     void loadBillingStatus()
   }, [authed])
 
+  useEffect(() => {
+    if (!stripePublishableKey) {
+      console.warn('Stripe publishable key not set (VITE_STRIPE_PUBLISHABLE_KEY / NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY). Checkout is server-redirect based but key should be configured for future client-side Stripe usage.')
+    }
+  }, [stripePublishableKey])
+
   const proPrice = annual ? 7 : 9
   const teamPrice = annual ? 23 : 29
 
+  const clearParam = (key: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.delete(key)
+    setSearchParams(next)
+  }
+
   const successUrl = `${window.location.origin}/pricing?upgraded=true`
-  const cancelUrl = `${window.location.origin}/pricing`
+  const cancelUrl = `${window.location.origin}/pricing?canceled=true`
 
   const checkout = async (plan: 'pro' | 'team') => {
     setCheckoutError(null)
@@ -121,18 +146,20 @@ export function PricingPage() {
         },
         body: JSON.stringify({
           plan,
+          price_id: STRIPE_PRICE_IDS[plan],
           success_url: successUrl,
           cancel_url: cancelUrl,
           billing_cycle: annual ? 'annual' : 'monthly',
         }),
       })
 
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.checkout_url) {
+      const data = await res.json().catch(() => ({})) as { checkout_url?: string; session_url?: string; message?: string }
+      const redirectUrl = data.session_url || data.checkout_url
+      if (!res.ok || !redirectUrl) {
         throw new Error(data.message || 'Something went wrong. Try again or contact support.')
       }
 
-      window.location.href = data.checkout_url
+      window.location.href = redirectUrl
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : 'Something went wrong. Try again or contact support.')
     } finally {
@@ -170,13 +197,26 @@ export function PricingPage() {
       <main className="mx-auto w-full max-w-6xl px-6 py-10">
         {bannerOpen && (
           <div className="mb-6 flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-            <span>✓ You&apos;re on Pro. Your relay is now active.</span>
+            <span>✓ Billing update successful. Your new plan is now active.</span>
             <button
               onClick={() => {
                 setBannerOpen(false)
-                const next = new URLSearchParams(searchParams)
-                next.delete('upgraded')
-                setSearchParams(next)
+                clearParam('upgraded')
+              }}
+              className="font-medium"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {cancelOpen && (
+          <div className="mb-6 flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            <span>Checkout canceled. No changes were made.</span>
+            <button
+              onClick={() => {
+                setCancelOpen(false)
+                clearParam('canceled')
               }}
               className="font-medium"
             >

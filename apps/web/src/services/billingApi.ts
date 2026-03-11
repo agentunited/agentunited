@@ -15,9 +15,11 @@ export interface BillingStatus {
 }
 
 interface CheckoutBody {
-  plan: 'pro' | 'team'
+  plan?: 'pro' | 'team'
+  price_id?: string
   success_url: string
   cancel_url: string
+  billing_cycle?: 'monthly' | 'annual'
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -45,17 +47,25 @@ export const billingApi = {
     return request<BillingStatus>('/api/v1/billing/status')
   },
   async createCheckoutSession(body: CheckoutBody) {
-    return request<{ checkout_url: string }>('/api/v1/billing/checkout', {
+    const checkout = await request<{ checkout_url?: string; session_url?: string }>('/api/v1/billing/checkout', {
       method: 'POST',
       body: JSON.stringify(body),
     })
+
+    return { checkout_url: checkout.session_url ?? checkout.checkout_url ?? '' }
   },
   async createPortalSession() {
-    const portal = await request<{ portal_url?: string; url?: string }>('/api/v1/billing/portal', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    })
-
-    return { portal_url: portal.portal_url ?? portal.url ?? '' }
+    try {
+      const portal = await request<{ portal_url?: string; url?: string }>('/api/v1/billing/portal', {
+        method: 'GET',
+      })
+      return { portal_url: portal.portal_url ?? portal.url ?? '' }
+    } catch {
+      const portal = await request<{ portal_url?: string; url?: string }>('/api/v1/billing/portal', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      })
+      return { portal_url: portal.portal_url ?? portal.url ?? '' }
+    }
   },
 }

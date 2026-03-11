@@ -14,6 +14,11 @@ interface UserSettingsPageProps {
 
 type SettingsTab = 'profile' | 'password' | 'billing'
 
+const STRIPE_PRICE_IDS = {
+  pro: 'price_1T8leTJep8wNHLzTS1wP6gOF',
+  team: 'price_1T8leoJep8wNHLzTjB8gVZSj',
+} as const
+
 function initialsFor(email?: string, displayName?: string) {
   const source = (displayName || email || 'U').trim()
   return source
@@ -85,6 +90,12 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<'pro' | 'team' | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [billingActionError, setBillingActionError] = useState<string | null>(null)
+  const [billingRedirectStatus, setBillingRedirectStatus] = useState<'upgraded' | 'canceled' | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('upgraded') === 'true') return 'upgraded'
+    if (params.get('canceled') === 'true') return 'canceled'
+    return null
+  })
 
   useEffect(() => {
     setActiveTab(initialTab)
@@ -122,6 +133,15 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
     }
   }
 
+  const clearBillingRedirectParams = () => {
+    const params = new URLSearchParams(window.location.search)
+    params.delete('upgraded')
+    params.delete('canceled')
+    const next = params.toString()
+    const newUrl = `${window.location.pathname}${next ? `?${next}` : ''}`
+    window.history.replaceState({}, '', newUrl)
+  }
+
   useEffect(() => {
     if (activeTab !== 'billing' || billingStatus) return
     void loadBilling()
@@ -138,6 +158,15 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
     const t = window.setTimeout(() => setPasswordSaved(false), 3000)
     return () => window.clearTimeout(t)
   }, [passwordSaved])
+
+  useEffect(() => {
+    if (!billingRedirectStatus) return
+    const t = window.setTimeout(() => {
+      setBillingRedirectStatus(null)
+      clearBillingRedirectParams()
+    }, 8000)
+    return () => window.clearTimeout(t)
+  }, [billingRedirectStatus])
 
   const joinedDate = useMemo(() => {
     if (!profile?.created_at) return '—'
@@ -233,8 +262,13 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
       setBillingActionError(null)
       setCheckoutLoadingPlan(plan)
       const success_url = `${window.location.origin}/settings/billing?upgraded=true`
-      const cancel_url = `${window.location.origin}/settings/billing`
-      const { checkout_url } = await billingApi.createCheckoutSession({ plan, success_url, cancel_url })
+      const cancel_url = `${window.location.origin}/settings/billing?canceled=true`
+      const { checkout_url } = await billingApi.createCheckoutSession({
+        plan,
+        price_id: STRIPE_PRICE_IDS[plan],
+        success_url,
+        cancel_url,
+      })
       window.location.href = checkout_url
     } catch (error) {
       setBillingActionError(error instanceof Error ? error.message : 'Something went wrong. Try again.')
@@ -443,6 +477,18 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
             <h2 className="text-base font-semibold text-foreground">Current Plan</h2>
             <p className="text-sm text-muted-foreground">Live plan, usage, and relay status.</p>
           </div>
+
+          {billingRedirectStatus === 'upgraded' ? (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+              ✓ Billing update successful. Your new plan is now active.
+            </div>
+          ) : null}
+
+          {billingRedirectStatus === 'canceled' ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+              Checkout canceled. No changes were made.
+            </div>
+          ) : null}
 
           {billingLoading ? (
             <div className="space-y-3">
