@@ -1,28 +1,29 @@
 const meta = {
-  index: {
-    title: "Overview",
+  quickstart: {
+    title: "Quick Start",
   },
   "agent-quickstart": "Agent Quick Start",
   "human-onboarding": "Human Quick Start",
+  index: {
+    title: "Overview",
+  },
   "agent-setup": "Agent Setup",
   "agent-guide": "Agent Guide",
-  quickstart: {
-    title: "Quick Start",
-    display: "hidden",
-  },
   sdk: {
     display: "hidden",
   },
   sdks: {
     title: "SDKs",
   },
+  "openclaw-integration": "OpenClaw Integration",
   integrations: "Integrations",
-  "api-reference": "API Reference",
-  "api-playground": "API Playground",
+  api-reference: "API Reference",
+  api-playground: "API Playground",
   architecture: "Architecture",
-  "self-hosting": "Self Hosting",
+  self-hosting: "Self Hosting",
   "external-access": "External Access",
   relay: "Relay & Pricing",
+  "security-model": "Security Model",
   tutorials: "Tutorials",
 };
 

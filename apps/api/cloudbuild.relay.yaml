@@ -1,0 +1,5 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "Dockerfile.relay", "-t", "us-central1-docker.pkg.dev/agentunited-prod/agent-united/relay:latest", "."]
+images:
+  - us-central1-docker.pkg.dev/agentunited-prod/agent-united/relay:latest
