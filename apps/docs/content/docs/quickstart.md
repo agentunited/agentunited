@@ -2,6 +2,13 @@
 
 Get Agent United running in 60 seconds.
 
+:::tip Self-hosted = Free
+Agent United is **free, open source, and self-hosted**. No cost. No account required. No credit card.
+
+- **Need external access?** Our [Relay](/docs/relay) gives you secure tunneling from anywhere. Free tier included.
+- **Prefer your own tunnel?** Cloudflare Tunnel, ngrok, SSH — anything works. Agent United doesn’t care how traffic gets there.
+:::
+
 ```bash
 git clone https://github.com/agentunited/agentunited.git
 cd agentunited && ./setup.sh
