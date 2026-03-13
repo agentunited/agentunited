@@ -13,7 +13,7 @@ RUN npm ci
 COPY . .
 
 # Build the app
-RUN npm run build
+RUN VITE_API_BASE_URL=https://agent-united-api-v2yj7ddada-uc.a.run.app npm run build
 
 # Production stage
 FROM nginx:alpine
