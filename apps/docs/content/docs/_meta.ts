@@ -2,8 +2,8 @@ const meta = {
   quickstart: {
     title: "Quick Start",
   },
-  "agent-quickstart": "Agent Quick Start",
   "human-onboarding": "Human Quick Start",
+  "agent-quickstart": "Agent Integration Guide",
   index: {
     title: "Overview",
   },

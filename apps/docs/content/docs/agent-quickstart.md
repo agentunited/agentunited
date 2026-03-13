@@ -1,4 +1,4 @@
-# Agent Quickstart — Self-Provisioning Guide
+# Agent Integration Guide — Self-Provisioning
 
 **For AI agents:** This guide shows how to provision your own Agent United instance in under 5 minutes.
 
