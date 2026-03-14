@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatHeader } from '../components/chat/ChatHeader';
 import { MessageList } from '../components/chat/MessageList';
@@ -26,6 +26,7 @@ interface DirectMessage {
 
 export function ChatPage() {
   const navigate = useNavigate();
+  const { dmId } = useParams<{ dmId?: string }>();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
@@ -45,7 +46,7 @@ export function ChatPage() {
   const isViewingDM = !!selectedDMId;
   const activeConversationId = isViewingDM ? selectedDMId : selectedChannelId;
   
-  const { connectionStatus, messages, sendMessage, error: wsError } = useWebSocket('ws://localhost:8080/ws', activeConversationId);
+  const { connectionStatus, messages, sendMessage, error: wsError } = useWebSocket('', activeConversationId);
 
   // Load channels on component mount
   useEffect(() => {
@@ -77,30 +78,38 @@ export function ChatPage() {
     const loadDMs = async () => {
       try {
         const dms = await chatApi.listDMs();
-        
-        // Convert channels to DirectMessage format
+
         const directMessageList: DirectMessage[] = dms.map(dm => {
-          // TODO: Parse DM name and type from API response when available
-          // For now, assume DM names contain user info
           const isAgent = dm.name.includes('agent') || dm.name.includes('Agent');
           return {
             id: dm.id,
             name: dm.name,
             type: isAgent ? 'agent' : 'human',
-            online: Math.random() > 0.3, // TODO: Replace with real online status
+            online: Math.random() > 0.3,
             unread: dm.unread
           };
         });
-        
+
         setDirectMessages(directMessageList);
+
+        // If route targets a DM, select it once DMs are loaded.
+        if (dmId) {
+          setSelectedDMId(dmId);
+          setSelectedChannelId('');
+          return;
+        }
+
+        // Auto-select first DM if user has no channels — so new users can reach their agent
+        if (directMessageList.length > 0 && !selectedChannelId && !selectedDMId) {
+          setSelectedDMId(directMessageList[0].id);
+        }
       } catch (error) {
         console.error('Failed to load DMs:', error);
-        // Don't set error for DMs, just log it
       }
     };
 
     loadDMs();
-  }, []);
+  }, [dmId, selectedChannelId, selectedDMId]);
 
   // Load members for the selected channel
   useEffect(() => {
@@ -177,6 +186,7 @@ export function ChatPage() {
     setSelectedChannelId(channelId);
     setSelectedDMId(''); // Clear DM selection
     setSidebarOpen(false);
+    navigate('/chat');
     void markConversationRead('channel', channelId);
   };
 
@@ -184,6 +194,7 @@ export function ChatPage() {
     setSelectedDMId(dmId);
     setSelectedChannelId(''); // Clear channel selection
     setSidebarOpen(false);
+    navigate(`/chat/dm/${dmId}`);
     void markConversationRead('dm', dmId);
   };
 
@@ -378,71 +389,7 @@ export function ChatPage() {
     );
   }
 
-  // Show error state if channels failed to load
-  if (channelsError) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-lg font-medium text-destructive mb-2">Failed to load channels</div>
-          <div className="text-sm text-destructive-foreground mb-4">{channelsError}</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show empty state if no channels
-  if (channels.length === 0) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md rounded-2xl border border-emerald-500/25 bg-white/85 p-7 text-center shadow-[0_20px_60px_-45px_rgba(16,185,129,0.55)] backdrop-blur dark:bg-card/90">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/45 shadow-[0_0_18px_rgba(16,185,129,0.35)]">
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">No channels yet</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your agent will invite you to channels. Nothing here yet.
-          </p>
-
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <button
-              onClick={() => setShowNewDM(true)}
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Browse people
-            </button>
-            <button
-              onClick={() => navigate('/settings/profile')}
-              className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
-            >
-              Open settings
-            </button>
-          </div>
-        </div>
-
-        <CreateChannelModal
-          isOpen={showCreateChannel}
-          onClose={() => setShowCreateChannel(false)}
-          onSubmit={handleCreateChannel}
-        />
-
-        <NewDMModal
-          isOpen={showNewDM}
-          onClose={() => setShowNewDM(false)}
-          onDMCreated={(dmId) => {
-            setSelectedDMId(dmId);
-            setSelectedChannelId('');
-            setShowNewDM(false);
-          }}
-        />
-      </div>
-    );
-  }
+  // No early return for channels error or empty channels — render the full sidebar so DMs are always accessible.
 
   // Determine the active conversation name and type
   const activeConversationName = isViewingDM 
@@ -514,6 +461,12 @@ export function ChatPage() {
           {channelCreateWarning && (
             <div className="border-b border-amber-400/25 bg-amber-500/10 px-4 py-2 text-sm text-amber-700 dark:text-amber-300">
               {channelCreateWarning}
+            </div>
+          )}
+
+          {channelsError && (
+            <div className="border-b border-red-400/25 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-300">
+              Couldn&apos;t load channel list. You can still use direct messages.
             </div>
           )}
 

@@ -37,8 +37,8 @@ function App() {
         // Parse URL parameters and update API configuration
         const { instanceChanged, token } = initializeFromUrlParams();
 
-        // Handle auto-login if token is provided
-        if (token) {
+        // Handle auto-login only for JWT tokens. Ignore invite tokens (inv_...) and other non-JWT values.
+        if (token && AuthService.isValidJwtFormat(token)) {
           const result = await autoLogin(token);
           if (result.success) {
             // Clear URL parameters after successful login
@@ -94,6 +94,14 @@ function App() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route
             path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat/dm/:dmId"
             element={
               <ProtectedRoute>
                 <ChatPage />
