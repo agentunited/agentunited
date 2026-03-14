@@ -10,13 +10,14 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Server     ServerConfig
-	Database   DatabaseConfig
-	Redis      RedisConfig
-	JWT        JWTConfig
-	Relay      RelayConfig
-	Centrifugo CentrifugoConfig
-	Stripe     StripeConfig
+	Server      ServerConfig
+	Database    DatabaseConfig
+	Redis       RedisConfig
+	JWT         JWTConfig
+	Relay       RelayConfig
+	Centrifugo  CentrifugoConfig
+	Stripe      StripeConfig
+	FrontendURL string
 }
 
 // ServerConfig holds HTTP server settings
@@ -159,6 +160,7 @@ func Load() (*Config, error) {
 			PriceIDPro:    getEnv("STRIPE_PRICE_ID_PRO", ""),
 			PriceIDTeam:   getEnv("STRIPE_PRICE_ID_TEAM", ""),
 		},
+		FrontendURL: getEnv("FRONTEND_URL", "https://agentunited.ai"),
 	}
 
 	return cfg, nil

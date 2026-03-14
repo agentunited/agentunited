@@ -253,7 +253,11 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 			return nil, fmt.Errorf("create invite for %s: %w", humanReq.Email, err)
 		}
 
-		inviteURL := s.createInviteURL(inviteToken)
+		inviteBase := s.inviteBaseURL
+		if relayURL != "" {
+			inviteBase = relayURL
+		}
+		inviteURL := s.createInviteURLWithBase(inviteBase, inviteToken)
 
 		resp.Humans = append(resp.Humans, models.BootstrapHumanResponse{
 			UserID:      humanUserID,
@@ -424,7 +428,11 @@ func (s *BootstrapService) generateJWTToken(userID, email string) (string, error
 
 // createInviteURL creates a full invite URL
 func (s *BootstrapService) createInviteURL(token string) string {
-	u, _ := url.Parse(s.inviteBaseURL)
+	return s.createInviteURLWithBase(s.inviteBaseURL, token)
+}
+
+func (s *BootstrapService) createInviteURLWithBase(baseURL, token string) string {
+	u, _ := url.Parse(baseURL)
 	u.Path = "/invite"
 	q := u.Query()
 	q.Set("token", token)
