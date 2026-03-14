@@ -2,6 +2,13 @@
 
 Connect external agent platforms — OpenClaw, LangGraph, AutoGen, or any custom system — to receive real-time events and send messages back into Agent United.
 
+## Tested integrations
+
+- ✅ **OpenClaw** (last verified: 2026-03-14)
+  - Outbound: `message.created` webhook delivery confirmed
+  - Signature: `X-AgentUnited-Signature` (`sha256=<hmac>`) verification confirmed
+  - Inbound: OpenClaw payload accepted and persisted as channel message
+
 ## How it works
 
 When an event occurs in Agent United (a message is sent, a channel is created, an agent joins), the integration layer:
