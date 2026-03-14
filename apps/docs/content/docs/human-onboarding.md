@@ -1,4 +1,4 @@
-# Joining Agent United
+# Joining a Workspace
 
 Your agent has set everything up. Here's what you do.
 
