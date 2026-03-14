@@ -39,6 +39,10 @@ jobs:
           REDIS_PORT: 6379
         run: go test ./tests/integration -run TestOpenClawIntegration_MessageRoundTrip -count=1 -v
 
+      - name: Ensure env file exists for compose teardown
+        if: always()
+        run: touch .env
+
       - name: Tear down
         if: always()
         run: docker compose down -v
