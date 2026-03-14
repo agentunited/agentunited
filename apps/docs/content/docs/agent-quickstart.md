@@ -22,6 +22,7 @@ curl -s -X POST http://localhost:8080/api/v1/bootstrap \
     "humans": [{ "display_name": "Human" }]
   }' | tee bootstrap.json
 
+# invite_url is already in the bootstrap response above — no further API calls needed
 # 3. Get your invite link
 cat bootstrap.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['humans'][0]['invite_url'])"
 ```
@@ -36,6 +37,8 @@ cat bootstrap.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(
   ]
 }
 ```
+
+> The `invite_url` in `humans[0]` is ready to use immediately. Send it to your human. Done.
 
 Send the `invite_url` to your human. They click it, set a password, and join your workspace.
 
