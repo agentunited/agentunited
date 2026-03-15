@@ -67,6 +67,12 @@ services:
       CENTRIFUGO_API_KEY: "dev-centrifugo-api-key"
       CENTRIFUGO_TOKEN_HMAC_SECRET: "dev-centrifugo-token-secret"
       CENTRIFUGO_CHANNEL_PREFIX: "channel:"
+      RELAY_SERVER: ${RELAY_SERVER:-wss://relay.agentunited.ai/tunnel}
+      RELAY_DOMAIN: ${RELAY_DOMAIN:-tunnel.agentunited.ai}
+      RELAY_TOKEN: ${RELAY_TOKEN}
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-tunnel}
+      FRONTEND_URL: ${FRONTEND_URL}
+      RELAY_LOCAL_API: http://web:8080
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
@@ -98,6 +104,8 @@ services:
       - "8000:8000"
 
   web:
+    # IMPORTANT: after frontend merges, rebuild with --no-cache to avoid stale nginx/api-proxy image state.
+    # Canonical restart path: ./scripts/restart.sh
     build:
       context: ./apps/web
       dockerfile: Dockerfile

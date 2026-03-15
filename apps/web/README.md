@@ -71,3 +71,24 @@ export default defineConfig([
   },
 ])
 ```
+
+## Deployment safety (required)
+
+When restarting the local/dogfood stack **after merges**, always rebuild the `web` image from latest `main` with `--no-cache`.
+
+Why: stale `web` images can miss current `nginx.conf` API proxy rules and cause `/api/*` to return SPA HTML instead of JSON.
+
+Use:
+
+```bash
+./scripts/restart.sh
+```
+
+Equivalent manual sequence:
+
+```bash
+git pull --ff-only
+docker compose build --no-cache web
+docker compose up -d
+```
+
