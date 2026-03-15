@@ -55,12 +55,12 @@ export function ChatPage() {
       try {
         setChannelsLoading(true);
         setChannelsError(null);
-        
+
         const fetchedChannels = await chatApi.getChannels();
         setChannels(fetchedChannels);
-        
-        // Auto-select first channel if none selected
-        if (fetchedChannels.length > 0 && !selectedChannelId && !selectedDMId) {
+
+        // Auto-select first channel if nothing selected yet.
+        if (fetchedChannels.length > 0 && !selectedChannelId && !selectedDMId && !dmId) {
           setSelectedChannelId(fetchedChannels[0].id);
         }
       } catch (error) {
@@ -71,8 +71,10 @@ export function ChatPage() {
       }
     };
 
-    loadChannels();
-  }, [selectedChannelId, selectedDMId]);
+    void loadChannels();
+    // load once on mount; downstream selection changes should not refetch channel list
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load DMs on component mount
   useEffect(() => {
@@ -80,28 +82,18 @@ export function ChatPage() {
       try {
         const dms = await chatApi.listDMs();
 
-        const directMessageList: DirectMessage[] = dms.map(dm => {
-          const isAgent = dm.name.includes('agent') || dm.name.includes('Agent');
-          return {
-            id: dm.id,
-            name: dm.name,
-            type: isAgent ? 'agent' : 'human',
-            online: Math.random() > 0.3,
-            unread: dm.unread
-          };
-        });
+        const directMessageList: DirectMessage[] = dms.map(dm => ({
+          id: dm.id,
+          name: dm.name,
+          type: 'human',
+          online: false,
+          unread: dm.unread
+        }));
 
         setDirectMessages(directMessageList);
 
-        // If route targets a DM, select it once DMs are loaded.
-        if (dmId) {
-          setSelectedDMId(dmId);
-          setSelectedChannelId('');
-          return;
-        }
-
-        // Auto-select first DM if user has no channels — so new users can reach their agent
-        if (directMessageList.length > 0 && !selectedChannelId && !selectedDMId) {
+        // Auto-select first DM if user has no channels and no route target.
+        if (!dmId && directMessageList.length > 0 && !selectedChannelId && !selectedDMId) {
           setSelectedDMId(directMessageList[0].id);
         }
       } catch (error) {
@@ -109,8 +101,10 @@ export function ChatPage() {
       }
     };
 
-    loadDMs();
-  }, [dmId, selectedChannelId, selectedDMId]);
+    void loadDMs();
+    // load once on mount; selection changes should not refetch DM list
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load users directory for sender display-name resolution
   useEffect(() => {
@@ -318,16 +312,13 @@ export function ChatPage() {
     try {
       // Reload DMs to get the new one
       const dms = await chatApi.listDMs();
-      const directMessageList: DirectMessage[] = dms.map(dm => {
-        const isAgent = dm.name.includes('agent') || dm.name.includes('Agent');
-        return {
-          id: dm.id,
-          name: dm.name,
-          type: isAgent ? 'agent' : 'human',
-          online: Math.random() > 0.3,
-          unread: dm.unread
-        };
-      });
+      const directMessageList: DirectMessage[] = dms.map(dm => ({
+        id: dm.id,
+        name: dm.name,
+        type: 'human',
+        online: false,
+        unread: dm.unread
+      }));
 
       setDirectMessages(directMessageList);
 
@@ -349,6 +340,13 @@ export function ChatPage() {
   const handleToggleMembers = useCallback(() => {
     setShowMembersPanel(prev => !prev);
   }, []);
+
+  useEffect(() => {
+    if (dmId) {
+      setSelectedDMId(dmId);
+      setSelectedChannelId('');
+    }
+  }, [dmId]);
 
   useEffect(() => {
     if (selectedDMId) {

@@ -65,7 +65,7 @@ export async function fetchMessages(channelId: string): Promise<Message[]> {
   return messages.map((msg: any) => ({
     id: msg.id,
     channelId: msg.channel_id || channelId,
-    author: msg.author_email || msg.author_type || 'Unknown',
+    author: msg.author_display_name || msg.author_name || msg.author_email || msg.author?.display_name || msg.author?.name || 'Unknown',
     authorId: msg.author_id,
     authorType: msg.author_type === 'agent' ? 'agent' as const : 'human' as const,
     text: msg.text,
@@ -91,12 +91,12 @@ export async function sendMessageApi(channelId: string, text: string): Promise<M
   return {
     id: msg.id,
     channelId: msg.channel_id || channelId,
-    author: msg.author_email || 'You',
+    author: msg.author_display_name || msg.author_name || msg.author_email || 'You',
     authorId: msg.author_id,
     authorType: msg.author_type === 'agent' ? 'agent' as const : 'human' as const,
     text: msg.text,
     timestamp: msg.created_at,
-    isOwnMessage: msg.author_id === currentUserId || true,
+    isOwnMessage: msg.author_id === currentUserId,
     attachmentUrl: msg.attachment_url,
     attachmentName: msg.attachment_name,
   };
@@ -144,12 +144,12 @@ export async function sendMessageWithAttachment(channelId: string, text: string,
   return {
     id: msg.id,
     channelId: msg.channel_id || channelId,
-    author: msg.author_email || 'You',
+    author: msg.author_display_name || msg.author_name || msg.author_email || 'You',
     authorId: msg.author_id,
     authorType: msg.author_type === 'agent' ? 'agent' as const : 'human' as const,
     text: msg.text,
     timestamp: msg.created_at,
-    isOwnMessage: msg.author_id === currentUserId || true,
+    isOwnMessage: msg.author_id === currentUserId,
     attachmentUrl: msg.attachment_url,
     attachmentName: msg.attachment_name,
   };
