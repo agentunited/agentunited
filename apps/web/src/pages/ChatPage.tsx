@@ -168,8 +168,11 @@ export function ChatPage() {
         // Use API directly for file uploads
         await sendMessageWithAttachment(activeConversationId, text, attachment);
       } else {
-        // Use WebSocket for text-only messages  
-        sendMessage(text);
+        // Prefer WebSocket, but fallback to HTTP when reconnecting/disconnected.
+        const sentViaWs = sendMessage(text);
+        if (!sentViaWs) {
+          await chatApi.sendMessage(activeConversationId, text);
+        }
       }
       
       if (mentions && mentions.length > 0) {
@@ -478,6 +481,25 @@ export function ChatPage() {
               onClose={handleCloseSearch}
               onResultClick={handleSearchResultClick}
             />
+          ) : !activeConversationId ? (
+            // No channel or DM selected — show welcome state instead of broken #unknown
+            <div className="flex flex-1 items-center justify-center bg-background">
+              <div className="text-center px-6 max-w-sm">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/45 shadow-[0_0_18px_rgba(16,185,129,0.35)]">
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground mb-2">No conversations yet</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Start a direct message with your agent using the <strong>+</strong> button in the sidebar.
+                </p>
+                <button
+                  onClick={() => setShowNewDM(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition-colors"
+                >
+                  Start a conversation
+                </button>
+              </div>
+            </div>
           ) : (
             // Show normal chat interface
             <>

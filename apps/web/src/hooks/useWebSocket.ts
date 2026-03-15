@@ -3,12 +3,13 @@ import type { Message } from '../types/chat';
 import { getApiBaseUrl } from '../services/apiConfig';
 import { fetchMessages } from '../services/api';
 import { getDisplayName } from '../lib/displayName';
+import { chatApi } from '../services/chatApi';
 
 interface UseWebSocketReturn {
   isConnected: boolean;
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
   messages: Message[];
-  sendMessage: (text: string) => void;
+  sendMessage: (text: string) => boolean;
   error: string | null;
 }
 
@@ -171,13 +172,29 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
     };
   }, [channelId]);
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback(async (text: string) => {
+    // Try WebSocket first
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'send_message',
         channel_id: channelId,
         text,
       }));
+      return true;
+    }
+    
+    // HTTP fallback when WebSocket unavailable (e.g., relay doesn't support WS upgrades)
+    try {
+      const message = await chatApi.sendMessage(channelId, text);
+      // Add the sent message to local state so it appears immediately
+      setMessages((prev) => {
+        if (prev.some(m => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
+      return true;
+    } catch (err) {
+      console.error('Failed to send message via HTTP fallback:', err);
+      return false;
     }
   }, [channelId]);
 
