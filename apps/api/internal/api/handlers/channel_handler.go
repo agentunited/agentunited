@@ -445,7 +445,7 @@ func (h *ChannelHandler) MarkDMRead(w http.ResponseWriter, r *http.Request) {
 		h.handleChannelError(w, err, "mark dm read")
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	respondJSON(w, http.StatusOK, map[string]interface{}{})
 }
 
 // handleChannelError maps service errors to HTTP status codes

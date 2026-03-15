@@ -97,14 +97,18 @@ func (s *channelService) Get(ctx context.Context, channelID, userID string) (*mo
 	return result, nil
 }
 
-// List retrieves all channels where the user is a member
+// List retrieves all channels where the user is a member.
+// Includes both regular channels and DMs so sidebar empty-state fetches can still surface DMs.
 func (s *channelService) List(ctx context.Context, userID string) ([]*models.ChannelWithMembers, error) {
 	channels, err := s.channelRepo.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list channels: %w", err)
 	}
-
-	return channels, nil
+	dms, err := s.channelRepo.ListDMChannels(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list dms: %w", err)
+	}
+	return append(channels, dms...), nil
 }
 
 // IsMember checks if a user is a member of a channel

@@ -107,7 +107,7 @@ export class AuthService {
   /**
    * Basic JWT format validation
    */
-  private static isValidJwtFormat(token: string): boolean {
+  static isValidJwtFormat(token: string): boolean {
     const parts = token.split('.');
     return parts.length === 3;
   }
