@@ -111,6 +111,8 @@ services:
       dockerfile: Dockerfile
     container_name: agentunited-web
     restart: unless-stopped
+    environment:
+      API_UPSTREAM: http://api:8080
     ports:
       - "${WEB_PORT:-3001}:8080"
     depends_on:
