@@ -9,7 +9,7 @@ interface UseWebSocketReturn {
   isConnected: boolean;
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
   messages: Message[];
-  sendMessage: (text: string) => boolean;
+  sendMessage: (text: string) => Promise<boolean>;
   error: string | null;
 }
 

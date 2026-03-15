@@ -169,10 +169,8 @@ export function ChatPage() {
         await sendMessageWithAttachment(activeConversationId, text, attachment);
       } else {
         // Prefer WebSocket, but fallback to HTTP when reconnecting/disconnected.
-        const sentViaWs = sendMessage(text);
-        if (!sentViaWs) {
-          await chatApi.sendMessage(activeConversationId, text);
-        }
+        // sendMessage is async — must await so the Promise resolves to boolean (not truthy Promise object)
+        await sendMessage(text);
       }
       
       if (mentions && mentions.length > 0) {

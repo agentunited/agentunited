@@ -111,6 +111,12 @@ export function InviteAcceptPage() {
     try {
       const response = await acceptInvite({ token, password, display_name: trimmedDisplayName });
       localStorage.setItem('auth-token', response.jwt_token);
+      // Decode JWT payload to persist user-id (used by DM modal filter + own-message detection)
+      try {
+        const payload = JSON.parse(atob(response.jwt_token.split('.')[1]));
+        if (payload.user_id) localStorage.setItem('user-id', payload.user_id);
+        if (payload.email) localStorage.setItem('user-email', payload.email);
+      } catch { /* ignore decode errors */ }
       navigate('/chat');
     } catch (err) {
       if (err instanceof InviteApiError) {
