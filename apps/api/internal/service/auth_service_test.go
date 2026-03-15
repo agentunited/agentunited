@@ -53,6 +53,14 @@ func (m *MockUserRepository) UpdateProfile(ctx context.Context, id, displayName,
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) List(ctx context.Context) ([]*models.User, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.User), args.Error(1)
+}
+
 // Test: Register with valid input should create user
 func TestAuthService_Register_ValidInput(t *testing.T) {
 	mockRepo := new(MockUserRepository)

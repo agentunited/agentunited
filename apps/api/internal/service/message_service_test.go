@@ -28,6 +28,35 @@ func (m *MockMessageRepository) GetByChannel(ctx context.Context, channelID stri
 	return args.Get(0).([]*models.Message), args.Bool(1), args.Error(2)
 }
 
+func (m *MockMessageRepository) GetByID(ctx context.Context, messageID string) (*models.Message, error) {
+	args := m.Called(ctx, messageID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Message), args.Error(1)
+}
+
+func (m *MockMessageRepository) Update(ctx context.Context, messageID, text string) (*models.Message, error) {
+	args := m.Called(ctx, messageID, text)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Message), args.Error(1)
+}
+
+func (m *MockMessageRepository) Delete(ctx context.Context, messageID string) error {
+	args := m.Called(ctx, messageID)
+	return args.Error(0)
+}
+
+func (m *MockMessageRepository) Search(ctx context.Context, query string, channelID string, limit int) ([]*models.Message, error) {
+	args := m.Called(ctx, query, channelID, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.Message), args.Error(1)
+}
+
 // Test: Send message with valid input
 func TestMessageService_Send_ValidInput(t *testing.T) {
 	mockMsgRepo := new(MockMessageRepository)

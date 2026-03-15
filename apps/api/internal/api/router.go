@@ -141,205 +141,126 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	integrationInboundHandler := handlers.NewIntegrationInboundHandler(messageService, agentRepo)
 	r.Post("/api/v1/webhooks/integration/*", integrationInboundHandler.ServeHTTP)
 
-	// Protected API v1 routes (require JWT or API key authentication)
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo, userRepo))
-
-		// Current user profile routes
-		r.Get("/me", meHandler.GetMe)
-		r.Put("/me", meHandler.UpdateMe)
-		r.Post("/me/password", meHandler.ChangePassword)
-
-		// Users/invites routes
-		r.Get("/users", usersHandler.List)
-		r.Post("/invites", inviteHandler.CreateInvite)
-
-		// Integrations routes
-		r.Get("/integrations", integrationHandler.List)
-		r.Post("/integrations", integrationHandler.Create)
-		r.Delete("/integrations/{id}", integrationHandler.Delete)
-
-		// Billing routes
-		r.Post("/billing/checkout", billingHandler.Checkout)
-		r.Get("/billing/checkout", billingHandler.Checkout)
-		r.Post("/billing/portal", billingHandler.Portal)
-		r.Get("/billing/portal", billingHandler.Portal)
-		r.Get("/billing/status", billingHandler.Status)
-
-		// Relay routes
-		r.Get("/relay/status", relayHandler.Status)
-
-		// Admin routes
-		r.Route("/admin", func(r chi.Router) {
-			r.Post("/pairing", pairingHandler.AdminPairing)
-			r.Get("/tunnel/status", pairingHandler.TunnelStatus)
-			r.Post("/tunnel/subdomain/check", pairingHandler.SubdomainCheck)
-			r.Post("/tunnel/subdomain/claim", pairingHandler.SubdomainClaim)
-			r.Get("/pairing/status", pairingHandler.PairingStatus)
+	// Protected API routes (JWT/API key auth), mounted at both /api/v1 and /v1
+	for _, basePath := range []string{"/api/v1", "/v1"} {
+		r.Route(basePath, func(r chi.Router) {
+			r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo, userRepo))
+			registerProtectedRoutes(r, meHandler, usersHandler, inviteHandler, integrationHandler, billingHandler, relayHandler, pairingHandler, centrifugoHandler, agentHandler, apiKeyHandler, webhookHandler, channelHandler, messageHandler)
 		})
-
-		// Centrifugo auth/ops routes
-		r.Route("/realtime/centrifugo", func(r chi.Router) {
-			r.Post("/subscribe-token", centrifugoHandler.SubscribeToken)
-			r.Post("/refresh-token", centrifugoHandler.RefreshToken)
-			r.Get("/presence", centrifugoHandler.Presence)
-			r.Get("/history", centrifugoHandler.History)
-		})
-
-		// Agent routes
-		r.Route("/agents", func(r chi.Router) {
-			r.Post("/", agentHandler.Create)
-			r.Get("/", agentHandler.List)
-			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", agentHandler.Get)
-				r.Patch("/", agentHandler.Update)
-				r.Delete("/", agentHandler.Delete)
-
-				// API key routes
-				r.Post("/keys", apiKeyHandler.Create)
-				r.Get("/keys", apiKeyHandler.List)
-				r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
-
-				// Webhook routes
-				r.Post("/webhooks", webhookHandler.Create)
-				r.Get("/webhooks", webhookHandler.List)
-				r.Delete("/webhooks/{webhook_id}", webhookHandler.Delete)
-				r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
-			})
-		})
-
-		// Channel routes
-		r.Route("/channels", func(r chi.Router) {
-			r.Post("/", channelHandler.Create)
-			r.Get("/", channelHandler.List)
-			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", channelHandler.Get)
-				r.Patch("/", channelHandler.Update)
-				r.Delete("/", channelHandler.Delete)
-				r.Post("/read", channelHandler.MarkRead)
-
-				// Channel member routes
-				r.Get("/members", channelHandler.GetMembers)
-				r.Post("/members", channelHandler.AddMember)
-				r.Delete("/members/{user_id}", channelHandler.RemoveMember)
-
-				// Message routes
-				r.Post("/messages", messageHandler.Send)
-				r.Get("/messages", messageHandler.GetMessages)
-				r.Patch("/messages/{message_id}", messageHandler.EditMessage)
-				r.Delete("/messages/{message_id}", messageHandler.DeleteMessage)
-			})
-		})
-
-		// Message search route
-		r.Get("/messages/search", messageHandler.SearchMessages)
-
-		// DM routes
-		r.Post("/dm", channelHandler.CreateDM)
-		r.Get("/dm", channelHandler.ListDMs)
-		r.Post("/dm/{id}/read", channelHandler.MarkDMRead)
-	})
-
-	// Backward compatibility: Mount protected routes on /v1 as well
-	r.Route("/v1", func(r chi.Router) {
-		r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo, userRepo))
-
-		// Current user profile routes
-		r.Get("/me", meHandler.GetMe)
-		r.Put("/me", meHandler.UpdateMe)
-		r.Post("/me/password", meHandler.ChangePassword)
-
-		// Users/invites routes
-		r.Get("/users", usersHandler.List)
-		r.Post("/invites", inviteHandler.CreateInvite)
-
-		// Integrations routes
-		r.Get("/integrations", integrationHandler.List)
-		r.Post("/integrations", integrationHandler.Create)
-		r.Delete("/integrations/{id}", integrationHandler.Delete)
-
-		// Billing routes
-		r.Post("/billing/checkout", billingHandler.Checkout)
-		r.Get("/billing/checkout", billingHandler.Checkout)
-		r.Post("/billing/portal", billingHandler.Portal)
-		r.Get("/billing/portal", billingHandler.Portal)
-		r.Get("/billing/status", billingHandler.Status)
-
-		// Relay routes
-		r.Get("/relay/status", relayHandler.Status)
-
-		// Admin routes
-		r.Route("/admin", func(r chi.Router) {
-			r.Post("/pairing", pairingHandler.AdminPairing)
-			r.Get("/tunnel/status", pairingHandler.TunnelStatus)
-			r.Post("/tunnel/subdomain/check", pairingHandler.SubdomainCheck)
-			r.Post("/tunnel/subdomain/claim", pairingHandler.SubdomainClaim)
-			r.Get("/pairing/status", pairingHandler.PairingStatus)
-		})
-
-		// Centrifugo auth/ops routes
-		r.Route("/realtime/centrifugo", func(r chi.Router) {
-			r.Post("/subscribe-token", centrifugoHandler.SubscribeToken)
-			r.Post("/refresh-token", centrifugoHandler.RefreshToken)
-			r.Get("/presence", centrifugoHandler.Presence)
-			r.Get("/history", centrifugoHandler.History)
-		})
-
-		// Agent routes
-		r.Route("/agents", func(r chi.Router) {
-			r.Post("/", agentHandler.Create)
-			r.Get("/", agentHandler.List)
-			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", agentHandler.Get)
-				r.Patch("/", agentHandler.Update)
-				r.Delete("/", agentHandler.Delete)
-
-				// API key routes
-				r.Post("/keys", apiKeyHandler.Create)
-				r.Get("/keys", apiKeyHandler.List)
-				r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
-
-				// Webhook routes
-				r.Post("/webhooks", webhookHandler.Create)
-				r.Get("/webhooks", webhookHandler.List)
-				r.Delete("/webhooks/{webhook_id}", webhookHandler.Delete)
-				r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
-			})
-		})
-
-		// Channel routes
-		r.Route("/channels", func(r chi.Router) {
-			r.Post("/", channelHandler.Create)
-			r.Get("/", channelHandler.List)
-			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", channelHandler.Get)
-				r.Patch("/", channelHandler.Update)
-				r.Delete("/", channelHandler.Delete)
-				r.Post("/read", channelHandler.MarkRead)
-
-				// Channel member routes
-				r.Get("/members", channelHandler.GetMembers)
-				r.Post("/members", channelHandler.AddMember)
-				r.Delete("/members/{user_id}", channelHandler.RemoveMember)
-
-				// Message routes
-				r.Post("/messages", messageHandler.Send)
-				r.Get("/messages", messageHandler.GetMessages)
-				r.Patch("/messages/{message_id}", messageHandler.EditMessage)
-				r.Delete("/messages/{message_id}", messageHandler.DeleteMessage)
-			})
-		})
-
-		// Message search route
-		r.Get("/messages/search", messageHandler.SearchMessages)
-
-		// DM routes
-		r.Post("/dm", channelHandler.CreateDM)
-		r.Get("/dm", channelHandler.ListDMs)
-		r.Post("/dm/{id}/read", channelHandler.MarkDMRead)
-	})
+	}
 
 	return r
+}
+
+func registerProtectedRoutes(
+	r chi.Router,
+	meHandler *handlers.MeHandler,
+	usersHandler *handlers.UsersHandler,
+	inviteHandler *handlers.InviteHandler,
+	integrationHandler *handlers.IntegrationHandler,
+	billingHandler *handlers.BillingHandler,
+	relayHandler *handlers.RelayHandler,
+	pairingHandler *handlers.PairingHandler,
+	centrifugoHandler *handlers.CentrifugoHandler,
+	agentHandler *handlers.AgentHandler,
+	apiKeyHandler *handlers.APIKeyHandler,
+	webhookHandler *handlers.WebhookHandler,
+	channelHandler *handlers.ChannelHandler,
+	messageHandler *handlers.MessageHandler,
+) {
+	// Current user profile routes
+	r.Get("/me", meHandler.GetMe)
+	r.Put("/me", meHandler.UpdateMe)
+	r.Post("/me/password", meHandler.ChangePassword)
+
+	// Users/invites routes
+	r.Get("/users", usersHandler.List)
+	r.Post("/invites", inviteHandler.CreateInvite)
+
+	// Integrations routes
+	r.Get("/integrations", integrationHandler.List)
+	r.Post("/integrations", integrationHandler.Create)
+	r.Delete("/integrations/{id}", integrationHandler.Delete)
+
+	// Billing routes
+	r.Post("/billing/checkout", billingHandler.Checkout)
+	r.Get("/billing/checkout", billingHandler.Checkout)
+	r.Post("/billing/portal", billingHandler.Portal)
+	r.Get("/billing/portal", billingHandler.Portal)
+	r.Get("/billing/status", billingHandler.Status)
+
+	// Relay routes
+	r.Get("/relay/status", relayHandler.Status)
+
+	// Admin routes
+	r.Route("/admin", func(r chi.Router) {
+		r.Post("/pairing", pairingHandler.AdminPairing)
+		r.Get("/tunnel/status", pairingHandler.TunnelStatus)
+		r.Post("/tunnel/subdomain/check", pairingHandler.SubdomainCheck)
+		r.Post("/tunnel/subdomain/claim", pairingHandler.SubdomainClaim)
+		r.Get("/pairing/status", pairingHandler.PairingStatus)
+	})
+
+	// Centrifugo auth/ops routes
+	r.Route("/realtime/centrifugo", func(r chi.Router) {
+		r.Post("/subscribe-token", centrifugoHandler.SubscribeToken)
+		r.Post("/refresh-token", centrifugoHandler.RefreshToken)
+		r.Get("/presence", centrifugoHandler.Presence)
+		r.Get("/history", centrifugoHandler.History)
+	})
+
+	// Agent routes
+	r.Route("/agents", func(r chi.Router) {
+		r.Post("/", agentHandler.Create)
+		r.Get("/", agentHandler.List)
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", agentHandler.Get)
+			r.Patch("/", agentHandler.Update)
+			r.Delete("/", agentHandler.Delete)
+
+			// API key routes
+			r.Post("/keys", apiKeyHandler.Create)
+			r.Get("/keys", apiKeyHandler.List)
+			r.Delete("/keys/{key_id}", apiKeyHandler.Delete)
+
+			// Webhook routes
+			r.Post("/webhooks", webhookHandler.Create)
+			r.Get("/webhooks", webhookHandler.List)
+			r.Delete("/webhooks/{webhook_id}", webhookHandler.Delete)
+			r.Get("/webhooks/{webhook_id}/deliveries", webhookHandler.ListDeliveries)
+		})
+	})
+
+	// Channel routes
+	r.Route("/channels", func(r chi.Router) {
+		r.Post("/", channelHandler.Create)
+		r.Get("/", channelHandler.List)
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", channelHandler.Get)
+			r.Patch("/", channelHandler.Update)
+			r.Delete("/", channelHandler.Delete)
+			r.Post("/read", channelHandler.MarkRead)
+
+			// Channel member routes
+			r.Get("/members", channelHandler.GetMembers)
+			r.Post("/members", channelHandler.AddMember)
+			r.Delete("/members/{user_id}", channelHandler.RemoveMember)
+
+			// Message routes
+			r.Post("/messages", messageHandler.Send)
+			r.Get("/messages", messageHandler.GetMessages)
+			r.Patch("/messages/{message_id}", messageHandler.EditMessage)
+			r.Delete("/messages/{message_id}", messageHandler.DeleteMessage)
+		})
+	})
+
+	// Message search route
+	r.Get("/messages/search", messageHandler.SearchMessages)
+
+	// DM routes
+	r.Post("/dm", channelHandler.CreateDM)
+	r.Get("/dm", channelHandler.ListDMs)
+	r.Post("/dm/{id}/read", channelHandler.MarkDMRead)
 }
 
 // loggerMiddleware logs HTTP requests using zerolog

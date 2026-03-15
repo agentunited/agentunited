@@ -194,6 +194,53 @@ func (m *mockChannelRepository) IsMember(ctx context.Context, channelID, userID 
 	return args.Get(0).(bool), args.Get(1).(string), args.Error(2)
 }
 
+func (m *mockChannelRepository) Update(ctx context.Context, channelID, name, topic string) (*models.Channel, error) {
+	args := m.Called(ctx, channelID, name, topic)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Channel), args.Error(1)
+}
+
+func (m *mockChannelRepository) Delete(ctx context.Context, channelID string) error {
+	args := m.Called(ctx, channelID)
+	return args.Error(0)
+}
+
+func (m *mockChannelRepository) RemoveMember(ctx context.Context, channelID, userID string) error {
+	args := m.Called(ctx, channelID, userID)
+	return args.Error(0)
+}
+
+func (m *mockChannelRepository) ListDMChannels(ctx context.Context, userID string) ([]*models.ChannelWithMembers, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.ChannelWithMembers), args.Error(1)
+}
+
+func (m *mockChannelRepository) GetOrCreateDMChannel(ctx context.Context, user1ID, user2ID string) (*models.Channel, error) {
+	args := m.Called(ctx, user1ID, user2ID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Channel), args.Error(1)
+}
+
+func (m *mockChannelRepository) MarkChannelRead(ctx context.Context, userID, channelID string) error {
+	args := m.Called(ctx, userID, channelID)
+	return args.Error(0)
+}
+
+func (m *mockChannelRepository) GetUnreadCounts(ctx context.Context, userID string) (map[string]int, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
 type mockSubscriptionRepository struct {
 	mock.Mock
 }
