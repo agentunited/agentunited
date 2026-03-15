@@ -166,14 +166,20 @@ export function ChatPage() {
   const selectedChannel = channels.find(ch => ch.id === selectedChannelId) || null;
   const selectedDM = directMessages.find(dm => dm.id === selectedDMId) || null;
 
-  const looksLikeUuid = (value?: string) => !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  const hasUuid = (value?: string) =>
+    !!value && /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i.test(value);
 
   const displayMessages = useMemo(() => {
     return messages.map((msg) => {
-      if (!looksLikeUuid(msg.author)) return msg;
       const resolved = userDirectory[msg.authorId];
       if (!resolved) return msg;
-      return { ...msg, author: getDisplayName(resolved) };
+
+      // Replace low-quality author labels (raw UUID, UUID with suffix, etc.) with directory display name.
+      if (msg.author === msg.authorId || hasUuid(msg.author)) {
+        return { ...msg, author: getDisplayName(resolved) };
+      }
+
+      return msg;
     });
   }, [messages, userDirectory]);
 
