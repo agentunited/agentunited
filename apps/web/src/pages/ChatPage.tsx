@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatHeader } from '../components/chat/ChatHeader';
@@ -41,6 +41,7 @@ export function ChatPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [channelMembers, setChannelMembers] = useState<{ id: string; name: string; email: string; type: 'agent' | 'human'; online: boolean }[]>([]);
+  const [userDirectory, setUserDirectory] = useState<Record<string, string>>({});
   
   // Determine if we're viewing a channel or DM
   const isViewingDM = !!selectedDMId;
@@ -111,6 +112,25 @@ export function ChatPage() {
     loadDMs();
   }, [dmId, selectedChannelId, selectedDMId]);
 
+  // Load users directory for sender display-name resolution
+  useEffect(() => {
+    const loadUsersDirectory = async () => {
+      try {
+        const users = await chatApi.getUsers();
+        const next: Record<string, string> = {};
+        for (const user of users) {
+          const display = user.display_name || user.email?.split('@')[0];
+          if (user.id && display) next[user.id] = display;
+        }
+        setUserDirectory(next);
+      } catch (error) {
+        console.error('Failed to load users directory:', error);
+      }
+    };
+
+    void loadUsersDirectory();
+  }, []);
+
   // Load members for the selected channel
   useEffect(() => {
     if (!selectedChannelId || isViewingDM) return;
@@ -145,6 +165,17 @@ export function ChatPage() {
 
   const selectedChannel = channels.find(ch => ch.id === selectedChannelId) || null;
   const selectedDM = directMessages.find(dm => dm.id === selectedDMId) || null;
+
+  const looksLikeUuid = (value?: string) => !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+  const displayMessages = useMemo(() => {
+    return messages.map((msg) => {
+      if (!looksLikeUuid(msg.author)) return msg;
+      const resolved = userDirectory[msg.authorId];
+      if (!resolved) return msg;
+      return { ...msg, author: getDisplayName(resolved) };
+    });
+  }, [messages, userDirectory]);
 
   const markConversationRead = useCallback(async (kind: 'channel' | 'dm', id: string) => {
     try {
@@ -512,7 +543,7 @@ export function ChatPage() {
               />
 
               <MessageList
-                messages={messages}
+                messages={displayMessages}
                 channelId={activeConversationId}
                 channelName={activeConversationName}
                 isDM={isViewingDM}
