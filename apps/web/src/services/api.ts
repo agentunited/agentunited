@@ -65,7 +65,7 @@ export async function fetchMessages(channelId: string): Promise<Message[]> {
   return messages.map((msg: any) => ({
     id: msg.id,
     channelId: msg.channel_id || channelId,
-    author: msg.author_display_name || msg.author_name || msg.author_email || msg.author?.display_name || msg.author?.name || 'Unknown',
+    author: msg.author_display_name || msg.author_name || msg.author_email || msg.author?.display_name || msg.author?.name || msg.author_id?.slice(0, 8) || 'User',
     authorId: msg.author_id,
     authorType: msg.author_type === 'agent' ? 'agent' as const : 'human' as const,
     text: msg.text,

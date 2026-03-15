@@ -117,7 +117,11 @@ export function InviteAcceptPage() {
         if (payload.user_id) localStorage.setItem('user-id', payload.user_id);
         if (payload.email) localStorage.setItem('user-email', payload.email);
       } catch { /* ignore decode errors */ }
-      navigate('/chat');
+      if (response.dm_channel_id) {
+        navigate(`/chat/dm/${response.dm_channel_id}`);
+      } else {
+        navigate('/chat?first_login=1');
+      }
     } catch (err) {
       if (err instanceof InviteApiError) {
         setError(err.error.message);

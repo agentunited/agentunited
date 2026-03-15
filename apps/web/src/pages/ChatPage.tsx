@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatHeader } from '../components/chat/ChatHeader';
 import { MessageList } from '../components/chat/MessageList';
@@ -26,6 +26,7 @@ interface DirectMessage {
 export function ChatPage() {
   const navigate = useNavigate();
   const { dmId } = useParams<{ dmId?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
@@ -41,7 +42,7 @@ export function ChatPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [channelMembers, setChannelMembers] = useState<{ id: string; name: string; email: string; type: 'agent' | 'human'; online: boolean }[]>([]);
-  const [userDirectory, setUserDirectory] = useState<Record<string, string>>({});
+  const [userDirectory, setUserDirectory] = useState<Record<string, { display: string; type: 'agent' | 'human' }>>({});
   
   // Determine if we're viewing a channel or DM
   const isViewingDM = !!selectedDMId;
@@ -111,10 +112,12 @@ export function ChatPage() {
     const loadUsersDirectory = async () => {
       try {
         const users = await chatApi.getUsers();
-        const next: Record<string, string> = {};
+        const next: Record<string, { display: string; type: 'agent' | 'human' }> = {};
         for (const user of users) {
           const display = user.display_name || user.email?.split('@')[0];
-          if (user.id && display) next[user.id] = display;
+          if (user.id && display) {
+            next[user.id] = { display, type: user.type === 'agent' ? 'agent' : 'human' };
+          }
         }
         setUserDirectory(next);
       } catch (error) {
@@ -166,7 +169,7 @@ export function ChatPage() {
     return directMessages.map((dm) => {
       const resolved = userDirectory[dm.name];
       if (resolved) {
-        return { ...dm, name: getDisplayName(resolved) };
+        return { ...dm, name: getDisplayName(resolved.display), type: resolved.type };
       }
 
       if (hasUuid(dm.name)) {
@@ -186,7 +189,7 @@ export function ChatPage() {
 
       // Replace low-quality author labels (raw UUID, UUID with suffix, etc.) with directory display name.
       if (msg.author === msg.authorId || hasUuid(msg.author)) {
-        return { ...msg, author: getDisplayName(resolved) };
+        return { ...msg, author: getDisplayName(resolved.display) };
       }
 
       return msg;
@@ -211,15 +214,24 @@ export function ChatPage() {
     if (!activeConversationId) return;
     
     try {
+      let sent = false;
       if (attachment) {
         // Use API directly for file uploads
         await sendMessageWithAttachment(activeConversationId, text, attachment);
+        sent = true;
       } else {
         // Prefer WebSocket, but fallback to HTTP when reconnecting/disconnected.
-        // sendMessage is async — must await so the Promise resolves to boolean (not truthy Promise object)
-        await sendMessage(text);
+        sent = await sendMessage(text);
       }
-      
+
+      if (!sent) {
+        throw new Error('Failed to send message');
+      }
+
+      if (isViewingDM && selectedDM?.type === 'agent' && !selectedDM.online) {
+        setStartupToast('Agent is offline — your message was delivered and will be read when they reconnect.');
+      }
+
       if (mentions && mentions.length > 0) {
         console.log('Mentions in message:', mentions);
       }
@@ -347,6 +359,32 @@ export function ChatPage() {
       setSelectedChannelId('');
     }
   }, [dmId]);
+
+  // First-login onboarding fallback: if invite accept did not return dm_channel_id,
+  // auto-open a DM with the first available agent once users list is loaded.
+  useEffect(() => {
+    if (searchParams.get('first_login') !== '1') return;
+    if (selectedChannelId || selectedDMId || dmId) return;
+
+    const firstAgent = Object.entries(userDirectory).find(([, user]) => user.type === 'agent');
+    if (!firstAgent) return;
+
+    const createStarterDm = async () => {
+      try {
+        const dm = await chatApi.createDM(firstAgent[0]);
+        setSelectedDMId(dm.id);
+        setSelectedChannelId('');
+        navigate(`/chat/dm/${dm.id}`);
+        const next = new URLSearchParams(searchParams);
+        next.delete('first_login');
+        setSearchParams(next, { replace: true });
+      } catch {
+        setStartupToast('You\'re in. Start a conversation with your agent ↓');
+      }
+    };
+
+    void createStarterDm();
+  }, [searchParams, selectedChannelId, selectedDMId, dmId, userDirectory, navigate, setSearchParams]);
 
   useEffect(() => {
     if (selectedDMId) {

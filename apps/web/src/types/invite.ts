@@ -15,6 +15,7 @@ export interface InviteAcceptResponse {
   user_id: string;
   jwt_token: string;
   redirect: string;
+  dm_channel_id?: string;
 }
 
 export interface InviteError {
