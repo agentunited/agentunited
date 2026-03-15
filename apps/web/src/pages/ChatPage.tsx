@@ -164,10 +164,26 @@ export function ChatPage() {
   }, [selectedChannelId, isViewingDM]);
 
   const selectedChannel = channels.find(ch => ch.id === selectedChannelId) || null;
-  const selectedDM = directMessages.find(dm => dm.id === selectedDMId) || null;
 
   const hasUuid = (value?: string) =>
     !!value && /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i.test(value);
+
+  const displayDirectMessages = useMemo(() => {
+    return directMessages.map((dm) => {
+      const resolved = userDirectory[dm.name];
+      if (resolved) {
+        return { ...dm, name: getDisplayName(resolved) };
+      }
+
+      if (hasUuid(dm.name)) {
+        return { ...dm, name: 'Direct Message' };
+      }
+
+      return { ...dm, name: getDisplayName(dm.name) };
+    });
+  }, [directMessages, userDirectory]);
+
+  const selectedDM = displayDirectMessages.find(dm => dm.id === selectedDMId) || null;
 
   const displayMessages = useMemo(() => {
     return messages.map((msg) => {
@@ -446,11 +462,11 @@ export function ChatPage() {
 
   // Determine the active conversation name and type
   const activeConversationName = isViewingDM 
-    ? getDisplayName(selectedDM?.name || 'Unknown')
+    ? (selectedDM?.name || 'Direct Message')
     : selectedChannel?.name || 'unknown';
   
   const activeConversationTopic = isViewingDM 
-    ? `Direct message with ${selectedDM?.name}`
+    ? `Direct message with ${selectedDM?.name || 'participant'}`
     : selectedChannel?.topic;
 
   return (
@@ -470,7 +486,7 @@ export function ChatPage() {
       >
         <ChatSidebar
           channels={channels}
-          directMessages={directMessages}
+          directMessages={displayDirectMessages}
           activeChannelId={activeConversationId}
           isOpen={sidebarOpen}
           onChannelSelect={handleSelectChannel}
@@ -575,7 +591,7 @@ export function ChatPage() {
                 onSend={handleSendMessage}
                 members={isViewingDM ? [] : channelMembers}
                 placeholder={isViewingDM
-                  ? `Message ${selectedDM?.name || 'user'}`
+                  ? `Message ${selectedDM?.name || 'participant'}`
                   : `Message #${selectedChannel?.name || 'general'}`
                 }
                 className="chat-message-input"

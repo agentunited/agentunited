@@ -36,13 +36,19 @@ export function NewDMModal({ isOpen, onClose, onDMCreated }: NewDMModalProps) {
         
         const apiUsers = await chatApi.getUsers();
 
-        const userList: User[] = apiUsers.map((user) => ({
-          id: user.id,
-          name: user.display_name || (user.email ? user.email.split('@')[0] : 'Unknown'),
-          email: user.email || '',
-          type: user.type === 'agent' ? 'agent' : 'human',
-          online: false,
-        }));
+        const userList: User[] = apiUsers.map((user) => {
+          const type: 'agent' | 'human' = user.type === 'agent' ? 'agent' : 'human';
+          const baseName = user.display_name || (user.email ? user.email.split('@')[0] : 'Unknown');
+          const normalizedName = type === 'agent' ? baseName.replace(/\s+agent$/i, '') : baseName;
+
+          return {
+            id: user.id,
+            name: normalizedName,
+            email: user.email || '',
+            type,
+            online: false,
+          };
+        });
         
         // Remove current user from the list
         const currentUserId = localStorage.getItem('user-id');
