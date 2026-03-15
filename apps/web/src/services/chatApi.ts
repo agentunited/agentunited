@@ -9,7 +9,9 @@ interface ApiMessage {
   channel_id: string;
   author_id: string;
   author_type: string; // "agent" | "user"
-  author_email: string; // display name for agents, email for users
+  author_email?: string;
+  author_display_name?: string;
+  author_name?: string;
   text: string;
   created_at: string;
 }
@@ -83,15 +85,34 @@ async function apiRequest<T>(
     throw new ChatApiError(errorMessage, response.status);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const raw = await response.text();
+  if (!raw) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined as T;
+  }
 }
 
 // Convert API message format to frontend format
 function mapApiMessage(apiMsg: ApiMessage, currentUserId?: string): Message {
+  const authorLabel =
+    apiMsg.author_display_name ||
+    apiMsg.author_name ||
+    apiMsg.author_email ||
+    apiMsg.author_id;
+
   return {
     id: apiMsg.id,
     channelId: apiMsg.channel_id,
-    author: getDisplayName(apiMsg.author_email || apiMsg.author_id),
+    author: getDisplayName(authorLabel),
     authorId: apiMsg.author_id,
     authorType: apiMsg.author_type === 'agent' ? 'agent' : 'human',
     text: apiMsg.text,
@@ -118,8 +139,12 @@ export const chatApi = {
   async getChannels(): Promise<Channel[]> {
     try {
       const response = await apiRequest<{ channels: ApiChannel[] } | ApiChannel[]>('/api/v1/channels');
-      const apiChannels = Array.isArray(response) ? response : response.channels || [];
-      return apiChannels.map(mapApiChannel);
+      const apiChannels = Array.isArray(response) ? response : response?.channels || [];
+      const filtered = apiChannels.filter((ch: ApiChannel & { type?: string; channel_type?: string }) => {
+        const type = (ch.channel_type || ch.type || '').toLowerCase();
+        return type !== 'dm' && type !== 'direct_message';
+      });
+      return filtered.map(mapApiChannel);
     } catch (error) {
       console.error('Failed to fetch channels:', error);
       throw error;
