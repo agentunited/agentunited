@@ -9,7 +9,6 @@ import { NewDMModal } from '../components/chat/NewDMModal';
 import { MemberListPanel } from '../components/chat/MemberListPanel';
 import { SearchResultsPanel } from '../components/chat/SearchResultsPanel';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
-import { ConnectionBanner } from '../components/ui/ConnectionBanner';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { chatApi } from '../services/chatApi';
 import { sendMessageWithAttachment } from '../services/api';
@@ -38,6 +37,7 @@ export function ChatPage() {
   const [showMembersPanel, setShowMembersPanel] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [channelCreateWarning, setChannelCreateWarning] = useState<string | null>(null);
+  const [startupToast, setStartupToast] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [channelMembers, setChannelMembers] = useState<{ id: string; name: string; email: string; type: 'agent' | 'human'; online: boolean }[]>([]);
@@ -47,7 +47,7 @@ export function ChatPage() {
   const isViewingDM = !!selectedDMId;
   const activeConversationId = isViewingDM ? selectedDMId : selectedChannelId;
   
-  const { connectionStatus, messages, sendMessage, error: wsError } = useWebSocket('', activeConversationId);
+  const { connectionStatus, messages, sendMessage } = useWebSocket('', activeConversationId);
 
   // Load channels on component mount
   useEffect(() => {
@@ -288,6 +288,11 @@ export function ChatPage() {
   }, [selectedChannelId, channels]);
 
   const handleDMCreated = useCallback(async (dmId: string) => {
+    if (!dmId) {
+      setStartupToast('Workspace loading, please try again');
+      return;
+    }
+
     try {
       // Reload DMs to get the new one
       const dms = await chatApi.listDMs();
@@ -301,17 +306,21 @@ export function ChatPage() {
           unread: dm.unread
         };
       });
-      
+
       setDirectMessages(directMessageList);
-      
+
+      const created = directMessageList.find((dm) => dm.id === dmId);
+      if (!created) {
+        setStartupToast('Workspace loading, please try again');
+        return;
+      }
+
       // Select the new DM
       setSelectedDMId(dmId);
       setSelectedChannelId(''); // Clear channel selection
     } catch (error) {
       console.error('Failed to refresh DMs:', error);
-      // Still select the DM even if refresh failed
-      setSelectedDMId(dmId);
-      setSelectedChannelId('');
+      setStartupToast('Workspace loading, please try again');
     }
   }, []);
 
@@ -326,6 +335,12 @@ export function ChatPage() {
       void markConversationRead('channel', selectedChannelId);
     }
   }, [selectedChannelId, selectedDMId, markConversationRead]);
+
+  useEffect(() => {
+    if (!startupToast) return;
+    const t = window.setTimeout(() => setStartupToast(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [startupToast]);
 
   useEffect(() => {
     if (!channelCreateWarning) return;
@@ -454,6 +469,7 @@ export function ChatPage() {
           isOpen={sidebarOpen}
           onChannelSelect={handleSelectChannel}
           onDMSelect={handleDMSelect}
+          connectionStatus={connectionStatus}
           onCreateChannel={() => setShowCreateChannel(true)}
           onNewDM={() => setShowNewDM(true)}
           onSearch={handleSearch}
@@ -488,8 +504,6 @@ export function ChatPage() {
         className="flex-1"
       >
         <div className="flex-1 flex flex-col">
-          <ConnectionBanner status={connectionStatus} error={wsError} />
-
           {channelCreateWarning && (
             <div className="border-b border-amber-400/25 bg-amber-500/10 px-4 py-2 text-sm text-amber-700 dark:text-amber-300">
               {channelCreateWarning}
@@ -573,6 +587,12 @@ export function ChatPage() {
           channelId={selectedChannel.id}
           channelName={selectedChannel.name}
         />
+      )}
+
+      {startupToast && (
+        <div className="fixed right-4 bottom-4 z-50 rounded-md border border-slate-300 bg-slate-900 px-3 py-2 text-sm text-white shadow-lg">
+          {startupToast}
+        </div>
       )}
     </div>
   );

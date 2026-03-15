@@ -21,6 +21,7 @@ interface ChatSidebarProps {
   directMessages: DirectMessage[]
   activeChannelId?: string
   isOpen?: boolean
+  connectionStatus?: 'connected' | 'reconnecting' | 'disconnected'
   onChannelSelect: (id: string) => void
   onDMSelect: (id: string) => void
   onCreateChannel?: () => void
@@ -37,6 +38,7 @@ export function ChatSidebar({
   directMessages,
   activeChannelId,
   isOpen = false,
+  connectionStatus = 'connected',
   onChannelSelect,
   onDMSelect,
   onCreateChannel,
@@ -231,6 +233,9 @@ export function ChatSidebar({
       </div>
 
       <div className="border-t border-sidebar-border px-3 py-2">
+        <div className="mb-2 flex items-center px-2" title={connectionStatus === 'connected' ? 'Realtime connected' : 'HTTP-only mode'}>
+          <span className={`h-2 w-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+        </div>
         <button
           onClick={onOpenSettings}
           className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
