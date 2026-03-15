@@ -21,7 +21,8 @@ func hashTestToken(token string) string {
 func TestInviteService_ValidateInvite_HappyPath(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
-	service := NewInviteService(userRepo, inviteRepo, "test-jwt-secret", "http://localhost:3001")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -55,7 +56,8 @@ func TestInviteService_ValidateInvite_HappyPath(t *testing.T) {
 func TestInviteService_ValidateInvite_InvalidToken(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
-	service := NewInviteService(userRepo, inviteRepo, "test-jwt-secret", "http://localhost:3001")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -72,7 +74,8 @@ func TestInviteService_ValidateInvite_InvalidToken(t *testing.T) {
 func TestInviteService_AcceptInvite_HappyPath(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
-	service := NewInviteService(userRepo, inviteRepo, "test-jwt-secret", "http://localhost:3001")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -113,7 +116,8 @@ func TestInviteService_AcceptInvite_HappyPath(t *testing.T) {
 func TestInviteService_AcceptInvite_InvalidToken(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
-	service := NewInviteService(userRepo, inviteRepo, "test-jwt-secret", "http://localhost:3001")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -130,7 +134,8 @@ func TestInviteService_AcceptInvite_InvalidToken(t *testing.T) {
 func TestInviteService_AcceptInvite_WeakPassword(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
-	service := NewInviteService(userRepo, inviteRepo, "test-jwt-secret", "http://localhost:3001")
+	subscriptionRepo := &mockSubscriptionRepository{}
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 

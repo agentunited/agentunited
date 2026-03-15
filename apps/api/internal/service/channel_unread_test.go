@@ -85,6 +85,7 @@ func TestChannelService_List_ReturnsUnreadCount(t *testing.T) {
 	svc := NewChannelService(repo)
 	ctx := context.Background()
 	repo.On("ListByUser", ctx, "u1").Return([]*models.ChannelWithMembers{{Channel: models.Channel{ID: "c1"}, UnreadCount: 3}}, nil)
+	repo.On("ListDMChannels", ctx, "u1").Return([]*models.ChannelWithMembers{}, nil)
 
 	channels, err := svc.List(ctx, "u1")
 	assert.NoError(t, err)

@@ -24,7 +24,9 @@ func setupTestDB(t *testing.T) *DB {
 
 	ctx := context.Background()
 	db, err := NewDB(ctx, cfg)
-	require.NoError(t, err, "Failed to connect to test database")
+	if err != nil {
+		t.Skipf("Skipping repository DB test: test database unavailable: %v", err)
+	}
 
 	// Drop all tables and recreate schema (clean slate for tests)
 	_, err = db.Pool.Exec(ctx, "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")

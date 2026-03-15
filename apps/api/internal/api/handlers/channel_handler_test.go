@@ -50,6 +50,58 @@ func (m *MockChannelService) IsMember(ctx context.Context, channelID, userID str
 	return args.Bool(0), args.String(1), args.Error(2)
 }
 
+func (m *MockChannelService) Update(ctx context.Context, channelID, userID, name, topic string) (*models.Channel, error) {
+	args := m.Called(ctx, channelID, userID, name, topic)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Channel), args.Error(1)
+}
+
+func (m *MockChannelService) Delete(ctx context.Context, channelID, userID string) error {
+	args := m.Called(ctx, channelID, userID)
+	return args.Error(0)
+}
+
+func (m *MockChannelService) GetMembers(ctx context.Context, channelID, userID string) ([]*models.MemberInfo, error) {
+	args := m.Called(ctx, channelID, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.MemberInfo), args.Error(1)
+}
+
+func (m *MockChannelService) AddMember(ctx context.Context, channelID, targetUserID, requesterUserID, role string) error {
+	args := m.Called(ctx, channelID, targetUserID, requesterUserID, role)
+	return args.Error(0)
+}
+
+func (m *MockChannelService) RemoveMember(ctx context.Context, channelID, targetUserID, requesterUserID string) error {
+	args := m.Called(ctx, channelID, targetUserID, requesterUserID)
+	return args.Error(0)
+}
+
+func (m *MockChannelService) ListDMChannels(ctx context.Context, userID string) ([]*models.ChannelWithMembers, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.ChannelWithMembers), args.Error(1)
+}
+
+func (m *MockChannelService) CreateOrGetDMChannel(ctx context.Context, userID, targetUserID string) (*models.Channel, error) {
+	args := m.Called(ctx, userID, targetUserID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Channel), args.Error(1)
+}
+
+func (m *MockChannelService) MarkChannelRead(ctx context.Context, channelID, userID string) error {
+	args := m.Called(ctx, channelID, userID)
+	return args.Error(0)
+}
+
 // Test: Create channel with valid input
 func TestChannelHandler_Create_Success(t *testing.T) {
 	mockService := new(MockChannelService)
@@ -72,7 +124,7 @@ func TestChannelHandler_Create_Success(t *testing.T) {
 	bodyJSON, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/channels", bytes.NewReader(bodyJSON))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Add user ID to context (simulating auth middleware)
 	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user-id")
 	req = req.WithContext(ctx)

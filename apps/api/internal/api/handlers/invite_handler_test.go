@@ -32,8 +32,8 @@ func (m *mockInviteService) AcceptInvite(ctx context.Context, token, password, d
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockInviteService) CreateInvite(ctx context.Context, email, displayName string) (string, string, error) {
-	args := m.Called(ctx, email, displayName)
+func (m *mockInviteService) CreateInvite(ctx context.Context, workspaceID, email, displayName string) (string, string, error) {
+	args := m.Called(ctx, workspaceID, email, displayName)
 	return args.String(0), args.String(1), args.Error(2)
 }
 

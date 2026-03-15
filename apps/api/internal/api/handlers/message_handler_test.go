@@ -87,6 +87,10 @@ func (m *mockWebhookService) DispatchEvent(ctx context.Context, channelID, event
 	m.Called(ctx, channelID, eventType, payload)
 }
 
+func (m *mockWebhookService) DispatchSigned(ctx context.Context, url, eventType, integrationID string, payload []byte, signature string) {
+	m.Called(ctx, url, eventType, integrationID, payload, signature)
+}
+
 func (m *mockRealtime) Enabled() bool {
 	return m.Called().Bool(0)
 }
@@ -104,7 +108,7 @@ func buildSendRequest(t *testing.T) *http.Request {
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "u1")
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("channel_id", "ch1")
+	rctx.URLParams.Add("id", "ch1")
 	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
 	return req.WithContext(ctx)
 }
@@ -119,6 +123,7 @@ func TestSend_PublishesToCentrifugo_WhenEnabled(t *testing.T) {
 	msg := &models.Message{ID: "m1", ChannelID: "ch1", AuthorID: "u1", Text: "hello", CreatedAt: time.Now()}
 	ms.On("SendMessageWithAttachment", mock.Anything, mock.AnythingOfType("*models.Message"), (*service.AgentContext)(nil)).Return(msg, nil)
 	ws.On("DispatchEvent", mock.Anything, "ch1", "message.created", mock.Anything).Return()
+	hb.On("Broadcast", mock.Anything, "ch1", mock.AnythingOfType("[]uint8")).Return()
 	rt.On("Enabled").Return(true)
 	rt.On("Publish", mock.Anything, "ch1", mock.Anything).Return(nil)
 
@@ -127,7 +132,7 @@ func TestSend_PublishesToCentrifugo_WhenEnabled(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	rt.AssertCalled(t, "Publish", mock.Anything, "ch1", mock.Anything)
-	hb.AssertNotCalled(t, "Broadcast", mock.Anything, mock.Anything, mock.Anything)
+	hb.AssertCalled(t, "Broadcast", mock.Anything, "ch1", mock.AnythingOfType("[]uint8"))
 }
 
 func TestSend_UsesHubFallback_WhenCentrifugoDisabled(t *testing.T) {

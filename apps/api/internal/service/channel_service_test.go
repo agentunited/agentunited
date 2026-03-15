@@ -54,6 +54,53 @@ func (m *MockChannelRepository) AddMember(ctx context.Context, channelID, userID
 	return args.Error(0)
 }
 
+func (m *MockChannelRepository) Update(ctx context.Context, channelID, name, topic string) (*models.Channel, error) {
+	args := m.Called(ctx, channelID, name, topic)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Channel), args.Error(1)
+}
+
+func (m *MockChannelRepository) Delete(ctx context.Context, channelID string) error {
+	args := m.Called(ctx, channelID)
+	return args.Error(0)
+}
+
+func (m *MockChannelRepository) RemoveMember(ctx context.Context, channelID, userID string) error {
+	args := m.Called(ctx, channelID, userID)
+	return args.Error(0)
+}
+
+func (m *MockChannelRepository) ListDMChannels(ctx context.Context, userID string) ([]*models.ChannelWithMembers, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.ChannelWithMembers), args.Error(1)
+}
+
+func (m *MockChannelRepository) GetOrCreateDMChannel(ctx context.Context, user1ID, user2ID string) (*models.Channel, error) {
+	args := m.Called(ctx, user1ID, user2ID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Channel), args.Error(1)
+}
+
+func (m *MockChannelRepository) MarkChannelRead(ctx context.Context, userID, channelID string) error {
+	args := m.Called(ctx, userID, channelID)
+	return args.Error(0)
+}
+
+func (m *MockChannelRepository) GetUnreadCounts(ctx context.Context, userID string) (map[string]int, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int), args.Error(1)
+}
+
 // Test: Create channel with valid name
 func TestChannelService_Create_ValidName(t *testing.T) {
 	mockRepo := new(MockChannelRepository)
@@ -90,13 +137,13 @@ func TestChannelService_Create_InvalidName(t *testing.T) {
 	ctx := context.Background()
 
 	invalidNames := []string{
-		"General",          // Uppercase
-		"test channel",     // Space
-		"test_channel",     // Underscore
-		"test.channel",     // Dot
-		"test@channel",     // Special char
-		"",                 // Empty
-		"a",                // Too short (< 2 chars)
+		"General",                           // Uppercase
+		"test channel",                      // Space
+		"test_channel",                      // Underscore
+		"test.channel",                      // Dot
+		"test@channel",                      // Special char
+		"",                                  // Empty
+		"a",                                 // Too short (< 2 chars)
 		"123456789012345678901234567890123", // Too long (> 32 chars)
 	}
 
@@ -147,6 +194,7 @@ func TestChannelService_List(t *testing.T) {
 	}
 
 	mockRepo.On("ListByUser", ctx, userID).Return(expectedChannels, nil)
+	mockRepo.On("ListDMChannels", ctx, userID).Return([]*models.ChannelWithMembers{}, nil)
 
 	channels, err := service.List(ctx, userID)
 
