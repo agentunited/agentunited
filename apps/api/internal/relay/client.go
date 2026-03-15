@@ -73,7 +73,7 @@ func (c *Client) runSession(ctx context.Context) error {
 		Type:         TypeRegister,
 		Token:        c.token,
 		Version:      "1.0",
-		Capabilities: []string{"http", "websocket"},
+		Capabilities: []string{"http"},
 	}
 	if err := conn.WriteJSON(reg); err != nil {
 		return fmt.Errorf("send register: %w", err)

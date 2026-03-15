@@ -157,6 +157,15 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Relay currently supports HTTP request/response tunneling only.
+	// Explicitly reject WebSocket upgrades to avoid long 504 timeouts.
+	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUpgradeRequired)
+		_, _ = w.Write([]byte(`{"error":"websocket upgrades are not supported over relay"}`))
+		return
+	}
+
 	sub, ok := s.subdomainFromHost(r.Host)
 	if !ok {
 		http.Error(w, "invalid tunnel host", http.StatusBadRequest)
