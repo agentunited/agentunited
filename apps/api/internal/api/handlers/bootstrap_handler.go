@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -123,6 +124,9 @@ func (h *BootstrapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BootstrapHandler) rateLimitBootstrap(ctx context.Context, ip string) (bool, error) {
+	if strings.EqualFold(os.Getenv("BOOTSTRAP_RATE_LIMIT_DISABLED"), "true") {
+		return false, nil
+	}
 	if h.limiter == nil {
 		return false, nil
 	}

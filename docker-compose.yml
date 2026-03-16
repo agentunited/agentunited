@@ -73,6 +73,7 @@ services:
       DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-tunnel}
       FRONTEND_URL: ${FRONTEND_URL}
       RELAY_LOCAL_API: http://web:8080
+      BOOTSTRAP_RATE_LIMIT_DISABLED: "true"
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
