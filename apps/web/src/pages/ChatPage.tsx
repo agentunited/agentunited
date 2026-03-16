@@ -115,9 +115,11 @@ export function ChatPage() {
         const next: Record<string, { display: string; type: 'agent' | 'human' }> = {};
         for (const user of users) {
           const display = user.display_name || user.email?.split('@')[0];
-          if (user.id && display) {
-            next[user.id] = { display, type: user.type === 'agent' ? 'agent' : 'human' };
-          }
+          const entry = { display: display || 'Unknown', type: user.type === 'agent' ? 'agent' as const : 'human' as const };
+          // Index by id (for message author resolution) AND by email (for DM name resolution)
+          if (user.id) next[user.id] = entry;
+          if (user.email) next[user.email] = entry;
+          if (user.name) next[user.name] = entry;
         }
         setUserDirectory(next);
       } catch (error) {
