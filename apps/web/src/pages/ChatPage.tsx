@@ -86,7 +86,7 @@ export function ChatPage() {
         const directMessageList: DirectMessage[] = dms.map(dm => ({
           id: dm.id,
           name: dm.name,
-          type: 'human',
+          type: /agent/i.test(dm.name) ? 'agent' : 'human',
           online: false,
           unread: dm.unread
         }));
@@ -119,7 +119,6 @@ export function ChatPage() {
           // Index by id (for message author resolution) AND by email (for DM name resolution)
           if (user.id) next[user.id] = entry;
           if (user.email) next[user.email] = entry;
-          if (user.name) next[user.name] = entry;
         }
         setUserDirectory(next);
       } catch (error) {
@@ -167,18 +166,24 @@ export function ChatPage() {
   const hasUuid = (value?: string) =>
     !!value && /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i.test(value);
 
+  const normalizeLabel = (name: string) =>
+    name
+      .replace(/\b(Agent)\s+\1\b/gi, '$1')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
   const displayDirectMessages = useMemo(() => {
     return directMessages.map((dm) => {
       const resolved = userDirectory[dm.name];
       if (resolved) {
-        return { ...dm, name: getDisplayName(resolved.display), type: resolved.type };
+        return { ...dm, name: normalizeLabel(getDisplayName(resolved.display)), type: resolved.type };
       }
 
       if (hasUuid(dm.name)) {
         return { ...dm, name: 'Direct Message' };
       }
 
-      return { ...dm, name: getDisplayName(dm.name) };
+      return { ...dm, name: normalizeLabel(getDisplayName(dm.name)) };
     });
   }, [directMessages, userDirectory]);
 
@@ -329,7 +334,7 @@ export function ChatPage() {
       const directMessageList: DirectMessage[] = dms.map(dm => ({
         id: dm.id,
         name: dm.name,
-        type: 'human',
+        type: /agent/i.test(dm.name) ? 'agent' : 'human',
         online: false,
         unread: dm.unread
       }));
