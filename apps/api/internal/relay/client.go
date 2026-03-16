@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +23,8 @@ type Client struct {
 	httpClient *http.Client
 
 	writeMu sync.Mutex
+	wsMu    sync.Mutex
+	wsConns map[string]*websocket.Conn
 }
 
 func NewClient(relayURL, token, localAPI string) *Client {
@@ -32,6 +35,7 @@ func NewClient(relayURL, token, localAPI string) *Client {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		wsConns: make(map[string]*websocket.Conn),
 	}
 }
 
@@ -73,7 +77,7 @@ func (c *Client) runSession(ctx context.Context) error {
 		Type:         TypeRegister,
 		Token:        c.token,
 		Version:      "1.0",
-		Capabilities: []string{"http"},
+		Capabilities: []string{"http", "websocket"},
 	}
 	if err := conn.WriteJSON(reg); err != nil {
 		return fmt.Errorf("send register: %w", err)
@@ -105,6 +109,24 @@ func (c *Client) runSession(ctx context.Context) error {
 				continue
 			}
 			go c.handleRequest(ctx, conn, req)
+		case TypeWSOpen:
+			var open WSOpenMessage
+			if err := json.Unmarshal(data, &open); err != nil {
+				continue
+			}
+			go c.handleWSOpen(ctx, conn, open)
+		case TypeWSData:
+			var d WSDataMessage
+			if err := json.Unmarshal(data, &d); err != nil {
+				continue
+			}
+			c.handleWSData(d)
+		case TypeWSClose:
+			var cl WSCloseMessage
+			if err := json.Unmarshal(data, &cl); err != nil {
+				continue
+			}
+			c.handleWSClose(cl.ID)
 		case TypeError:
 			var er ErrorMessage
 			_ = json.Unmarshal(data, &er)
@@ -147,6 +169,58 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 		Body:    base64.StdEncoding.EncodeToString(respBody),
 	}
 	_ = c.writeJSON(ws, resp)
+}
+
+func (c *Client) handleWSOpen(ctx context.Context, ws *websocket.Conn, open WSOpenMessage) {
+	dialer := websocket.Dialer{}
+	localURL := strings.Replace(c.localAPI, "http://", "ws://", 1) + open.Path
+	localConn, _, err := dialer.DialContext(ctx, localURL, open.Headers)
+	if err != nil {
+		_ = c.writeJSON(ws, WSOpenedMessage{Type: TypeWSOpened, ID: open.ID, Success: false, Error: err.Error()})
+		return
+	}
+
+	c.wsMu.Lock()
+	c.wsConns[open.ID] = localConn
+	c.wsMu.Unlock()
+
+	_ = c.writeJSON(ws, WSOpenedMessage{Type: TypeWSOpened, ID: open.ID, Success: true})
+
+	go func() {
+		defer c.handleWSClose(open.ID)
+		for {
+			mt, payload, err := localConn.ReadMessage()
+			if err != nil {
+				_ = c.writeJSON(ws, WSCloseMessage{Type: TypeWSClose, ID: open.ID})
+				return
+			}
+			_ = c.writeJSON(ws, WSDataMessage{Type: TypeWSData, ID: open.ID, MessageType: mt, Data: base64.StdEncoding.EncodeToString(payload)})
+		}
+	}()
+}
+
+func (c *Client) handleWSData(d WSDataMessage) {
+	c.wsMu.Lock()
+	conn := c.wsConns[d.ID]
+	c.wsMu.Unlock()
+	if conn == nil {
+		return
+	}
+	payload, err := base64.StdEncoding.DecodeString(d.Data)
+	if err != nil {
+		return
+	}
+	_ = conn.WriteMessage(d.MessageType, payload)
+}
+
+func (c *Client) handleWSClose(id string) {
+	c.wsMu.Lock()
+	conn := c.wsConns[id]
+	delete(c.wsConns, id)
+	c.wsMu.Unlock()
+	if conn != nil {
+		_ = conn.Close()
+	}
 }
 
 func (c *Client) writeJSON(ws *websocket.Conn, v any) error {

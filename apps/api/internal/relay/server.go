@@ -25,6 +25,9 @@ type clientConn struct {
 	conn      *websocket.Conn
 	writeMu   sync.Mutex
 	pending   sync.Map // request_id -> chan ResponseMessage
+	wsOpen    sync.Map // ws_id -> chan WSOpenedMessage
+	wsData    sync.Map // ws_id -> chan WSDataMessage
+	wsClosed  sync.Map // ws_id -> chan struct{}
 }
 
 func (c *clientConn) writeJSON(v any) error {
@@ -147,6 +150,42 @@ func (s *Server) readLoop(_ context.Context, cc *clientConn) {
 				default:
 				}
 			}
+		case TypeWSOpened:
+			var opened WSOpenedMessage
+			if err := json.Unmarshal(data, &opened); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.wsOpen.Load(opened.ID); ok {
+				ch := chRaw.(chan WSOpenedMessage)
+				select {
+				case ch <- opened:
+				default:
+				}
+			}
+		case TypeWSData:
+			var wsData WSDataMessage
+			if err := json.Unmarshal(data, &wsData); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.wsData.Load(wsData.ID); ok {
+				ch := chRaw.(chan WSDataMessage)
+				select {
+				case ch <- wsData:
+				default:
+				}
+			}
+		case TypeWSClose:
+			var wsClose WSCloseMessage
+			if err := json.Unmarshal(data, &wsClose); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.wsClosed.Load(wsClose.ID); ok {
+				ch := chRaw.(chan struct{})
+				select {
+				case ch <- struct{}{}:
+				default:
+				}
+			}
 		}
 	}
 }
@@ -157,14 +196,6 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Relay currently supports HTTP request/response tunneling only.
-	// Explicitly reject WebSocket upgrades to avoid long 504 timeouts.
-	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUpgradeRequired)
-		_, _ = w.Write([]byte(`{"error":"websocket upgrades are not supported over relay"}`))
-		return
-	}
 
 	sub, ok := s.subdomainFromHost(r.Host)
 	if !ok {
@@ -182,6 +213,11 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 	cc := s.getClient(connID)
 	if cc == nil {
 		http.Error(w, "workspace offline", http.StatusBadGateway)
+		return
+	}
+
+	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+		s.handlePublicWebSocket(w, r, cc)
 		return
 	}
 
@@ -219,6 +255,74 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case <-time.After(30 * time.Second):
 		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
+	}
+}
+
+func (s *Server) handlePublicWebSocket(w http.ResponseWriter, r *http.Request, cc *clientConn) {
+	pubWS, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Error().Err(err).Msg("public websocket upgrade failed")
+		return
+	}
+	defer pubWS.Close()
+
+	wsID := "ws_" + uuid.NewString()
+	openCh := make(chan WSOpenedMessage, 1)
+	dataCh := make(chan WSDataMessage, 64)
+	closeCh := make(chan struct{}, 1)
+	cc.wsOpen.Store(wsID, openCh)
+	cc.wsData.Store(wsID, dataCh)
+	cc.wsClosed.Store(wsID, closeCh)
+	defer cc.wsOpen.Delete(wsID)
+	defer cc.wsData.Delete(wsID)
+	defer cc.wsClosed.Delete(wsID)
+
+	openMsg := WSOpenMessage{Type: TypeWSOpen, ID: wsID, Path: r.URL.RequestURI(), Headers: r.Header}
+	if err := cc.writeJSON(openMsg); err != nil {
+		return
+	}
+
+	select {
+	case opened := <-openCh:
+		if !opened.Success {
+			_ = pubWS.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, opened.Error))
+			return
+		}
+	case <-time.After(10 * time.Second):
+		_ = pubWS.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "upstream ws open timeout"))
+		return
+	}
+
+	errCh := make(chan error, 2)
+	go func() {
+		for {
+			mt, payload, err := pubWS.ReadMessage()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			msg := WSDataMessage{Type: TypeWSData, ID: wsID, MessageType: mt, Data: base64.StdEncoding.EncodeToString(payload)}
+			if err := cc.writeJSON(msg); err != nil {
+				errCh <- err
+				return
+			}
+		}
+	}()
+
+	for {
+		select {
+		case d := <-dataCh:
+			payload, _ := base64.StdEncoding.DecodeString(d.Data)
+			if err := pubWS.WriteMessage(d.MessageType, payload); err != nil {
+				return
+			}
+		case <-closeCh:
+			_ = pubWS.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			return
+		case <-errCh:
+			_ = cc.writeJSON(WSCloseMessage{Type: TypeWSClose, ID: wsID})
+			return
+		}
 	}
 }
 

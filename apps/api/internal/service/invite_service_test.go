@@ -22,7 +22,7 @@ func TestInviteService_ValidateInvite_HappyPath(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
 	subscriptionRepo := &mockSubscriptionRepository{}
-	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, nil, nil, nil, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -57,7 +57,7 @@ func TestInviteService_ValidateInvite_InvalidToken(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
 	subscriptionRepo := &mockSubscriptionRepository{}
-	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, nil, nil, nil, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -75,7 +75,7 @@ func TestInviteService_AcceptInvite_HappyPath(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
 	subscriptionRepo := &mockSubscriptionRepository{}
-	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, nil, nil, nil, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
@@ -105,9 +105,10 @@ func TestInviteService_AcceptInvite_HappyPath(t *testing.T) {
 	// Mock token consumption
 	inviteRepo.On("ConsumeToken", ctx, expectedHash).Return(nil)
 
-	jwtToken, err := service.AcceptInvite(ctx, "test-token", "securepassword123", "Siinn")
+	jwtToken, dmChannelID, err := service.AcceptInvite(ctx, "test-token", "securepassword123", "Siinn")
 	require.NoError(t, err)
 	assert.NotEmpty(t, jwtToken)
+	assert.Empty(t, dmChannelID)
 
 	inviteRepo.AssertExpectations(t)
 	userRepo.AssertExpectations(t)
@@ -117,14 +118,14 @@ func TestInviteService_AcceptInvite_InvalidToken(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
 	subscriptionRepo := &mockSubscriptionRepository{}
-	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, nil, nil, nil, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
 	expectedHash := hashTestToken("invalid-token")
 	inviteRepo.On("ValidateToken", ctx, expectedHash).Return(nil, models.ErrInviteNotFound)
 
-	_, err := service.AcceptInvite(ctx, "invalid-token", "securepassword123", "")
+	_, _, err := service.AcceptInvite(ctx, "invalid-token", "securepassword123", "")
 	require.Error(t, err)
 	assert.Equal(t, models.ErrInviteNotFound, err)
 
@@ -135,11 +136,11 @@ func TestInviteService_AcceptInvite_WeakPassword(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
 	subscriptionRepo := &mockSubscriptionRepository{}
-	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, "test-jwt-secret", "http://localhost:3001")
+	service := NewInviteService(userRepo, inviteRepo, subscriptionRepo, nil, nil, nil, "test-jwt-secret", "http://localhost:3001")
 
 	ctx := context.Background()
 
-	_, err := service.AcceptInvite(ctx, "test-token", "weak", "")
+	_, _, err := service.AcceptInvite(ctx, "test-token", "weak", "")
 	require.Error(t, err)
 	assert.Equal(t, models.ErrWeakPassword, err)
 
