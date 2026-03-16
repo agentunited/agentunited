@@ -114,6 +114,7 @@ services:
     restart: unless-stopped
     environment:
       API_UPSTREAM: http://api:8080
+      # Rate limit bypass for local dev — NEVER set in production Cloud Run
     ports:
       - "${WEB_PORT:-3001}:8080"
     depends_on:
