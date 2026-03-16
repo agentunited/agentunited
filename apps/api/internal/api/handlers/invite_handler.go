@@ -15,7 +15,7 @@ import (
 // InviteService defines invite operations
 type InviteService interface {
 	ValidateInvite(ctx context.Context, token string) (*models.Invite, *models.User, error)
-	AcceptInvite(ctx context.Context, token, password, displayName string) (string, error)
+	AcceptInvite(ctx context.Context, token, password, displayName string) (string, string, error)
 	CreateInvite(ctx context.Context, workspaceID, email, displayName string) (string, string, error)
 }
 
@@ -125,7 +125,7 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Accept invite
-	jwtToken, err := h.service.AcceptInvite(r.Context(), req.Token, req.Password, req.DisplayName)
+	jwtToken, dmChannelID, err := h.service.AcceptInvite(r.Context(), req.Token, req.Password, req.DisplayName)
 	if err != nil {
 		switch {
 		case errors.Is(err, models.ErrInviteNotFound):
@@ -147,6 +147,9 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]string{
 		"jwt_token": jwtToken,
 		"message":   "invite accepted successfully",
+	}
+	if dmChannelID != "" {
+		resp["dm_channel_id"] = dmChannelID
 	}
 
 	respondJSON(w, http.StatusOK, resp)

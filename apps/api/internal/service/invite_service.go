@@ -21,6 +21,9 @@ type InviteService struct {
 	userRepo         repository.UserRepository
 	inviteRepo       repository.InviteRepository
 	subscriptionRepo repository.SubscriptionRepository
+	channelRepo      repository.ChannelRepository
+	agentRepo        repository.AgentRepository
+	messageRepo      repository.MessageRepository
 	jwtSecret        string
 	baseURL          string
 }
@@ -30,6 +33,9 @@ func NewInviteService(
 	userRepo repository.UserRepository,
 	inviteRepo repository.InviteRepository,
 	subscriptionRepo repository.SubscriptionRepository,
+	channelRepo repository.ChannelRepository,
+	agentRepo repository.AgentRepository,
+	messageRepo repository.MessageRepository,
 	jwtSecret string,
 	baseURL string,
 ) *InviteService {
@@ -37,6 +43,9 @@ func NewInviteService(
 		userRepo:         userRepo,
 		inviteRepo:       inviteRepo,
 		subscriptionRepo: subscriptionRepo,
+		channelRepo:      channelRepo,
+		agentRepo:        agentRepo,
+		messageRepo:      messageRepo,
 		jwtSecret:        jwtSecret,
 		baseURL:          baseURL,
 	}
@@ -61,11 +70,12 @@ func (s *InviteService) ValidateInvite(ctx context.Context, token string) (*mode
 	return invite, user, nil
 }
 
-// AcceptInvite consumes an invite token, sets user password, and optionally persists display name.
-func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displayName string) (string, error) {
+// AcceptInvite consumes an invite token, sets user password/profile,
+// and returns JWT + optional welcome DM channel id.
+func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displayName string) (string, string, error) {
 	// Validate password strength first
 	if len(password) < 12 {
-		return "", models.ErrWeakPassword
+		return "", "", models.ErrWeakPassword
 	}
 
 	tokenHash := s.hashToken(token)
@@ -73,19 +83,19 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displ
 	// Validate token
 	invite, err := s.inviteRepo.ValidateToken(ctx, tokenHash)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, invite.UserID)
 	if err != nil {
-		return "", fmt.Errorf("get user: %w", err)
+		return "", "", fmt.Errorf("get user: %w", err)
 	}
 
 	// Hash password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", fmt.Errorf("hash password: %w", err)
+		return "", "", fmt.Errorf("hash password: %w", err)
 	}
 
 	// Update user with password (+ optional display name)
@@ -96,21 +106,26 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displ
 	user.UpdatedAt = time.Now()
 
 	if err := s.userRepo.Update(ctx, user); err != nil {
-		return "", fmt.Errorf("update user password/profile: %w", err)
+		return "", "", fmt.Errorf("update user password/profile: %w", err)
 	}
 
 	// Consume invite token
 	if err := s.inviteRepo.ConsumeToken(ctx, tokenHash); err != nil {
-		return "", fmt.Errorf("consume invite token: %w", err)
+		return "", "", fmt.Errorf("consume invite token: %w", err)
 	}
 
 	// Generate JWT token
 	jwtToken, err := s.generateJWTToken(user.ID, user.Email)
 	if err != nil {
-		return "", fmt.Errorf("generate JWT token: %w", err)
+		return "", "", fmt.Errorf("generate JWT token: %w", err)
 	}
 
-	return jwtToken, nil
+	dmChannelID, err := s.createWelcomeDM(ctx, user.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("create welcome dm: %w", err)
+	}
+
+	return jwtToken, dmChannelID, nil
 }
 
 // CreateInvite creates a new invite for a human user and returns plaintext token + URL.
@@ -180,6 +195,54 @@ func (s *InviteService) createInviteURL(token string) string {
 	q.Set("token", token)
 	u.RawQuery = q.Encode()
 	return u.String()
+}
+
+func (s *InviteService) createWelcomeDM(ctx context.Context, humanUserID string) (string, error) {
+	if s.channelRepo == nil || s.agentRepo == nil || s.messageRepo == nil {
+		return "", nil
+	}
+
+	channels, err := s.channelRepo.ListByUser(ctx, humanUserID)
+	if err != nil {
+		return "", err
+	}
+	if len(channels) == 0 {
+		return "", nil
+	}
+
+	ownerUserID := ""
+	for _, ch := range channels {
+		if ch != nil && ch.Type == "channel" && ch.CreatedBy != "" {
+			ownerUserID = ch.CreatedBy
+			break
+		}
+	}
+	if ownerUserID == "" {
+		return "", nil
+	}
+
+	agents, err := s.agentRepo.ListByOwner(ctx, ownerUserID)
+	if err != nil || len(agents) == 0 {
+		return "", nil
+	}
+
+	dm, err := s.channelRepo.GetOrCreateDMChannel(ctx, ownerUserID, humanUserID)
+	if err != nil {
+		return "", err
+	}
+
+	msg := &models.Message{
+		ChannelID:  dm.ID,
+		AuthorID:   agents[0].ID,
+		AuthorType: "agent",
+		Text:       "👋 I'm here. What do you need?",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	if err := s.messageRepo.Create(ctx, msg); err != nil {
+		return "", err
+	}
+	return dm.ID, nil
 }
 
 // generateJWTToken creates a JWT token for the user
