@@ -15,8 +15,6 @@ protocol AUAPIClient {
     func sendMessage(channelId: String, text: String, replyToID: String?) async throws -> MessageResponse
     func listDMs() async throws -> [ConversationResponse]
     func listChannels() async throws -> [ConversationResponse]
-    func getChannel(id: String) async throws -> ChannelDetailResponse
-    func getChannelMembers(channelId: String) async throws -> [ChannelMemberResponse]
     func createDM(targetUserID: String) async throws -> ConversationResponse
     func listUsers() async throws -> [UserResponse]
     func updateProfile(displayName: String) async throws -> UserResponse
@@ -120,72 +118,20 @@ struct ConversationResponse: Decodable, Identifiable {
     let id: String
     let name: String
     let type: String
-    let topic: String?
     let lastMessageText: String?
     let lastMessageAt: Date?
     let unreadCount: Int
-    let memberCount: Int?
     let participantIDs: [String]
 
     private enum CodingKeys: String, CodingKey {
         case id
         case name
         case type
-        case topic
-        case description
         case lastMessageText = "last_message_text"
         case lastMessageAt = "last_message_at"
         case unreadCount = "unread_count"
-        case memberCount = "member_count"
         case participantIDs = "participant_ids"
     }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        type = try container.decodeIfPresent(String.self, forKey: .type) ?? "channel"
-        topic = try container.decodeIfPresent(String.self, forKey: .topic)
-            ?? container.decodeIfPresent(String.self, forKey: .description)
-        lastMessageText = try container.decodeIfPresent(String.self, forKey: .lastMessageText)
-        lastMessageAt = try container.decodeIfPresent(Date.self, forKey: .lastMessageAt)
-        unreadCount = try container.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
-        memberCount = try container.decodeIfPresent(Int.self, forKey: .memberCount)
-        participantIDs = try container.decodeIfPresent([String].self, forKey: .participantIDs) ?? []
-    }
-}
-
-struct ChannelDetailResponse: Decodable {
-    let id: String
-    let name: String
-    let topic: String?
-    let memberCount: Int
-    let members: [ChannelMemberResponse]
-
-    private enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case topic
-        case description
-        case memberCount = "member_count"
-        case members
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        topic = try container.decodeIfPresent(String.self, forKey: .topic)
-            ?? container.decodeIfPresent(String.self, forKey: .description)
-        members = try container.decodeIfPresent([ChannelMemberResponse].self, forKey: .members) ?? []
-        memberCount = try container.decodeIfPresent(Int.self, forKey: .memberCount) ?? members.count
-    }
-}
-
-struct ChannelMemberResponse: Decodable, Identifiable {
-    let id: String
-    let email: String
-    let role: String
 }
 
 struct UserResponse: Decodable, Identifiable {

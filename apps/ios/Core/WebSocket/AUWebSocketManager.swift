@@ -343,7 +343,7 @@ private struct IncomingWebSocketEvent: Decodable {
         if let nestedMessage = try container.decodeIfPresent(MessageResponse.self, forKey: WebSocketCodingKeys("message")) {
             message = nestedMessage
         } else if let id: String = try container.decodeIfPresentOne(of: ["message_id", "id"]),
-                  let conversationID: String = try container.decodeIfPresentOne(of: ["conversation_id", "channel_id", "dm_id"]),
+                  let conversationID = try container.decodeIfPresentOne(of: ["conversation_id", "channel_id", "dm_id"]),
                   let text: String = try container.decodeIfPresentOne(of: ["text", "body"]),
                   let authorID: String = try container.decodeIfPresentOne(of: ["author_id", "user_id"]),
                   let authorName: String = try container.decodeIfPresentOne(of: ["author_name", "display_name"]),
