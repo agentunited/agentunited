@@ -68,13 +68,19 @@ func Auth(jwtSecret string, apiKeyRepo repository.APIKeyRepository, agentRepo re
 					return
 				}
 
-				// If this JWT belongs to an agent-typed user, bind their primary agent context.
+				// If this JWT belongs to an agent-typed user, bind their primary (bootstrap) agent context.
 				if user, uerr := userRepo.GetByID(r.Context(), userID); uerr == nil && user.UserType == "agent" {
 					if agents, aerr := agentRepo.ListByOwner(r.Context(), userID); aerr == nil && len(agents) > 0 {
-						agentID = agents[0].ID
-						agentName = agents[0].DisplayName
+						primary := agents[0]
+						for _, a := range agents[1:] {
+							if a.CreatedAt.Before(primary.CreatedAt) {
+								primary = a
+							}
+						}
+						agentID = primary.ID
+						agentName = primary.DisplayName
 						if agentName == "" {
-							agentName = agents[0].Name
+							agentName = primary.Name
 						}
 					}
 				}
