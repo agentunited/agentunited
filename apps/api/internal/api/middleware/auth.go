@@ -22,6 +22,7 @@ const (
 	UserIDKey    contextKey = "user_id"
 	AgentIDKey   contextKey = "agent_id"
 	AgentNameKey contextKey = "agent_name"
+	UserEmailKey contextKey = "user_email"
 )
 
 // Auth creates an authentication middleware that supports both JWT tokens and API keys
@@ -43,7 +44,7 @@ func Auth(jwtSecret string, apiKeyRepo repository.APIKeyRepository, agentRepo re
 			}
 
 			tokenString := parts[1]
-			var userID string
+			var userID, userEmail string
 			var err error
 
 			// Check if this is an API key (starts with au_) or JWT token
@@ -60,8 +61,8 @@ func Auth(jwtSecret string, apiKeyRepo repository.APIKeyRepository, agentRepo re
 				agentID = result.AgentID
 				agentName = result.AgentName
 			} else {
-				// JWT token authentication
-				userID, err = authenticateJWT(tokenString, jwtSecret)
+				// JWT token authentication — returns userID + email from claims
+				userID, userEmail, err = authenticateJWT(tokenString, jwtSecret)
 				if err != nil {
 					log.Error().Err(err).Msg("invalid JWT token")
 					respondUnauthorized(w, "Invalid or expired token")
@@ -86,8 +87,11 @@ func Auth(jwtSecret string, apiKeyRepo repository.APIKeyRepository, agentRepo re
 				}
 			}
 
-			// Add user ID to context
+			// Add user ID and email to context
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			if userEmail != "" {
+				ctx = context.WithValue(ctx, UserEmailKey, userEmail)
+			}
 			if agentID != "" {
 				ctx = context.WithValue(ctx, AgentIDKey, agentID)
 				ctx = context.WithValue(ctx, AgentNameKey, agentName)
@@ -120,7 +124,7 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 			tokenString := parts[1]
 
 			// JWT token authentication only
-			userID, err := authenticateJWT(tokenString, jwtSecret)
+			userID, _, err := authenticateJWT(tokenString, jwtSecret)
 			if err != nil {
 				log.Error().Err(err).Msg("invalid JWT token")
 				respondUnauthorized(w, "Invalid or expired token")
@@ -137,7 +141,7 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 }
 
 // authenticateJWT validates a JWT token and returns the user ID
-func authenticateJWT(tokenString, jwtSecret string) (string, error) {
+func authenticateJWT(tokenString, jwtSecret string) (string, string, error) {
 	// Parse and validate token
 	token, err := jwt.ParseWithClaims(tokenString, &service.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Verify signing method
@@ -148,16 +152,16 @@ func authenticateJWT(tokenString, jwtSecret string) (string, error) {
 	})
 
 	if err != nil || !token.Valid {
-		return "", err
+		return "", "", err
 	}
 
 	// Extract claims
 	claims, ok := token.Claims.(*service.JWTClaims)
 	if !ok {
-		return "", models.ErrInvalidToken
+		return "", "", models.ErrInvalidToken
 	}
 
-	return claims.UserID, nil
+	return claims.UserID, claims.Email, nil
 }
 
 // authenticateAPIKey validates an API key and returns the user ID
@@ -219,4 +223,10 @@ func GetAgentID(ctx context.Context) (string, bool) {
 func GetAgentName(ctx context.Context) (string, bool) {
 	agentName, ok := ctx.Value(AgentNameKey).(string)
 	return agentName, ok
+}
+
+// GetUserEmail extracts user email from request context
+func GetUserEmail(ctx context.Context) (string, bool) {
+	userEmail, ok := ctx.Value(UserEmailKey).(string)
+	return userEmail, ok
 }
