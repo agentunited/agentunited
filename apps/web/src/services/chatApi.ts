@@ -370,7 +370,9 @@ export const chatApi = {
    */
   getWebSocketUrl(): string {
     const baseUrl = getApiBaseUrl();
-    const wsUrl = baseUrl.replace(/^http/, 'ws');
-    return `${wsUrl}/ws`;
+    const resolvedOrigin = baseUrl || window.location.origin;
+    const resolved = new URL(resolvedOrigin);
+    const wsProtocol = resolved.protocol === 'https:' ? 'wss' : 'ws';
+    return `${wsProtocol}://${resolved.host}/ws`;
   }
 };

@@ -61,17 +61,11 @@ export function useWebSocket(_url: string, channelId: string): UseWebSocketRetur
     }
 
     const baseUrl = getApiBaseUrl();
-    const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
-    const wsHost = baseUrl.replace(/^https?:\/\//, '');
+    const resolvedOrigin = baseUrl || window.location.origin;
+    const resolved = new URL(resolvedOrigin);
+    const wsProtocol = resolved.protocol === 'https:' ? 'wss' : 'ws';
+    const wsHost = resolved.host;
     const wsUrl = `${wsProtocol}://${wsHost}/ws?token=${token}`;
-
-    // Relay tunnel currently supports HTTP proxying only; skip WS to avoid perpetual reconnect loop.
-    if (wsHost.includes('.tunnel.')) {
-      setIsConnected(false);
-      setConnectionStatus('disconnected');
-      setError('Realtime unavailable in relay mode; using HTTP fallback.');
-      return;
-    }
 
     function connect() {
       setConnectionStatus('reconnecting');
