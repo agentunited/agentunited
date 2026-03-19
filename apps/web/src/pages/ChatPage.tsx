@@ -139,12 +139,13 @@ export function ChatPage() {
         
         // Convert API response to Member format
         const memberList = members.map(member => {
-          const isAgent = member.email.includes('@agentunited.local');
+          const isAgent = member.type
+            ? member.type === 'agent'
+            : member.email.includes('@agentunited.local');
+
           return {
             id: member.id,
-            name: isAgent 
-              ? member.email.split('@')[0] 
-              : member.email.split('@')[0] || member.email,
+            name: member.display_name || member.name || member.email.split('@')[0] || member.email,
             email: member.email,
             type: isAgent ? 'agent' as const : 'human' as const,
             online: Math.random() > 0.3 // TODO: Replace with real online status
@@ -194,9 +195,16 @@ export function ChatPage() {
       const resolved = userDirectory[msg.authorId];
       if (!resolved) return msg;
 
+      const preferredName = getDisplayName(resolved.display);
+
+      // Prefer resolved directory display name everywhere when available.
+      if (preferredName && msg.author !== preferredName) {
+        return { ...msg, author: preferredName };
+      }
+
       // Replace low-quality author labels (raw UUID, UUID with suffix, etc.) with directory display name.
       if (msg.author === msg.authorId || hasUuid(msg.author)) {
-        return { ...msg, author: getDisplayName(resolved.display) };
+        return { ...msg, author: preferredName };
       }
 
       return msg;
