@@ -27,12 +27,12 @@ func NewInviteRepository(db *DB) InviteRepository {
 
 func (r *inviteRepository) Create(ctx context.Context, invite *models.Invite, tokenHash string) error {
 	query := `
-		INSERT INTO invites (id, user_id, token_hash, status, expires_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO invites (id, user_id, workspace_id, token_hash, status, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at`
 
-	err := r.db.Pool.QueryRow(ctx, query, 
-		invite.ID, invite.UserID, tokenHash, invite.Status, 
+	err := r.db.Pool.QueryRow(ctx, query,
+		invite.ID, invite.UserID, nullableUUID(invite.WorkspaceID), tokenHash, invite.Status,
 		invite.ExpiresAt, invite.CreatedAt).Scan(&invite.ID, &invite.CreatedAt)
 	
 	if err != nil {
@@ -43,13 +43,13 @@ func (r *inviteRepository) Create(ctx context.Context, invite *models.Invite, to
 
 func (r *inviteRepository) GetByTokenHash(ctx context.Context, tokenHash string) (*models.Invite, error) {
 	query := `
-		SELECT id, user_id, status, expires_at, created_at, consumed_at
+		SELECT id, user_id, COALESCE(workspace_id::text, ''), status, expires_at, created_at, consumed_at
 		FROM invites
 		WHERE token_hash = $1`
 
 	var invite models.Invite
 	err := r.db.Pool.QueryRow(ctx, query, tokenHash).Scan(
-		&invite.ID, &invite.UserID, &invite.Status, 
+		&invite.ID, &invite.UserID, &invite.WorkspaceID, &invite.Status,
 		&invite.ExpiresAt, &invite.CreatedAt, &invite.ConsumedAt)
 	
 	if err == pgx.ErrNoRows {
@@ -91,10 +91,17 @@ func (r *inviteRepository) ConsumeToken(ctx context.Context, tokenHash string) e
 	if err != nil {
 		return err
 	}
-	
+
 	if result.RowsAffected() == 0 {
 		return models.ErrInviteNotFound
 	}
-	
+
 	return nil
+}
+
+func nullableUUID(id string) any {
+	if id == "" {
+		return nil
+	}
+	return id
 }

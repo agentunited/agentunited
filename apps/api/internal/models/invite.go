@@ -13,12 +13,13 @@ const (
 
 // Invite represents a user invitation
 type Invite struct {
-	ID         string       `json:"id"`
-	UserID     string       `json:"user_id"`
-	Status     InviteStatus `json:"status"`
-	ExpiresAt  time.Time    `json:"expires_at"`
-	CreatedAt  time.Time    `json:"created_at"`
-	ConsumedAt *time.Time   `json:"consumed_at,omitempty"`
+	ID          string       `json:"id"`
+	UserID      string       `json:"user_id"`
+	WorkspaceID string       `json:"workspace_id,omitempty"`
+	Status      InviteStatus `json:"status"`
+	ExpiresAt   time.Time    `json:"expires_at"`
+	CreatedAt   time.Time    `json:"created_at"`
+	ConsumedAt  *time.Time   `json:"consumed_at,omitempty"`
 }
 
 // InviteWithToken includes the one-time plaintext token

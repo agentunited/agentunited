@@ -114,13 +114,18 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displ
 		return "", "", fmt.Errorf("consume invite token: %w", err)
 	}
 
+	// Auto-join workspace channels for standalone invites.
+	if err := s.autoJoinWorkspaceChannels(ctx, invite.WorkspaceID, user.ID); err != nil {
+		return "", "", fmt.Errorf("auto-join workspace channels: %w", err)
+	}
+
 	// Generate JWT token
 	jwtToken, err := s.generateJWTToken(user.ID, user.Email)
 	if err != nil {
 		return "", "", fmt.Errorf("generate JWT token: %w", err)
 	}
 
-	dmChannelID, err := s.createWelcomeDM(ctx, user.ID)
+	dmChannelID, err := s.createWelcomeDM(ctx, invite.WorkspaceID, user.ID)
 	if err != nil {
 		return "", "", fmt.Errorf("create welcome dm: %w", err)
 	}
@@ -159,11 +164,12 @@ func (s *InviteService) CreateInvite(ctx context.Context, workspaceID, email, di
 	}
 
 	invite := &models.Invite{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		Status:    models.InviteStatusPending,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
-		CreatedAt: time.Now(),
+		ID:          uuid.New().String(),
+		UserID:      userID,
+		WorkspaceID: workspaceID,
+		Status:      models.InviteStatusPending,
+		ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
+		CreatedAt:   time.Now(),
 	}
 	if err := s.inviteRepo.Create(ctx, invite, tokenHash); err != nil {
 		return "", "", fmt.Errorf("create invite: %w", err)
@@ -197,24 +203,51 @@ func (s *InviteService) createInviteURL(token string) string {
 	return u.String()
 }
 
-func (s *InviteService) createWelcomeDM(ctx context.Context, humanUserID string) (string, error) {
+func (s *InviteService) autoJoinWorkspaceChannels(ctx context.Context, workspaceOwnerID, userID string) error {
+	if s.channelRepo == nil || workspaceOwnerID == "" || userID == "" {
+		return nil
+	}
+
+	channels, err := s.channelRepo.ListByUser(ctx, workspaceOwnerID)
+	if err != nil {
+		return err
+	}
+	for _, ch := range channels {
+		if ch == nil || ch.Type != "channel" {
+			continue
+		}
+		isMember, _, err := s.channelRepo.IsMember(ctx, ch.ID, userID)
+		if err != nil {
+			return err
+		}
+		if isMember {
+			continue
+		}
+		if err := s.channelRepo.AddMember(ctx, ch.ID, userID, "member"); err != nil && err != models.ErrAlreadyChannelMember {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *InviteService) createWelcomeDM(ctx context.Context, workspaceOwnerID, humanUserID string) (string, error) {
 	if s.channelRepo == nil || s.agentRepo == nil || s.messageRepo == nil {
 		return "", nil
 	}
 
-	channels, err := s.channelRepo.ListByUser(ctx, humanUserID)
-	if err != nil {
-		return "", err
-	}
-	if len(channels) == 0 {
-		return "", nil
-	}
-
-	ownerUserID := ""
-	for _, ch := range channels {
-		if ch != nil && ch.Type == "channel" && ch.CreatedBy != "" {
-			ownerUserID = ch.CreatedBy
-			break
+	// Use workspaceOwnerID directly when available (set on invite at creation time).
+	ownerUserID := workspaceOwnerID
+	if ownerUserID == "" {
+		// Fallback: find owner from channels the human just joined.
+		channels, err := s.channelRepo.ListByUser(ctx, humanUserID)
+		if err != nil || len(channels) == 0 {
+			return "", nil
+		}
+		for _, ch := range channels {
+			if ch != nil && ch.Type == "channel" && ch.CreatedBy != "" {
+				ownerUserID = ch.CreatedBy
+				break
+			}
 		}
 	}
 	if ownerUserID == "" {
@@ -226,6 +259,14 @@ func (s *InviteService) createWelcomeDM(ctx context.Context, humanUserID string)
 		return "", nil
 	}
 
+	// Pick the primary (earliest-created) agent.
+	primary := agents[0]
+	for _, a := range agents[1:] {
+		if a.CreatedAt.Before(primary.CreatedAt) {
+			primary = a
+		}
+	}
+
 	dm, err := s.channelRepo.GetOrCreateDMChannel(ctx, ownerUserID, humanUserID)
 	if err != nil {
 		return "", err
@@ -233,7 +274,7 @@ func (s *InviteService) createWelcomeDM(ctx context.Context, humanUserID string)
 
 	msg := &models.Message{
 		ChannelID:  dm.ID,
-		AuthorID:   agents[0].ID,
+		AuthorID:   primary.ID,
 		AuthorType: "agent",
 		Text:       "👋 I'm here. What do you need?",
 		CreatedAt:  time.Now(),
