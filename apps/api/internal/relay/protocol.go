@@ -11,6 +11,10 @@ const (
 	TypePing       = "ping"
 	TypePong       = "pong"
 	TypeError      = "error"
+	TypeWSOpen     = "ws_open"
+	TypeWSOpened   = "ws_opened"
+	TypeWSData     = "ws_data"
+	TypeWSClose    = "ws_close"
 )
 
 type Envelope struct {
@@ -50,4 +54,30 @@ type ResponseMessage struct {
 type ErrorMessage struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
+}
+
+type WSOpenMessage struct {
+	Type    string      `json:"type"`
+	ID      string      `json:"id"`
+	Path    string      `json:"path"`
+	Headers http.Header `json:"headers"`
+}
+
+type WSOpenedMessage struct {
+	Type    string `json:"type"`
+	ID      string `json:"id"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+}
+
+type WSDataMessage struct {
+	Type        string `json:"type"`
+	ID          string `json:"id"`
+	MessageType int    `json:"message_type"`
+	Data        string `json:"data"` // base64
+}
+
+type WSCloseMessage struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
 }

@@ -1,0 +1,444 @@
+import SwiftUI
+
+struct OnboardingRootView: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @EnvironmentObject private var sessionStore: AppSessionStore
+
+    private var pendingInvite: AppCoordinator.PendingInvite? {
+        if case let .invite(invite) = coordinator.pendingRoute {
+            return invite
+        }
+        return nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            WelcomeScreen(isInvitePresented: $coordinator.isPresentingInvite)
+                .navigationDestination(isPresented: $coordinator.isPresentingInvite) {
+                    InviteAcceptScene(
+                        pendingInvite: pendingInvite,
+                        sessionStore: sessionStore
+                    )
+                }
+        }
+        .onAppear {
+            if pendingInvite != nil {
+                coordinator.isPresentingInvite = true
+            }
+        }
+        .onChange(of: coordinator.pendingRoute) { _, newValue in
+            if case .invite = newValue {
+                coordinator.isPresentingInvite = true
+            }
+        }
+    }
+}
+
+private struct WelcomeScreen: View {
+    @Binding var isInvitePresented: Bool
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.auBackground, Color.auEmeraldLight.opacity(0.55)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 40)
+
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.9))
+                            .frame(width: 96, height: 96)
+                            .shadow(color: Color.auEmerald.opacity(0.16), radius: 24, y: 12)
+
+                        Image(systemName: "message.badge.waveform.fill")
+                            .font(.system(size: 40, weight: .semibold))
+                            .foregroundStyle(Color.auEmerald)
+                    }
+                    .accessibilityHidden(true)
+
+                    VStack(spacing: 10) {
+                        Text("Agent United")
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(Color.auLabel)
+
+                        Text("Your workspace, everywhere.")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Color.auSecondaryLabel)
+                    }
+                }
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    Button("Accept an invite") {
+                        isInvitePresented = true
+                    }
+                    .buttonStyle(AUPrimaryButtonStyle())
+                    .accessibilityLabel("Accept an invite")
+
+                    Button("Sign in") {
+                    }
+                    .buttonStyle(AUSecondaryButtonStyle())
+                    .accessibilityLabel("Sign in")
+                }
+                .padding(20)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+private struct InviteAcceptScene: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @StateObject private var viewModel: OnboardingViewModel
+    @FocusState private var focusedField: Field?
+
+    enum Field: Hashable {
+        case displayName
+        case password
+        case confirmPassword
+    }
+
+    init(pendingInvite: AppCoordinator.PendingInvite?, sessionStore: AppSessionStore) {
+        _viewModel = StateObject(
+            wrappedValue: OnboardingViewModel(
+                pendingInvite: pendingInvite,
+                service: LiveOnboardingService(),
+                sessionStore: sessionStore
+            )
+        )
+    }
+
+    var body: some View {
+        InviteAcceptScreen(
+            phase: viewModel.phase,
+            inviteDetails: viewModel.inviteDetails,
+            displayName: $viewModel.displayName,
+            password: $viewModel.password,
+            confirmPassword: $viewModel.confirmPassword,
+            displayNameError: viewModel.displayNameError,
+            passwordError: viewModel.passwordError,
+            confirmPasswordError: viewModel.confirmPasswordError,
+            passwordCountText: viewModel.passwordCountText,
+            canSubmit: viewModel.canSubmit,
+            isSubmitting: viewModel.isSubmitting,
+            submissionErrorMessage: viewModel.submissionErrorMessage,
+            focusedField: $focusedField,
+            onLoad: {
+                await viewModel.loadInviteIfNeeded()
+            },
+            onRetry: {
+                await viewModel.retry()
+            },
+            onConfirmBlur: {
+                viewModel.confirmPasswordBlurred()
+            },
+            onSubmit: {
+                await viewModel.submit()
+            }
+        )
+        .environmentObject(coordinator)
+        .onAppear {
+            viewModel.attachCoordinator(coordinator)
+        }
+        .onChange(of: focusedField) { oldValue, newValue in
+            if oldValue == .confirmPassword, newValue != .confirmPassword {
+                viewModel.confirmPasswordBlurred()
+            }
+        }
+    }
+}
+
+private struct InviteAcceptScreen: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
+
+    let phase: OnboardingViewModel.Phase
+    let inviteDetails: OnboardingInviteDetails?
+    @Binding var displayName: String
+    @Binding var password: String
+    @Binding var confirmPassword: String
+    let displayNameError: String?
+    let passwordError: String?
+    let confirmPasswordError: String?
+    let passwordCountText: String
+    let canSubmit: Bool
+    let isSubmitting: Bool
+    let submissionErrorMessage: String?
+    let focusedField: FocusState<InviteAcceptScene.Field?>.Binding
+    let onLoad: () async -> Void
+    let onRetry: () async -> Void
+    let onConfirmBlur: () -> Void
+    let onSubmit: () async -> Void
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .idle:
+                inviteIdleState
+            case .loading:
+                loadingState
+            case .valid:
+                validState
+            case let .error(errorState):
+                errorStateView(errorState)
+            }
+        }
+        .navigationTitle("Join Workspace")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await onLoad()
+        }
+    }
+
+    private var inviteIdleState: some View {
+        ContentUnavailableView(
+            "Open Your Invite Link",
+            systemImage: "link.badge.plus",
+            description: Text("Tap the invite link your agent sent to continue.")
+        )
+        .padding(.horizontal, 24)
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Validating your invite…")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.auGrouped)
+    }
+
+    private var validState: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.auEmeraldLight)
+                            .frame(width: 76, height: 76)
+
+                        Text(inviterInitial)
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(Color.auEmerald)
+                    }
+                    .accessibilityHidden(true)
+
+                    VStack(spacing: 4) {
+                        Text(inviteDetails?.email ?? "")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Color.auSecondaryLabel)
+                        Text("\(inviteDetails?.inviter ?? "Your agent") invited you to join")
+                            .font(.footnote)
+                            .foregroundStyle(Color.auSecondaryLabel)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
+
+                VStack(alignment: .leading, spacing: 18) {
+                    formField(
+                        title: "Display name",
+                        prompt: "How should we call you?",
+                        text: $displayName,
+                        error: displayNameError,
+                        accessibilityLabel: "Display name",
+                        textContentType: .name,
+                        submitLabel: .next,
+                        isSecure: false,
+                        field: .displayName
+                    )
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Password")
+                            Spacer()
+                            Text(passwordCountText)
+                                .font(.footnote.monospacedDigit())
+                                .foregroundStyle(password.count >= 12 ? Color.auEmerald : Color.auSecondaryLabel)
+                        }
+                        .foregroundStyle(Color.auSecondaryLabel)
+
+                        formField(
+                            title: nil,
+                            prompt: "Minimum 12 characters",
+                            text: $password,
+                            error: passwordError,
+                            accessibilityLabel: "Password",
+                            textContentType: .newPassword,
+                            submitLabel: .next,
+                            isSecure: true,
+                            field: .password
+                        )
+                    }
+
+                    formField(
+                        title: "Confirm password",
+                        prompt: "Repeat your password",
+                        text: $confirmPassword,
+                        error: confirmPasswordError,
+                        accessibilityLabel: "Confirm password",
+                        textContentType: .newPassword,
+                        submitLabel: canSubmit ? .join : .done,
+                        isSecure: true,
+                        field: .confirmPassword
+                    )
+                }
+
+                if let submissionErrorMessage, submissionErrorMessage.isEmpty == false {
+                    Text(submissionErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(Color.red)
+                        .accessibilityLabel("Join workspace error: \(submissionErrorMessage)")
+                }
+
+                Button {
+                    Task {
+                        await onSubmit()
+                    }
+                } label: {
+                    if isSubmitting {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Join workspace")
+                    }
+                }
+                .buttonStyle(AUPrimaryButtonStyle())
+                .disabled(canSubmit == false)
+                .accessibilityLabel("Join workspace")
+            }
+            .padding(24)
+        }
+        .background(Color.auGrouped.ignoresSafeArea())
+    }
+
+    private func errorStateView(_ error: OnboardingViewModel.ErrorState) -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 36))
+                .foregroundStyle(Color.orange)
+                .accessibilityHidden(true)
+
+            switch error {
+            case .invalidInvite:
+                Text("This invite link has expired or already been used.")
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                Text("Ask your agent for a new invite link to join this workspace.")
+                    .foregroundStyle(Color.auSecondaryLabel)
+                    .multilineTextAlignment(.center)
+
+                Button("Contact your agent") {
+                    coordinator.isPresentingInvite = false
+                }
+                .buttonStyle(AUSecondaryButtonStyle())
+                .accessibilityLabel("Contact your agent")
+
+            case let .network(message):
+                Text("We couldn’t validate this invite.")
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                Text(message)
+                    .foregroundStyle(Color.auSecondaryLabel)
+                    .multilineTextAlignment(.center)
+
+                Button("Retry") {
+                    Task {
+                        await onRetry()
+                    }
+                }
+                .buttonStyle(AUPrimaryButtonStyle())
+                .accessibilityLabel("Retry invite validation")
+            }
+
+            Spacer()
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.auGrouped)
+    }
+
+    private var inviterInitial: String {
+        let source = inviteDetails?.inviter?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return source?.first.map { String($0).uppercased() } ?? "A"
+    }
+
+    @ViewBuilder
+    private func formField(
+        title: String?,
+        prompt: String,
+        text: Binding<String>,
+        error: String?,
+        accessibilityLabel: String,
+        textContentType: UITextContentType?,
+        submitLabel: SubmitLabel,
+        isSecure: Bool,
+        field: InviteAcceptScene.Field
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let title {
+                Text(title)
+                    .foregroundStyle(Color.auSecondaryLabel)
+            }
+
+            Group {
+                if isSecure {
+                    SecureField(prompt, text: text)
+                } else {
+                    TextField(prompt, text: text)
+                        .textInputAutocapitalization(.words)
+                }
+            }
+            .textContentType(textContentType)
+            .submitLabel(submitLabel)
+            .focused(focusedField, equals: field)
+            .onSubmit {
+                switch field {
+                case .displayName:
+                    focusedField.wrappedValue = .password
+                case .password:
+                    focusedField.wrappedValue = .confirmPassword
+                case .confirmPassword:
+                    onConfirmBlur()
+                    if canSubmit {
+                        Task {
+                            await onSubmit()
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .background(Color.auBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(error == nil ? Color.auSeparator.opacity(0.55) : Color.red.opacity(0.45), lineWidth: 1)
+            }
+            .accessibilityLabel(accessibilityLabel)
+
+            if let error {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(Color.red)
+                    .accessibilityLabel("\(accessibilityLabel) error: \(error)")
+            }
+        }
+    }
+}

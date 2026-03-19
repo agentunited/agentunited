@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -73,13 +74,16 @@ func (h *BootstrapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if blocked, err := h.rateLimitBootstrap(r.Context(), clientIP(r)); err != nil {
-		log.Error().Err(err).Msg("bootstrap rate limit check failed")
-		respondError(w, http.StatusInternalServerError, "internal server error")
-		return
-	} else if blocked {
-		respondError(w, http.StatusTooManyRequests, "bootstrap rate limit exceeded: max 3 requests per IP per day")
-		return
+	// Allow bypassing rate limit for local dev/dogfood (never set in production)
+	if os.Getenv("BOOTSTRAP_RATE_LIMIT_DISABLED") != "true" {
+		if blocked, err := h.rateLimitBootstrap(r.Context(), clientIP(r)); err != nil {
+			log.Error().Err(err).Msg("bootstrap rate limit check failed")
+			respondError(w, http.StatusInternalServerError, "internal server error")
+			return
+		} else if blocked {
+			respondError(w, http.StatusTooManyRequests, "bootstrap rate limit exceeded: max 3 requests per IP per day")
+			return
+		}
 	}
 
 	// Parse request
@@ -123,6 +127,9 @@ func (h *BootstrapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BootstrapHandler) rateLimitBootstrap(ctx context.Context, ip string) (bool, error) {
+	if strings.EqualFold(os.Getenv("BOOTSTRAP_RATE_LIMIT_DISABLED"), "true") {
+		return false, nil
+	}
 	if h.limiter == nil {
 		return false, nil
 	}
