@@ -226,6 +226,7 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 		humanUser := &models.User{
 			ID:           humanUserID,
 			Email:        humanReq.Email,
+			DisplayName:  humanReq.DisplayName,
 			UserType:     "human",
 			PasswordHash: "", // Empty until invite consumed
 			CreatedAt:    time.Now(),

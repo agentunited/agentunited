@@ -209,7 +209,7 @@ func (r *PostgresChannelRepository) GetMembers(ctx context.Context, channelID st
 	query := `
 		SELECT 
 			u.id,
-			u.email,
+			COALESCE(NULLIF(u.display_name, ''), split_part(u.email, '@', 1), u.email) AS display_name,
 			cm.role
 		FROM channel_members cm
 		INNER JOIN users u ON cm.user_id = u.id
@@ -376,7 +376,7 @@ func (r *PostgresChannelRepository) ListDMChannels(ctx context.Context, userID s
 			c.created_at, 
 			c.updated_at,
 			COUNT(cm2.id) as member_count,
-			COALESCE(other_user.email, other_agent.display_name, '') as other_participant,
+			COALESCE(NULLIF(other_user.display_name, ''), split_part(other_user.email, '@', 1), other_agent.display_name, '') as other_participant,
 			COALESCE((
 				SELECT COUNT(*)
 				FROM messages m
@@ -392,7 +392,7 @@ func (r *PostgresChannelRepository) ListDMChannels(ctx context.Context, userID s
 		LEFT JOIN users other_user ON cm_other.user_id = other_user.id
 		LEFT JOIN agents other_agent ON cm_other.user_id = other_agent.owner_id
 		WHERE cm.user_id = $1 AND c.type = 'dm'
-		GROUP BY c.id, c.name, c.topic, c.type, c.created_by, c.created_at, c.updated_at, other_user.email, other_agent.display_name
+		GROUP BY c.id, c.name, c.topic, c.type, c.created_by, c.created_at, c.updated_at, other_user.display_name, other_user.email, other_agent.display_name
 		ORDER BY c.updated_at DESC
 	`
 

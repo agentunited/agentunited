@@ -19,6 +19,7 @@ interface ApiMessage {
 interface ApiChannel {
   id: string;
   name: string;
+  display_name?: string;
   topic?: string;
   description?: string;
   member_count?: number;
@@ -125,7 +126,7 @@ function mapApiMessage(apiMsg: ApiMessage, currentUserId?: string): Message {
 function mapApiChannel(apiChannel: ApiChannel): Channel {
   return {
     id: apiChannel.id,
-    name: apiChannel.name,
+    name: getDisplayName(apiChannel.display_name || apiChannel.name),
     topic: apiChannel.topic || apiChannel.description || '',
     memberCount: apiChannel.member_count,
     unread: apiChannel.unread_count ?? 0,
@@ -235,8 +236,22 @@ export const chatApi = {
   /**
    * Get channel members
    */
-  async getMembers(channelId: string): Promise<{ id: string; email: string; role: string }[]> {
-    const response = await apiRequest<{ members: { id: string; email: string; role: string }[] }>(
+  async getMembers(channelId: string): Promise<Array<{
+    id: string;
+    email: string;
+    role: string;
+    name?: string;
+    display_name?: string;
+    type?: 'human' | 'agent';
+  }>> {
+    const response = await apiRequest<{ members: Array<{
+      id: string;
+      email: string;
+      role: string;
+      name?: string;
+      display_name?: string;
+      type?: 'human' | 'agent';
+    }> }>(
       `/api/v1/channels/${channelId}/members`
     );
     return response.members || [];
