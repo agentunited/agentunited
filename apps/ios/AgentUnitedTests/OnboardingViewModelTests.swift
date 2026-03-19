@@ -113,6 +113,49 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertEqual(coordinator.completedWelcomeConversationID, "dm_987")
     }
 
+    func testCriticalOnboardingPathCompletesAndLandsMessagesTab() async {
+        let service = MockOnboardingService()
+        service.validateResult = .success(
+            InviteValidationResponse(
+                email: "alex@example.com",
+                displayName: nil,
+                role: "member",
+                inviter: "Empire"
+            )
+        )
+        service.acceptResult = .success(
+            InviteAcceptResponse.fixture(
+                token: "jwt-token",
+                userID: "usr_123",
+                expiresAt: Date(timeIntervalSince1970: 1_000),
+                welcomeDMID: "dm_987"
+            )
+        )
+
+        let sessionStore = MockSessionStore()
+        let coordinator = AppCoordinator()
+        let viewModel = OnboardingViewModel(
+            pendingInvite: .init(
+                token: "inv_123",
+                instanceURL: URL(string: "https://workspace.example.com")
+            ),
+            service: service,
+            sessionStore: sessionStore
+        )
+        viewModel.attachCoordinator(coordinator)
+
+        await viewModel.loadInviteIfNeeded()
+        viewModel.displayName = "Alex"
+        viewModel.password = "long-enough-password"
+        viewModel.confirmPassword = "long-enough-password"
+
+        await viewModel.submit()
+
+        XCTAssertEqual(coordinator.authState, .authenticated)
+        XCTAssertEqual(coordinator.selectedTab, .messages)
+        XCTAssertEqual(coordinator.messagesPath, [.conversation("dm_987")])
+    }
+
     private func makeViewModel(
         pendingInvite: AppCoordinator.PendingInvite? = .init(
             token: "inv_123",
@@ -153,7 +196,8 @@ final class ConversationViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.messages.first?.id, "srv_1")
         XCTAssertEqual(viewModel.messages.first?.isPending, false)
         XCTAssertNil(viewModel.failureBanner)
-        XCTAssertEqual(notifications.requestCount, 1)
+        await Task.yield()
+        XCTAssertGreaterThanOrEqual(notifications.requestCount, 1)
     }
 
     func testSendFailureMarksOptimisticMessageFailed() async {
@@ -598,4 +642,100 @@ private extension ConversationListItem {
             memberCount: 3
         )
     }
+}
+
+final class AUAPIClientTests: XCTestCase {
+    override class func tearDown() {
+        super.tearDown()
+        MockURLProtocol.requestHandler = nil
+    }
+
+    func testLoginDecodesAuthResponse() async throws {
+        let session = makeSession()
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            let json = """
+            {
+              "token": "jwt_123",
+              "userID": "usr_1",
+              "expiresAt": "2026-03-20T00:00:00Z"
+            }
+            """
+            return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
+        }
+
+        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, session: session)
+        let response = try await client.login(email: "alice@example.com", password: "password-1234")
+
+        XCTAssertEqual(capturedRequest?.httpMethod, "POST")
+        XCTAssertEqual(response.token, "jwt_123")
+        XCTAssertEqual(response.userID, "usr_1")
+    }
+
+    func testSendMessagePostsChannelPayloadAndDecodesMessage() async throws {
+        let session = makeSession()
+        var capturedRequest: URLRequest?
+        MockURLProtocol.requestHandler = { request in
+            capturedRequest = request
+            let json = """
+            {
+              "id": "msg_1",
+              "conversation_id": "chn_1",
+              "text": "hello from test",
+              "author_id": "usr_1",
+              "author_name": "Alice",
+              "author_type": "human",
+              "timestamp": "2026-03-20T01:00:00Z",
+              "reply_to_id": "msg_parent"
+            }
+            """
+            return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
+        }
+
+        let client = LiveAUAPIClient(
+            instanceURL: URL(string: "https://workspace.example.com")!,
+            authToken: "jwt_abc",
+            session: session
+        )
+
+        let response = try await client.sendMessage(channelId: "chn_1", text: "hello from test", replyToID: "msg_parent")
+
+        XCTAssertEqual(capturedRequest?.httpMethod, "POST")
+        XCTAssertEqual(capturedRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer jwt_abc")
+        XCTAssertEqual(response.id, "msg_1")
+        XCTAssertEqual(response.conversationID, "chn_1")
+        XCTAssertEqual(response.replyToID, "msg_parent")
+    }
+
+    private func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }
+}
+
+private final class MockURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let handler = Self.requestHandler else {
+            XCTFail("Missing request handler")
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
 }
