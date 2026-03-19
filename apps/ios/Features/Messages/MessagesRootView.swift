@@ -240,6 +240,9 @@ final class ConversationViewModel: ObservableObject {
     @Published private(set) var isOffline = false
     @Published private(set) var isShowingTypingIndicator = false
     @Published private(set) var typingIndicatorText: String?
+    @Published private(set) var channelMembers: [ChannelMemberItem] = []
+    @Published private(set) var isLoadingChannelMembers = false
+    @Published private(set) var channelMembersError: String?
 
     private let conversationID: String
     private let mode: ConversationKind
@@ -289,9 +292,7 @@ final class ConversationViewModel: ObservableObject {
 
         phase = .loading
         do {
-            let screen = try await store.loadConversationScreen(conversationID: conversationID)
-            header = screen.header
-            messages = screen.messages
+            try await loadScreen(from: store)
             phase = .loaded
             refreshTypingIndicator()
         } catch let error as MessagesFeatureError {
@@ -307,9 +308,7 @@ final class ConversationViewModel: ObservableObject {
         }
 
         do {
-            let screen = try await store.loadConversationScreen(conversationID: conversationID)
-            header = screen.header
-            messages = screen.messages
+            try await loadScreen(from: store)
             phase = .loaded
             refreshTypingIndicator()
         } catch let error as MessagesFeatureError {
@@ -404,6 +403,20 @@ final class ConversationViewModel: ObservableObject {
         replyContext = nil
     }
 
+    func loadChannelMembersIfNeeded() async {
+        guard mode == .channel, let store, channelMembers.isEmpty, isLoadingChannelMembers == false else {
+            return
+        }
+        await refreshChannelMembers(using: store)
+    }
+
+    func refreshChannelMembers() async {
+        guard mode == .channel, let store else {
+            return
+        }
+        await refreshChannelMembers(using: store)
+    }
+
     func deleteOwnMessage(_ message: MessageItem) {
         guard let store else {
             return
@@ -426,6 +439,46 @@ final class ConversationViewModel: ObservableObject {
             messages.append(message)
         }
         messages.sort { $0.timestamp < $1.timestamp }
+    }
+
+    private func loadScreen(from store: ConversationStoreProtocol) async throws {
+        let screen = try await store.loadConversationScreen(conversationID: conversationID)
+        header = screen.header
+        messages = screen.messages
+
+        guard mode == .channel else {
+            return
+        }
+
+        if let details = try await store.loadChannelDetails(channelID: conversationID) {
+            header = ConversationHeader(
+                kind: .channel,
+                displayName: "#\(details.name)",
+                subtitle: details.subtitle,
+                participantID: nil,
+                memberCount: details.memberCount,
+                topic: details.topic
+            )
+
+            if details.members.isEmpty == false {
+                channelMembers = details.members
+            }
+        }
+    }
+
+    private func refreshChannelMembers(using store: ConversationStoreProtocol) async {
+        isLoadingChannelMembers = true
+        channelMembersError = nil
+
+        do {
+            channelMembers = try await store.loadChannelMembers(channelID: conversationID)
+        } catch let error as MessagesFeatureError {
+            channelMembersError = error.errorDescription ?? "Couldn't load members."
+        } catch {
+            channelMembersError = error.localizedDescription
+        }
+
+        isLoadingChannelMembers = false
     }
 
     private func bindWebSocket(_ webSocketManager: AUWebSocketManager) {
@@ -706,6 +759,7 @@ struct ConversationView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var webSocketManager: AUWebSocketManager
     @StateObject private var viewModel: ConversationViewModel
+    @State private var isShowingMembersSheet = false
 
     init(conversationID: String, mode: ConversationKind = .dm) {
         _viewModel = StateObject(wrappedValue: ConversationViewModel(conversationID: conversationID, mode: mode))
@@ -747,9 +801,37 @@ struct ConversationView: View {
                         .foregroundStyle(.gray)
                 }
             }
+            if viewModel.header.kind == .channel {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingMembersSheet = true
+                        Task {
+                            await viewModel.loadChannelMembersIfNeeded()
+                        }
+                    } label: {
+                        Image(systemName: "person.2")
+                            .foregroundStyle(Color.auEmerald)
+                    }
+                    .accessibilityLabel("Show channel members")
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
             composeBar
+        }
+        .sheet(isPresented: $isShowingMembersSheet) {
+            ChannelMembersSheet(
+                title: viewModel.header.displayName,
+                subtitle: viewModel.header.topic ?? "\(viewModel.header.memberCount) \(viewModel.header.memberCount == 1 ? "member" : "members")",
+                members: viewModel.channelMembers,
+                isLoading: viewModel.isLoadingChannelMembers,
+                errorText: viewModel.channelMembersError,
+                onRetry: {
+                    Task {
+                        await viewModel.refreshChannelMembers()
+                    }
+                }
+            )
         }
         .task {
             viewModel.configure(modelContext: modelContext, webSocketManager: webSocketManager)
@@ -904,6 +986,11 @@ struct ConversationRow: View {
                     Text(item.kind == .channel ? "#\(item.displayName)" : item.displayName)
                         .font(.headline)
                         .foregroundStyle(.primary)
+                    if item.kind == .channel, item.memberCount > 0 {
+                        Text("\(item.memberCount)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                     if item.kind == .dm && item.isAgent {
                         AgentBadge()
                     }
@@ -1051,6 +1138,95 @@ private struct TypingIndicatorRow: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
             Spacer()
+        }
+    }
+}
+
+private struct ChannelMembersSheet: View {
+    let title: String
+    let subtitle: String
+    let members: [ChannelMemberItem]
+    let isLoading: Bool
+    let errorText: String?
+    let onRetry: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading && members.isEmpty {
+                    ProgressView("Loading members")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let errorText, members.isEmpty {
+                    ContentUnavailableView(
+                        "Members unavailable",
+                        systemImage: "person.2.slash",
+                        description: Text(errorText)
+                    )
+                    .overlay(alignment: .bottom) {
+                        Button("Retry", action: onRetry)
+                            .buttonStyle(.borderedProminent)
+                            .tint(.auEmerald)
+                            .padding(.bottom, 24)
+                    }
+                } else {
+                    List {
+                        if let errorText {
+                            Text(errorText)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.red.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .listRowSeparator(.hidden)
+                        }
+
+                        ForEach(members) { member in
+                            HStack(spacing: 12) {
+                                ZStack(alignment: .bottomTrailing) {
+                                    AvatarView(initials: member.initials, isAgent: member.isAgent)
+                                    PresenceDot(isOnline: member.isOnline)
+                                }
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 8) {
+                                        Text(member.displayName)
+                                            .foregroundStyle(.primary)
+                                        if member.isAgent {
+                                            AgentBadge()
+                                        }
+                                        Text(member.role.capitalized)
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Text(member.email)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+                            }
+                            .listRowSeparator(.hidden)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text(title)
+                            .font(.headline)
+                        Text(subtitle)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.gray)
+                    }
+                }
+            }
         }
     }
 }
@@ -1232,13 +1408,15 @@ struct ConversationHeader: Equatable {
     let subtitle: String
     let participantID: String?
     let memberCount: Int
+    let topic: String?
 
     static let placeholder = ConversationHeader(
         kind: .dm,
         displayName: "Conversation",
         subtitle: "agent · offline",
         participantID: nil,
-        memberCount: 0
+        memberCount: 0,
+        topic: nil
     )
 
     static let channelPlaceholder = ConversationHeader(
@@ -1246,7 +1424,8 @@ struct ConversationHeader: Equatable {
         displayName: "#channel",
         subtitle: "0 members",
         participantID: nil,
-        memberCount: 0
+        memberCount: 0,
+        topic: nil
     )
 }
 
@@ -1266,9 +1445,35 @@ struct MessageSection: Identifiable {
     let messages: [MessageItem]
 }
 
+struct ChannelDetails: Equatable {
+    let name: String
+    let topic: String?
+    let memberCount: Int
+    let members: [ChannelMemberItem]
+
+    var subtitle: String {
+        if let topic, topic.isEmpty == false {
+            return topic
+        }
+        return "\(memberCount) \(memberCount == 1 ? "member" : "members")"
+    }
+}
+
+struct ChannelMemberItem: Identifiable, Equatable {
+    let id: String
+    let displayName: String
+    let email: String
+    let role: String
+    let isAgent: Bool
+    let isOnline: Bool
+    let initials: String
+}
+
 @MainActor
 protocol ConversationStoreProtocol: AnyObject {
     func loadConversationScreen(conversationID: String) async throws -> ConversationScreenData
+    func loadChannelDetails(channelID: String) async throws -> ChannelDetails?
+    func loadChannelMembers(channelID: String) async throws -> [ChannelMemberItem]
     func insertOptimisticMessage(conversationID: String, text: String, replyToID: String?) throws -> MessageItem
     func commitMessage(conversationID: String, text: String, replyToID: String?, optimisticID: String) async throws -> MessageItem
     func markMessageFailed(id: String) throws -> MessageItem
@@ -1399,6 +1604,30 @@ final class LiveMessagesStore: ConversationStoreProtocol {
             header: mapHeader(conversation, currentUserID: currentUserID),
             messages: localMessages(conversationID: conversationID, currentUserID: currentUserID)
         )
+    }
+
+    func loadChannelDetails(channelID: String) async throws -> ChannelDetails? {
+        guard let conversation = try fetchConversation(id: channelID), conversation.type == "channel" else {
+            return nil
+        }
+
+        let client = try makeClient()
+        let details = try await client.getChannel(id: channelID)
+        conversation.name = details.name
+        conversation.topic = details.topic
+        conversation.memberCount = details.memberCount
+        if details.members.isEmpty == false {
+            conversation.participantIDs = details.members.map(\.id)
+        }
+        try modelContext.save()
+        return try mapChannelDetails(details, fallbackConversation: conversation)
+    }
+
+    func loadChannelMembers(channelID: String) async throws -> [ChannelMemberItem] {
+        let client = try makeClient()
+        let members = try await client.getChannelMembers(channelId: channelID)
+        return try members.map(mapChannelMember)
+            .sorted { ($0.isOnline ? 0 : 1, $0.displayName.lowercased()) < ($1.isOnline ? 0 : 1, $1.displayName.lowercased()) }
     }
 
     func insertOptimisticMessage(conversationID: String, text: String, replyToID: String?) throws -> MessageItem {
@@ -1535,9 +1764,11 @@ final class LiveMessagesStore: ConversationStoreProtocol {
 
             conversation.name = response.name
             conversation.type = response.type
+            conversation.topic = response.topic
             conversation.lastMessageText = response.lastMessageText
             conversation.lastMessageAt = response.lastMessageAt
             conversation.unreadCount = response.unreadCount
+            conversation.memberCount = response.memberCount ?? response.participantIDs.count
             conversation.participantIDs = response.participantIDs
         }
 
@@ -1694,19 +1925,22 @@ final class LiveMessagesStore: ConversationStoreProtocol {
             lastMessageAt: conversation.lastMessageAt,
             initials: name.initials,
             isMuted: conversation.isMuted,
-            memberCount: conversation.participantIDs.count
+            memberCount: effectiveMemberCount(for: conversation)
         )
     }
 
     private func mapHeader(_ conversation: Conversation, currentUserID: String) throws -> ConversationHeader {
         if conversation.type == "channel" {
-            let memberCount = max(conversation.participantIDs.count, 1)
+            let memberCount = effectiveMemberCount(for: conversation)
             return ConversationHeader(
                 kind: .channel,
                 displayName: "#\(conversation.name)",
-                subtitle: "\(memberCount) \(memberCount == 1 ? "member" : "members")",
+                subtitle: conversation.topic?.isEmpty == false
+                    ? (conversation.topic ?? "")
+                    : "\(memberCount) \(memberCount == 1 ? "member" : "members")",
                 participantID: nil,
-                memberCount: memberCount
+                memberCount: memberCount,
+                topic: conversation.topic
             )
         }
 
@@ -1719,8 +1953,43 @@ final class LiveMessagesStore: ConversationStoreProtocol {
             displayName: name,
             subtitle: "\(type) · \(status)",
             participantID: participant?.id,
-            memberCount: 0
+            memberCount: 0,
+            topic: nil
         )
+    }
+
+    private func mapChannelDetails(_ details: ChannelDetailResponse, fallbackConversation: Conversation) throws -> ChannelDetails {
+        let members = try details.members.map(mapChannelMember)
+            .sorted { ($0.isOnline ? 0 : 1, $0.displayName.lowercased()) < ($1.isOnline ? 0 : 1, $1.displayName.lowercased()) }
+
+        return ChannelDetails(
+            name: details.name,
+            topic: details.topic ?? fallbackConversation.topic,
+            memberCount: max(details.memberCount, members.count, effectiveMemberCount(for: fallbackConversation)),
+            members: members
+        )
+    }
+
+    private func mapChannelMember(_ member: ChannelMemberResponse) throws -> ChannelMemberItem {
+        let knownUser = try fetchUser(id: member.id)
+        let isAgent = knownUser?.userType == "agent" || member.email.contains("@agentunited.local")
+        let displayName = knownUser?.displayName.isEmpty == false
+            ? (knownUser?.displayName ?? member.email)
+            : member.email.split(separator: "@").first.map(String.init) ?? member.email
+
+        return ChannelMemberItem(
+            id: member.id,
+            displayName: displayName,
+            email: member.email,
+            role: member.role,
+            isAgent: isAgent,
+            isOnline: knownUser?.isOnline ?? false,
+            initials: displayName.initials
+        )
+    }
+
+    private func effectiveMemberCount(for conversation: Conversation) -> Int {
+        max(conversation.memberCount, conversation.participantIDs.count, conversation.type == "channel" ? 1 : 0)
     }
 
     private func mapUser(_ user: User) -> UserListItem {

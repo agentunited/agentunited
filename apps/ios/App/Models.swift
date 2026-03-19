@@ -38,10 +38,12 @@ final class Conversation {
     @Attribute(.unique) var id: String
     var name: String
     var type: String           // "dm" | "channel"
+    var topic: String?
     var lastMessageText: String?
     var lastMessageAt: Date?
     var unreadCount: Int
     var isMuted: Bool
+    var memberCount: Int
     var participantIDs: [String]
     @Relationship(deleteRule: .cascade, inverse: \Message.conversation)
     var messages: [Message]
@@ -50,20 +52,24 @@ final class Conversation {
         id: String,
         name: String,
         type: String,
+        topic: String? = nil,
         lastMessageText: String? = nil,
         lastMessageAt: Date? = nil,
         unreadCount: Int = 0,
         isMuted: Bool = false,
+        memberCount: Int = 0,
         participantIDs: [String] = [],
         messages: [Message] = []
     ) {
         self.id = id
         self.name = name
         self.type = type
+        self.topic = topic
         self.lastMessageText = lastMessageText
         self.lastMessageAt = lastMessageAt
         self.unreadCount = unreadCount
         self.isMuted = isMuted
+        self.memberCount = memberCount
         self.participantIDs = participantIDs
         self.messages = messages
     }

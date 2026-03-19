@@ -452,6 +452,14 @@ private final class MockConversationStore: ConversationStoreProtocol {
         ConversationScreenData(header: .placeholder, messages: Array(storedMessages.values))
     }
 
+    func loadChannelDetails(channelID: String) async throws -> ChannelDetails? {
+        nil
+    }
+
+    func loadChannelMembers(channelID: String) async throws -> [ChannelMemberItem] {
+        []
+    }
+
     func insertOptimisticMessage(conversationID: String, text: String, replyToID: String?) throws -> MessageItem {
         insertCalls.append((conversationID, text, replyToID))
         let item = MessageItem(
