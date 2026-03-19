@@ -65,11 +65,62 @@ struct LiveAUAPIClient: AUAPIClient {
     }
 
     func listDMs() async throws -> [ConversationResponse] {
-        try await get("dm")
+        let request = try makeRequest(path: "dm", method: "GET", body: Optional<EmptyRequestBody>.none)
+        let data = try await performRequest(request)
+        if let direct = try? decoder.decode([ConversationResponse].self, from: data) {
+            return direct
+        }
+        if let wrapped = try? decoder.decode(ConversationListEnvelope.self, from: data) {
+            return wrapped.conversations
+        }
+        throw AUAPIError.decodingError(
+            DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unsupported DM list response"))
+        )
     }
 
     func listChannels() async throws -> [ConversationResponse] {
-        try await get("channels")
+        let request = try makeRequest(path: "channels", method: "GET", body: Optional<EmptyRequestBody>.none)
+        let data = try await performRequest(request)
+        if let direct = try? decoder.decode([ConversationResponse].self, from: data) {
+            return direct
+        }
+        if let wrapped = try? decoder.decode(ChannelListEnvelope.self, from: data) {
+            return wrapped.channels
+        }
+        if let wrapped = try? decoder.decode(ConversationListEnvelope.self, from: data) {
+            return wrapped.conversations
+        }
+        throw AUAPIError.decodingError(
+            DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unsupported channel list response"))
+        )
+    }
+
+    func getChannel(id: String) async throws -> ChannelDetailResponse {
+        let request = try makeRequest(path: "channels/\(id)", method: "GET", body: Optional<EmptyRequestBody>.none)
+        let data = try await performRequest(request)
+        if let direct = try? decoder.decode(ChannelDetailResponse.self, from: data) {
+            return direct
+        }
+        if let wrapped = try? decoder.decode(ChannelDetailEnvelope.self, from: data) {
+            return wrapped.channel
+        }
+        throw AUAPIError.decodingError(
+            DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unsupported channel detail response"))
+        )
+    }
+
+    func getChannelMembers(channelId: String) async throws -> [ChannelMemberResponse] {
+        let request = try makeRequest(path: "channels/\(channelId)/members", method: "GET", body: Optional<EmptyRequestBody>.none)
+        let data = try await performRequest(request)
+        if let direct = try? decoder.decode([ChannelMemberResponse].self, from: data) {
+            return direct
+        }
+        if let wrapped = try? decoder.decode(ChannelMembersEnvelope.self, from: data) {
+            return wrapped.members
+        }
+        throw AUAPIError.decodingError(
+            DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unsupported channel members response"))
+        )
     }
 
     func createDM(targetUserID: String) async throws -> ConversationResponse {
@@ -110,6 +161,15 @@ struct LiveAUAPIClient: AUAPIClient {
     }
 
     private func perform<T: Decodable>(_ request: URLRequest, expecting type: T.Type) async throws -> T {
+        let data = try await performRequest(request)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw AUAPIError.decodingError(error)
+        }
+    }
+
+    private func performRequest(_ request: URLRequest) async throws -> Data {
         do {
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -118,11 +178,7 @@ struct LiveAUAPIClient: AUAPIClient {
 
             switch httpResponse.statusCode {
             case 200 ..< 300:
-                do {
-                    return try decoder.decode(T.self, from: data)
-                } catch {
-                    throw AUAPIError.decodingError(error)
-                }
+                return data
             case 401:
                 throw AUAPIError.unauthorized
             case 404:
@@ -138,9 +194,26 @@ struct LiveAUAPIClient: AUAPIClient {
             throw AUAPIError.networkError(error)
         }
     }
+
 }
 
 private struct EmptyRequestBody: Encodable {}
+
+private struct ConversationListEnvelope: Decodable {
+    let conversations: [ConversationResponse]
+}
+
+private struct ChannelListEnvelope: Decodable {
+    let channels: [ConversationResponse]
+}
+
+private struct ChannelDetailEnvelope: Decodable {
+    let channel: ChannelDetailResponse
+}
+
+private struct ChannelMembersEnvelope: Decodable {
+    let members: [ChannelMemberResponse]
+}
 
 private struct LoginRequest: Encodable {
     let email: String
