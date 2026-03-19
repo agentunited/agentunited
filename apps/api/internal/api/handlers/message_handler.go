@@ -10,6 +10,7 @@ import (
 
 	"github.com/agentunited/backend/internal/api/middleware"
 	"github.com/agentunited/backend/internal/models"
+	"github.com/agentunited/backend/internal/repository"
 	"github.com/agentunited/backend/internal/service"
 	"github.com/agentunited/backend/internal/utils"
 	"github.com/agentunited/backend/pkg/integrations"
@@ -37,6 +38,7 @@ type MessageHandler struct {
 	hub               Broadcaster
 	realtime          RealtimePublisher
 	integrationRouter IntegrationEventRouter
+	userRepo          repository.UserRepository
 }
 
 // NewMessageHandler creates a new message handler
@@ -196,10 +198,26 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Populate author display info for broadcast
+	// Populate author display info for broadcast and response.
+	// The message service doesn't resolve display names on write — do it here.
 	if finalMessage.AuthorEmail == "" {
 		if agentName, ok := middleware.GetAgentName(ctx); ok && agentName != "" {
+			// Agent sender: use agent display name
 			finalMessage.AuthorEmail = agentName
+		} else if userEmail, ok := middleware.GetUserEmail(ctx); ok && userEmail != "" {
+			// Human sender: resolve display name from user repo; fall back to email prefix
+			if h.userRepo != nil {
+				if u, err := h.userRepo.GetByID(ctx, finalMessage.AuthorID); err == nil && u != nil {
+					if u.DisplayName != "" {
+						finalMessage.AuthorEmail = u.DisplayName
+					} else {
+						finalMessage.AuthorEmail = strings.Split(u.Email, "@")[0]
+					}
+				}
+			}
+			if finalMessage.AuthorEmail == "" {
+				finalMessage.AuthorEmail = strings.Split(userEmail, "@")[0]
+			}
 		}
 	}
 

@@ -1,7 +1,9 @@
 // Centralized API configuration with dynamic instance support
 
 const STORAGE_KEY = 'agentunited_instance_url';
-const DEFAULT_INSTANCE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Always default to same-origin API routing via nginx proxy (/api -> API_UPSTREAM).
+// Do not use build-time API URL defaults here; invite links must resolve against current host.
+const DEFAULT_INSTANCE_URL = '';
 
 class ApiConfig {
   private instanceUrl: string;
@@ -83,6 +85,13 @@ class ApiConfig {
 
     if (instanceUrl && instanceUrl !== this.instanceUrl) {
       this.setBaseUrl(instanceUrl);
+      instanceChanged = true;
+    }
+
+    // Invite links should validate against the current host's API proxy by default.
+    // If a token is present but no explicit instance override is provided, reset to default.
+    if (token && !instanceUrl && this.instanceUrl !== DEFAULT_INSTANCE_URL) {
+      this.resetToDefault();
       instanceChanged = true;
     }
 
