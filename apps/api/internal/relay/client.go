@@ -154,7 +154,14 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 	hreq.Header = req.Headers.Clone()
 	hreq.Host = ""
 
-	hresp, err := c.httpClient.Do(hreq)
+	// SSE streams must use a no-timeout client (http.Client Timeout would cut the stream).
+	isSSERequest := strings.Contains(req.Path, "/api/v1/events/stream") || strings.Contains(strings.ToLower(req.Headers.Get("Accept")), "text/event-stream")
+	httpClient := c.httpClient
+	if isSSERequest {
+		httpClient = &http.Client{}
+	}
+
+	hresp, err := httpClient.Do(hreq)
 	if err != nil {
 		_ = c.writeJSON(ws, ResponseMessage{Type: TypeResponse, ID: req.ID, Status: 502})
 		return
@@ -163,6 +170,7 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 
 	contentType := strings.ToLower(hresp.Header.Get("Content-Type"))
 	isSSE := strings.Contains(contentType, "text/event-stream")
+
 	if isSSE {
 		_ = c.writeJSON(ws, ResponseStartMessage{Type: TypeResponseStart, ID: req.ID, Status: hresp.StatusCode, Headers: hresp.Header})
 		buf := make([]byte, 4096)
