@@ -18,6 +18,7 @@ type UserRepository interface {
 	Update(ctx context.Context, user *models.User) error
 	UpdateProfile(ctx context.Context, id, displayName, avatarURL string) error
 	Count(ctx context.Context) (int64, error)
+	GetEarliestUser(ctx context.Context) (*models.User, error)
 	List(ctx context.Context) ([]*models.User, error)
 }
 

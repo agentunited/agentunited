@@ -103,6 +103,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	meHandler := handlers.NewMeHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
 	messageHandler := handlers.NewMessageHandler(messageService, webhookService, hub, realtimeEngine, cache.Client, integrationService)
+	messageHandler.SetUserRepo(userRepo)
 	integrationHandler := handlers.NewIntegrationHandler(integrationService)
 	billingHandler := handlers.NewBillingHandler(billingService)
 	agentHandler := handlers.NewAgentHandler(agentService)

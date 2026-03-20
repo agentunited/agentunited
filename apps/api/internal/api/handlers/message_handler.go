@@ -61,6 +61,20 @@ func NewMessageHandler(messageService service.MessageService, webhookService ser
 	}
 }
 
+// SetUserRepo injects the user repository (needed for SSE workspace owner resolution).
+func (h *MessageHandler) SetUserRepo(repo repository.UserRepository) { h.userRepo = repo }
+
+// workspaceStreamKey returns the Redis Stream key for workspace-level SSE events.
+// We key by the earliest created user (owner), so all workspace members share the same stream.
+func (h *MessageHandler) workspaceStreamKey(ctx context.Context) string {
+	if h.userRepo != nil {
+		if owner, err := h.userRepo.GetEarliestUser(ctx); err == nil {
+			return fmt.Sprintf("workspace:%s:events", owner.ID)
+		}
+	}
+	return "workspace:unknown:events"
+}
+
 // SendMessageRequest represents the send message request body
 type SendMessageRequest struct {
 	Text string `json:"text"`
@@ -195,7 +209,6 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if finalMessage.AuthorType != "agent" {
 		h.webhookService.DispatchEvent(ctx, channelID, "message.created", webhookPayload)
 		if h.redisClient != nil {
-			workspaceID := userID
 			eventData := map[string]any{
 				"event":       "message.created",
 				"channel_id":  finalMessage.ChannelID,
@@ -206,7 +219,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 				"created_at":  finalMessage.CreatedAt.Format(time.RFC3339Nano),
 			}
 			if b, err := json.Marshal(eventData); err == nil {
-				streamKey := fmt.Sprintf("workspace:%s:events", workspaceID)
+				streamKey := h.workspaceStreamKey(ctx)
 				_, _ = h.redisClient.XAdd(ctx, &redis.XAddArgs{Stream: streamKey, MaxLen: 2000, Approx: true, Values: map[string]any{"event": string(b), "message_id": finalMessage.ID}}).Result()
 			}
 		}
@@ -271,7 +284,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 // StreamEvents handles GET /api/v1/events/stream
 func (h *MessageHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := middleware.GetUserID(ctx)
+	_, ok := middleware.GetUserID(ctx)
 	if !ok {
 		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
 		return
@@ -290,7 +303,7 @@ func (h *MessageHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, ": connected\n\n")
 	flusher.Flush()
 
-	streamKey := fmt.Sprintf("workspace:%s:events", userID)
+	streamKey := h.workspaceStreamKey(ctx)
 	lastID := r.Header.Get("Last-Event-ID")
 	if lastID == "" {
 		lastID = "0-0"
