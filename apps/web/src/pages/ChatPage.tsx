@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatHeader } from '../components/chat/ChatHeader';
@@ -43,6 +43,9 @@ export function ChatPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [channelMembers, setChannelMembers] = useState<{ id: string; name: string; email: string; type: 'agent' | 'human'; online: boolean }[]>([]);
   const [userDirectory, setUserDirectory] = useState<Record<string, { display: string; type: 'agent' | 'human' }>>({});
+  const [showAgentNoReplyIndicator, setShowAgentNoReplyIndicator] = useState(false);
+  const noReplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingHumanMessageIdRef = useRef<string | null>(null);
   
   // Determine if we're viewing a channel or DM
   const isViewingDM = !!selectedDMId;
@@ -190,6 +193,10 @@ export function ChatPage() {
 
   const selectedDM = displayDirectMessages.find(dm => dm.id === selectedDMId) || null;
 
+  const hasAgentParticipant = isViewingDM
+    ? selectedDM?.type === 'agent'
+    : channelMembers.some((member) => member.type === 'agent');
+
   const channelMemberDirectory = useMemo(() => {
     const directory: Record<string, string> = {};
 
@@ -253,6 +260,53 @@ export function ChatPage() {
       return msg;
     });
   }, [messages, userDirectory, channelMemberDirectory]);
+
+  useEffect(() => {
+    if (noReplyTimerRef.current) {
+      clearTimeout(noReplyTimerRef.current);
+      noReplyTimerRef.current = null;
+    }
+
+    if (!activeConversationId || !hasAgentParticipant || messages.length === 0) {
+      pendingHumanMessageIdRef.current = null;
+      setShowAgentNoReplyIndicator(false);
+      return;
+    }
+
+    const latestMessage = messages[messages.length - 1];
+
+    // Clear indicator as soon as any message arrives after the pending human message.
+    if (
+      pendingHumanMessageIdRef.current &&
+      latestMessage.id !== pendingHumanMessageIdRef.current
+    ) {
+      pendingHumanMessageIdRef.current = null;
+      setShowAgentNoReplyIndicator(false);
+    }
+
+    const latestIsHumanSentByCurrentUser =
+      latestMessage.authorType === 'human' && latestMessage.isOwnMessage;
+
+    if (!latestIsHumanSentByCurrentUser) {
+      return;
+    }
+
+    pendingHumanMessageIdRef.current = latestMessage.id;
+    setShowAgentNoReplyIndicator(false);
+
+    noReplyTimerRef.current = setTimeout(() => {
+      if (pendingHumanMessageIdRef.current === latestMessage.id) {
+        setShowAgentNoReplyIndicator(true);
+      }
+    }, 30_000);
+
+    return () => {
+      if (noReplyTimerRef.current) {
+        clearTimeout(noReplyTimerRef.current);
+        noReplyTimerRef.current = null;
+      }
+    };
+  }, [messages, activeConversationId, hasAgentParticipant]);
 
   const markConversationRead = useCallback(async (kind: 'channel' | 'dm', id: string) => {
     try {
@@ -680,6 +734,12 @@ export function ChatPage() {
                 onMessageUpdated={handleMessageUpdated}
                 onMessageDeleted={handleMessageDeleted}
               />
+
+              {showAgentNoReplyIndicator && (
+                <div className="mx-4 mb-2 rounded-md border border-amber-300/35 bg-amber-50/60 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200/90">
+                  Agent hasn&apos;t responded yet.
+                </div>
+              )}
 
               <MessageInput
                 onSend={handleSendMessage}
