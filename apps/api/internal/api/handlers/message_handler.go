@@ -287,6 +287,8 @@ func (h *MessageHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	flusher, ok := w.(http.Flusher)
 	if !ok { return }
+	_, _ = fmt.Fprintf(w, ": connected\n\n")
+	flusher.Flush()
 
 	streamKey := fmt.Sprintf("workspace:%s:events", userID)
 	lastID := r.Header.Get("Last-Event-ID")
