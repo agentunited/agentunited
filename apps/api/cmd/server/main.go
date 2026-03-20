@@ -73,11 +73,11 @@ func main() {
 
 	// HTTP server
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:    fmt.Sprintf(":%s", cfg.Server.Port),
+		Handler: router,
+		// Do not set a global write timeout; SSE streams are long-lived.
+		ReadTimeout: 15 * time.Second,
+		IdleTimeout: 60 * time.Second,
 	}
 
 	// Start server in goroutine
