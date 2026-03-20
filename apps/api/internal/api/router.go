@@ -32,7 +32,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	r.Use(func(next http.Handler) http.Handler {
 		timeoutHandler := middleware.Timeout(60 * time.Second)(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/ws" {
+			if r.URL.Path == "/ws" || r.URL.Path == "/api/v1/events/stream" {
 				next.ServeHTTP(w, r)
 				return
 			}
