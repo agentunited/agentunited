@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
 	"strings"
 	"sync"
 	"time"
@@ -160,6 +161,25 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 	}
 	defer hresp.Body.Close()
 
+	contentType := strings.ToLower(hresp.Header.Get("Content-Type"))
+	isSSE := strings.Contains(contentType, "text/event-stream")
+	if isSSE {
+		_ = c.writeJSON(ws, ResponseStartMessage{Type: TypeResponseStart, ID: req.ID, Status: hresp.StatusCode, Headers: hresp.Header})
+		buf := make([]byte, 4096)
+		for {
+			n, err := hresp.Body.Read(buf)
+			if n > 0 {
+				chunk := base64.StdEncoding.EncodeToString(buf[:n])
+				_ = c.writeJSON(ws, ResponseChunkMessage{Type: TypeResponseChunk, ID: req.ID, Body: chunk})
+			}
+			if err != nil {
+				break
+			}
+		}
+		_ = c.writeJSON(ws, ResponseEndMessage{Type: TypeResponseEnd, ID: req.ID})
+		return
+	}
+
 	respBody, _ := io.ReadAll(hresp.Body)
 	resp := ResponseMessage{
 		Type:    TypeResponse,
@@ -171,10 +191,30 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 	_ = c.writeJSON(ws, resp)
 }
 
+// safeWSHeaders is the allowlist of headers that are safe to forward to the local WS backend.
+// We use an allowlist rather than a denylist to avoid forwarding any hop-by-hop or WS handshake
+// headers that gorilla/websocket sets automatically (Connection, Upgrade, Sec-WebSocket-*).
+var safeWSHeaders = map[string]bool{
+	"Authorization": true,
+	"Cookie":        true,
+	"X-Real-Ip":     true,
+	"X-Forwarded-For": true,
+}
+
+func sanitizeWSHeaders(h http.Header) http.Header {
+	out := http.Header{}
+	for k, v := range h {
+		if safeWSHeaders[textproto.CanonicalMIMEHeaderKey(k)] {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 func (c *Client) handleWSOpen(ctx context.Context, ws *websocket.Conn, open WSOpenMessage) {
 	dialer := websocket.Dialer{}
 	localURL := strings.Replace(c.localAPI, "http://", "ws://", 1) + open.Path
-	localConn, _, err := dialer.DialContext(ctx, localURL, open.Headers)
+	localConn, _, err := dialer.DialContext(ctx, localURL, sanitizeWSHeaders(open.Headers))
 	if err != nil {
 		_ = c.writeJSON(ws, WSOpenedMessage{Type: TypeWSOpened, ID: open.ID, Success: false, Error: err.Error()})
 		return

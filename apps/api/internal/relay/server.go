@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
 	"strings"
 	"sync"
 	"time"
@@ -19,13 +20,36 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// safeWSForwardHeaders is the allowlist of headers the relay server includes in WSOpenMessage.
+// Hop-by-hop and WS handshake headers (Connection, Upgrade, Sec-WebSocket-*) must be excluded
+// because gorilla/websocket sets them automatically on the client side; duplicates cause 1013.
+var safeWSForwardHeaders = map[string]bool{
+	"Authorization":   true,
+	"Cookie":          true,
+	"X-Real-Ip":       true,
+	"X-Forwarded-For": true,
+}
+
+func safeForwardHeaders(h http.Header) http.Header {
+	out := http.Header{}
+	for k, v := range h {
+		if safeWSForwardHeaders[textproto.CanonicalMIMEHeaderKey(k)] {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 type clientConn struct {
 	id        string
 	subdomain string
 	conn      *websocket.Conn
 	writeMu   sync.Mutex
-	pending   sync.Map // request_id -> chan ResponseMessage
-	wsOpen    sync.Map // ws_id -> chan WSOpenedMessage
+	pending      sync.Map // request_id -> chan ResponseMessage
+	pendingStart sync.Map // request_id -> chan ResponseStartMessage
+	pendingChunk sync.Map // request_id -> chan ResponseChunkMessage
+	pendingEnd   sync.Map // request_id -> chan struct{}
+	wsOpen       sync.Map // ws_id -> chan WSOpenedMessage
 	wsData    sync.Map // ws_id -> chan WSDataMessage
 	wsClosed  sync.Map // ws_id -> chan struct{}
 }
@@ -150,6 +174,42 @@ func (s *Server) readLoop(_ context.Context, cc *clientConn) {
 				default:
 				}
 			}
+		case TypeResponseStart:
+			var start ResponseStartMessage
+			if err := json.Unmarshal(data, &start); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.pendingStart.Load(start.ID); ok {
+				ch := chRaw.(chan ResponseStartMessage)
+				select {
+				case ch <- start:
+				default:
+				}
+			}
+		case TypeResponseChunk:
+			var chunk ResponseChunkMessage
+			if err := json.Unmarshal(data, &chunk); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.pendingChunk.Load(chunk.ID); ok {
+				ch := chRaw.(chan ResponseChunkMessage)
+				select {
+				case ch <- chunk:
+				default:
+				}
+			}
+		case TypeResponseEnd:
+			var end ResponseEndMessage
+			if err := json.Unmarshal(data, &end); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.pendingEnd.Load(end.ID); ok {
+				ch := chRaw.(chan struct{})
+				select {
+				case ch <- struct{}{}:
+				default:
+				}
+			}
 		case TypeWSOpened:
 			var opened WSOpenedMessage
 			if err := json.Unmarshal(data, &opened); err != nil {
@@ -233,8 +293,17 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respCh := make(chan ResponseMessage, 1)
+	startCh := make(chan ResponseStartMessage, 1)
+	chunkCh := make(chan ResponseChunkMessage, 128)
+	endCh := make(chan struct{}, 1)
 	cc.pending.Store(reqID, respCh)
+	cc.pendingStart.Store(reqID, startCh)
+	cc.pendingChunk.Store(reqID, chunkCh)
+	cc.pendingEnd.Store(reqID, endCh)
 	defer cc.pending.Delete(reqID)
+	defer cc.pendingStart.Delete(reqID)
+	defer cc.pendingChunk.Delete(reqID)
+	defer cc.pendingEnd.Delete(reqID)
 
 	if err := cc.writeJSON(msg); err != nil {
 		http.Error(w, "failed to route request", http.StatusBadGateway)
@@ -252,6 +321,36 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		if resp.Body != "" {
 			decoded, _ := base64.StdEncoding.DecodeString(resp.Body)
 			_, _ = w.Write(decoded)
+		}
+	case start := <-startCh:
+		for k, vals := range start.Headers {
+			for _, v := range vals {
+				w.Header().Add(k, v)
+			}
+		}
+		w.Header().Set("X-Accel-Buffering", "no")
+		w.WriteHeader(start.Status)
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			return
+		}
+		flusher.Flush()
+		for {
+			select {
+			case ch := <-chunkCh:
+				if ch.Body == "" {
+					continue
+				}
+				decoded, _ := base64.StdEncoding.DecodeString(ch.Body)
+				if len(decoded) > 0 {
+					_, _ = w.Write(decoded)
+					flusher.Flush()
+				}
+			case <-endCh:
+				return
+			case <-ctx.Done():
+				return
+			}
 		}
 	case <-time.After(30 * time.Second):
 		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
@@ -277,7 +376,7 @@ func (s *Server) handlePublicWebSocket(w http.ResponseWriter, r *http.Request, c
 	defer cc.wsData.Delete(wsID)
 	defer cc.wsClosed.Delete(wsID)
 
-	openMsg := WSOpenMessage{Type: TypeWSOpen, ID: wsID, Path: r.URL.RequestURI(), Headers: r.Header}
+	openMsg := WSOpenMessage{Type: TypeWSOpen, ID: wsID, Path: r.URL.RequestURI(), Headers: safeForwardHeaders(r.Header)}
 	if err := cc.writeJSON(openMsg); err != nil {
 		return
 	}

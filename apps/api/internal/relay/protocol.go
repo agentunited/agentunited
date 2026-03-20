@@ -7,11 +7,14 @@ const (
 	TypeRegister   = "register"
 	TypeRegistered = "registered"
 	TypeRequest    = "request"
-	TypeResponse   = "response"
-	TypePing       = "ping"
-	TypePong       = "pong"
-	TypeError      = "error"
-	TypeWSOpen     = "ws_open"
+	TypeResponse      = "response"
+	TypeResponseStart = "response_start"
+	TypeResponseChunk = "response_chunk"
+	TypeResponseEnd   = "response_end"
+	TypePing          = "ping"
+	TypePong          = "pong"
+	TypeError         = "error"
+	TypeWSOpen        = "ws_open"
 	TypeWSOpened   = "ws_opened"
 	TypeWSData     = "ws_data"
 	TypeWSClose    = "ws_close"
@@ -49,6 +52,24 @@ type ResponseMessage struct {
 	Status  int         `json:"status"`
 	Headers http.Header `json:"headers"`
 	Body    string      `json:"body"` // base64
+}
+
+type ResponseStartMessage struct {
+	Type    string      `json:"type"`
+	ID      string      `json:"id"`
+	Status  int         `json:"status"`
+	Headers http.Header `json:"headers"`
+}
+
+type ResponseChunkMessage struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+	Body string `json:"body"` // base64
+}
+
+type ResponseEndMessage struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
 }
 
 type ErrorMessage struct {
