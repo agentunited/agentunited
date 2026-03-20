@@ -208,6 +208,22 @@ func (r *PostgresUserRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+// GetEarliestUser returns the first created user (workspace owner)
+func (r *PostgresUserRepository) GetEarliestUser(ctx context.Context) (*models.User, error) {
+	query := `SELECT id, email, COALESCE(display_name, ''), COALESCE(avatar_url, ''), COALESCE(user_type, 'human'), password_hash, created_at, updated_at
+		FROM users ORDER BY created_at ASC LIMIT 1`
+
+	u := &models.User{}
+	err := r.db.Pool.QueryRow(ctx, query).Scan(&u.ID, &u.Email, &u.DisplayName, &u.AvatarURL, &u.UserType, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("no users found")
+		}
+		return nil, fmt.Errorf("get earliest user: %w", err)
+	}
+	return u, nil
+}
+
 // List returns all users in the instance.
 func (r *PostgresUserRepository) List(ctx context.Context) ([]*models.User, error) {
 	query := `

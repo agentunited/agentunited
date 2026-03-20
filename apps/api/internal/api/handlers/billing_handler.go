@@ -104,6 +104,7 @@ func (h *BillingHandler) Status(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
 		return
 	}
+
 	sub, entityCount, err := h.svc.GetStatus(r.Context(), workspaceID)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})

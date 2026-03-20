@@ -61,10 +61,24 @@ func (s *billingService) GetCheckoutURL(ctx context.Context, workspaceID, email,
 }
 
 func (s *billingService) GetStatus(ctx context.Context, workspaceID string) (*models.Subscription, int64, error) {
-	sub, err := s.repo.GetByWorkspace(ctx, workspaceID)
+	resolvedWorkspaceID := workspaceID
+
+	// Billing/subscription is anchored to workspace owner (earliest created human user),
+	// not necessarily the currently logged-in invited user.
+	if usersList, err := s.userRepo.List(ctx); err == nil && len(usersList) > 0 {
+		earliest := usersList[0]
+		for _, u := range usersList[1:] {
+			if u.CreatedAt.Before(earliest.CreatedAt) {
+				earliest = u
+			}
+		}
+		resolvedWorkspaceID = earliest.ID
+	}
+
+	sub, err := s.repo.GetByWorkspace(ctx, resolvedWorkspaceID)
 	if err != nil {
 		// Default free status if not yet present.
-		sub = &models.Subscription{WorkspaceID: workspaceID, Plan: "free", Status: "free", RelayTier: "free", RelayBandwidthLimitMB: 1024, RelayConnectionsMax: 3}
+		sub = &models.Subscription{WorkspaceID: resolvedWorkspaceID, Plan: "free", Status: "free", RelayTier: "free", RelayBandwidthLimitMB: 1024, RelayConnectionsMax: 3}
 	}
 	users, err := s.userRepo.Count(ctx)
 	if err != nil {
