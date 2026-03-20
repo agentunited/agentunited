@@ -306,8 +306,10 @@ func (h *MessageHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 	streamKey := h.workspaceStreamKey(ctx)
 	lastID := r.Header.Get("Last-Event-ID")
 	if lastID == "" {
-		lastID = "0-0"
+		// No resume cursor: start from new events only.
+		lastID = "$"
 	} else {
+		// Resume strictly after the last seen event id.
 		lastID = "(" + lastID
 	}
 
