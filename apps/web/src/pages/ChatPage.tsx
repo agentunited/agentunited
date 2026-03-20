@@ -190,26 +190,69 @@ export function ChatPage() {
 
   const selectedDM = displayDirectMessages.find(dm => dm.id === selectedDMId) || null;
 
+  const channelMemberDirectory = useMemo(() => {
+    const directory: Record<string, string> = {};
+
+    for (const member of channelMembers) {
+      const resolvedName = getDisplayName(member.name);
+      directory[member.id] = resolvedName;
+      directory[member.email] = resolvedName;
+      directory[member.email.toLowerCase()] = resolvedName;
+
+      const localPart = member.email.split('@')[0];
+      if (localPart) {
+        directory[localPart] = resolvedName;
+        directory[localPart.toLowerCase()] = resolvedName;
+      }
+    }
+
+    return directory;
+  }, [channelMembers]);
+
   const displayMessages = useMemo(() => {
     return messages.map((msg) => {
-      const resolved = userDirectory[msg.authorId];
-      if (!resolved) return msg;
+      const candidates = [msg.authorId, msg.author].filter(Boolean) as string[];
 
-      const preferredName = getDisplayName(resolved.display);
+      let preferredName: string | undefined;
 
-      // Prefer resolved directory display name everywhere when available.
+      for (const rawCandidate of candidates) {
+        const candidate = rawCandidate.trim();
+        const lowerCandidate = candidate.toLowerCase();
+
+        const directoryHit =
+          userDirectory[candidate] ||
+          userDirectory[lowerCandidate] ||
+          (candidate.includes('@') ? userDirectory[candidate.toLowerCase()] : undefined);
+
+        if (directoryHit?.display) {
+          preferredName = getDisplayName(directoryHit.display);
+          break;
+        }
+
+        const memberHit =
+          channelMemberDirectory[candidate] ||
+          channelMemberDirectory[lowerCandidate];
+
+        if (memberHit) {
+          preferredName = memberHit;
+          break;
+        }
+      }
+
+      if (!preferredName) return msg;
+
+      // Prefer resolved display_name over username/email prefixes in bubbles.
       if (preferredName && msg.author !== preferredName) {
         return { ...msg, author: preferredName };
       }
 
-      // Replace low-quality author labels (raw UUID, UUID with suffix, etc.) with directory display name.
       if (msg.author === msg.authorId || hasUuid(msg.author)) {
         return { ...msg, author: preferredName };
       }
 
       return msg;
     });
-  }, [messages, userDirectory]);
+  }, [messages, userDirectory, channelMemberDirectory]);
 
   const markConversationRead = useCallback(async (kind: 'channel' | 'dm', id: string) => {
     try {
