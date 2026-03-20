@@ -159,6 +159,7 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 	httpClient := c.httpClient
 	if isSSERequest {
 		httpClient = &http.Client{}
+		log.Info().Str("path", req.Path).Msg("relay SSE request: using no-timeout client")
 	}
 
 	hresp, err := httpClient.Do(hreq)
