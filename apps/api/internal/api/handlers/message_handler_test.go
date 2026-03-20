@@ -118,7 +118,7 @@ func TestSend_PublishesToCentrifugo_WhenEnabled(t *testing.T) {
 	ws := new(mockWebhookService)
 	rt := new(mockRealtime)
 	hb := new(mockBroadcaster)
-	h := NewMessageHandler(ms, ws, hb, rt)
+	h := NewMessageHandler(ms, ws, hb, rt, nil)
 
 	msg := &models.Message{ID: "m1", ChannelID: "ch1", AuthorID: "u1", Text: "hello", CreatedAt: time.Now()}
 	ms.On("SendMessageWithAttachment", mock.Anything, mock.AnythingOfType("*models.Message"), (*service.AgentContext)(nil)).Return(msg, nil)
@@ -140,7 +140,7 @@ func TestSend_AgentAuthoredMessage_DoesNotDispatchWebhook(t *testing.T) {
 	ws := new(mockWebhookService)
 	rt := new(mockRealtime)
 	hb := new(mockBroadcaster)
-	h := NewMessageHandler(ms, ws, hb, rt)
+	h := NewMessageHandler(ms, ws, hb, rt, nil)
 
 	msg := &models.Message{ID: "m1", ChannelID: "ch1", AuthorID: "a1", AuthorType: "agent", Text: "hello", CreatedAt: time.Now()}
 	ms.On("SendMessageWithAttachment", mock.Anything, mock.AnythingOfType("*models.Message"), mock.AnythingOfType("*service.AgentContext")).Return(msg, nil)
@@ -164,7 +164,7 @@ func TestSend_UsesHubFallback_WhenCentrifugoDisabled(t *testing.T) {
 	ws := new(mockWebhookService)
 	rt := new(mockRealtime)
 	hb := new(mockBroadcaster)
-	h := NewMessageHandler(ms, ws, hb, rt)
+	h := NewMessageHandler(ms, ws, hb, rt, nil)
 
 	msg := &models.Message{ID: "m1", ChannelID: "ch1", AuthorID: "u1", Text: "hello", CreatedAt: time.Now()}
 	ms.On("SendMessageWithAttachment", mock.Anything, mock.AnythingOfType("*models.Message"), (*service.AgentContext)(nil)).Return(msg, nil)

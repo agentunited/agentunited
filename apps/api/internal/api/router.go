@@ -102,7 +102,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	authHandler := handlers.NewAuthHandler(authService)
 	meHandler := handlers.NewMeHandler(authService)
 	channelHandler := handlers.NewChannelHandler(channelService)
-	messageHandler := handlers.NewMessageHandler(messageService, webhookService, hub, realtimeEngine, integrationService)
+	messageHandler := handlers.NewMessageHandler(messageService, webhookService, hub, realtimeEngine, cache.Client, integrationService)
 	integrationHandler := handlers.NewIntegrationHandler(integrationService)
 	billingHandler := handlers.NewBillingHandler(billingService)
 	agentHandler := handlers.NewAgentHandler(agentService)
@@ -254,8 +254,10 @@ func registerProtectedRoutes(
 		})
 	})
 
-	// Message search route
+	// Message routes
 	r.Get("/messages/search", messageHandler.SearchMessages)
+	r.Get("/messages", messageHandler.PollMessages)
+	r.Get("/events/stream", messageHandler.StreamEvents)
 
 	// DM routes
 	r.Post("/dm", channelHandler.CreateDM)

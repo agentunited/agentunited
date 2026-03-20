@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/agentunited/backend/internal/api/middleware"
 	"github.com/agentunited/backend/internal/models"
@@ -15,6 +17,7 @@ import (
 	"github.com/agentunited/backend/internal/utils"
 	"github.com/agentunited/backend/pkg/integrations"
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -39,10 +42,11 @@ type MessageHandler struct {
 	realtime          RealtimePublisher
 	integrationRouter IntegrationEventRouter
 	userRepo          repository.UserRepository
+	redisClient       *redis.Client
 }
 
 // NewMessageHandler creates a new message handler
-func NewMessageHandler(messageService service.MessageService, webhookService service.WebhookService, hub Broadcaster, rt RealtimePublisher, routers ...IntegrationEventRouter) *MessageHandler {
+func NewMessageHandler(messageService service.MessageService, webhookService service.WebhookService, hub Broadcaster, rt RealtimePublisher, redisClient *redis.Client, routers ...IntegrationEventRouter) *MessageHandler {
 	var router IntegrationEventRouter
 	if len(routers) > 0 {
 		router = routers[0]
@@ -53,6 +57,7 @@ func NewMessageHandler(messageService service.MessageService, webhookService ser
 		hub:               hub,
 		realtime:          rt,
 		integrationRouter: router,
+		redisClient:       redisClient,
 	}
 }
 
@@ -189,6 +194,22 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	if finalMessage.AuthorType != "agent" {
 		h.webhookService.DispatchEvent(ctx, channelID, "message.created", webhookPayload)
+		if h.redisClient != nil {
+			workspaceID := userID
+			eventData := map[string]any{
+				"event":       "message.created",
+				"channel_id":  finalMessage.ChannelID,
+				"message_id":  finalMessage.ID,
+				"author_id":   finalMessage.AuthorID,
+				"author_type": finalMessage.AuthorType,
+				"text":        finalMessage.Text,
+				"created_at":  finalMessage.CreatedAt.Format(time.RFC3339Nano),
+			}
+			if b, err := json.Marshal(eventData); err == nil {
+				streamKey := fmt.Sprintf("workspace:%s:events", workspaceID)
+				_, _ = h.redisClient.XAdd(ctx, &redis.XAddArgs{Stream: streamKey, MaxLen: 2000, Approx: true, Values: map[string]any{"event": string(b), "message_id": finalMessage.ID}}).Result()
+			}
+		}
 	}
 
 	if h.integrationRouter != nil {
@@ -245,6 +266,103 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, map[string]interface{}{
 		"message": finalMessage,
 	})
+}
+
+// StreamEvents handles GET /api/v1/events/stream
+func (h *MessageHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := middleware.GetUserID(ctx)
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+	if h.redisClient == nil {
+		respondJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: "stream unavailable"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.WriteHeader(http.StatusOK)
+	flusher, ok := w.(http.Flusher)
+	if !ok { return }
+
+	streamKey := fmt.Sprintf("workspace:%s:events", userID)
+	lastID := r.Header.Get("Last-Event-ID")
+	if lastID == "" {
+		lastID = "0-0"
+	} else {
+		lastID = "(" + lastID
+	}
+
+	heartbeat := time.NewTicker(30 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-heartbeat.C:
+			_, _ = fmt.Fprintf(w, ": ping\n\n")
+			flusher.Flush()
+		default:
+			res, err := h.redisClient.XRead(ctx, &redis.XReadArgs{Streams: []string{streamKey, lastID}, Count: 20, Block: 5 * time.Second}).Result()
+			if err != nil {
+				if err == redis.Nil { continue }
+				if ctx.Err() != nil { return }
+				continue
+			}
+			for _, s := range res {
+				for _, m := range s.Messages {
+					eventJSON, _ := m.Values["event"].(string)
+					if eventJSON == "" { continue }
+					_, _ = fmt.Fprintf(w, "id: %s\n", m.ID)
+					_, _ = fmt.Fprintf(w, "event: message.created\n")
+					_, _ = fmt.Fprintf(w, "data: %s\n\n", eventJSON)
+					flusher.Flush()
+					lastID = m.ID
+				}
+			}
+		}
+	}
+}
+
+// PollMessages handles GET /api/v1/messages?channel_id=&since=
+func (h *MessageHandler) PollMessages(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := middleware.GetUserID(ctx)
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized"})
+		return
+	}
+	channelID := r.URL.Query().Get("channel_id")
+	if channelID == "" {
+		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "channel_id is required"})
+		return
+	}
+	sinceRaw := r.URL.Query().Get("since")
+	var since time.Time
+	var err error
+	if sinceRaw != "" {
+		since, err = time.Parse(time.RFC3339, sinceRaw)
+		if err != nil {
+			respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "since must be ISO8601"})
+			return
+		}
+	}
+	list, err := h.messageService.GetMessages(ctx, channelID, userID, 100, "")
+	if err != nil {
+		h.handleMessageError(w, err, "poll messages")
+		return
+	}
+	out := make([]*models.Message, 0)
+	for _, m := range list.Messages {
+		if sinceRaw == "" || m.CreatedAt.After(since) {
+			out = append(out, m)
+		}
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"messages": out})
 }
 
 // GetMessages handles GET /api/v1/channels/:channel_id/messages
