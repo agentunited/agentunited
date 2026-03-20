@@ -309,7 +309,12 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
     )
   }
 
-  const ratio = billingStatus ? Math.min(1, billingStatus.entity_count / Math.max(1, billingStatus.entity_limit)) : 0
+  const hasUnlimitedEntities = billingStatus ? billingStatus.entity_limit <= 0 : false
+  const ratio = billingStatus
+    ? hasUnlimitedEntities
+      ? 0
+      : Math.min(1, billingStatus.entity_count / Math.max(1, billingStatus.entity_limit))
+    : 0
   const renewal = formatRenewalDate(billingStatus?.subscription_period_end)
   const showUpgradePrompt =
     billingStatus &&
@@ -521,7 +526,9 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
                   <div className={`h-full ${usageBarClass(ratio)}`} style={{ width: `${ratio * 100}%` }} />
                 </div>
                 <p className="mt-2 text-sm text-foreground">
-                  {billingStatus.entity_count} of {billingStatus.entity_limit} entities used
+                  {hasUnlimitedEntities
+                    ? `${billingStatus.entity_count} entities used (unlimited plan)`
+                    : `${billingStatus.entity_count} of ${billingStatus.entity_limit} entities used`}
                 </p>
                 <p className="text-xs text-muted-foreground">AI agents and humans count together.</p>
               </div>
@@ -537,7 +544,7 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
                   {billingStatus.subscription_status === 'past_due'
                     ? 'Service may be interrupted'
                     : billingStatus.relay_enabled
-                      ? billingStatus.relay_hostname || 'Active'
+                      ? billingStatus.relay_hostname || billingStatus.relay_subdomain || 'Active'
                       : 'Not active (localhost only)'}
                 </p>
                 {renewal ? (

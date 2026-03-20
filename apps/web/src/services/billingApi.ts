@@ -8,10 +8,11 @@ export interface BillingStatus {
   entity_count: number
   entity_limit: number
   relay_enabled: boolean
-  subscription_status: 'active' | 'past_due' | 'canceled' | 'trialing'
+  subscription_status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'free'
   subscription_period_end: string | null
   stripe_customer_id: string | null
   relay_hostname?: string | null
+  relay_subdomain?: string | null
 }
 
 interface CheckoutBody {

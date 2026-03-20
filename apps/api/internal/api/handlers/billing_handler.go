@@ -109,14 +109,33 @@ func (h *BillingHandler) Status(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
 		return
 	}
+
+	relayEnabled := sub.RelaySubdomain != "" || sub.RelayTier != "free"
+
 	respondJSON(w, http.StatusOK, map[string]any{
-		"plan":                sub.Plan,
-		"subscription_status": sub.Status,
-		"entity_count":        entityCount,
-		"relay_tier":          sub.RelayTier,
-		"relay_subdomain":     sub.RelaySubdomain,
-		"bandwidth_limit_mb":  sub.RelayBandwidthLimitMB,
+		"plan":                    sub.Plan,
+		"subscription_status":     sub.Status,
+		"entity_count":            entityCount,
+		"entity_limit":            planEntityLimit(sub.Plan),
+		"relay_enabled":           relayEnabled,
+		"relay_hostname":          sub.RelaySubdomain,
+		"relay_tier":              sub.RelayTier,
+		"relay_subdomain":         sub.RelaySubdomain,
+		"bandwidth_limit_mb":      sub.RelayBandwidthLimitMB,
+		"subscription_period_end": sub.CurrentPeriodEnd,
+		"stripe_customer_id":      sub.StripeCustomerID,
 	})
+}
+
+func planEntityLimit(plan string) int {
+	switch plan {
+	case "pro":
+		return 10
+	case "team", "enterprise":
+		return -1
+	default:
+		return 3
+	}
 }
 
 func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
