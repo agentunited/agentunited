@@ -135,6 +135,30 @@ func TestSend_PublishesToCentrifugo_WhenEnabled(t *testing.T) {
 	hb.AssertCalled(t, "Broadcast", mock.Anything, "ch1", mock.AnythingOfType("[]uint8"))
 }
 
+func TestSend_AgentAuthoredMessage_DoesNotDispatchWebhook(t *testing.T) {
+	ms := new(mockMessageService)
+	ws := new(mockWebhookService)
+	rt := new(mockRealtime)
+	hb := new(mockBroadcaster)
+	h := NewMessageHandler(ms, ws, hb, rt)
+
+	msg := &models.Message{ID: "m1", ChannelID: "ch1", AuthorID: "a1", AuthorType: "agent", Text: "hello", CreatedAt: time.Now()}
+	ms.On("SendMessageWithAttachment", mock.Anything, mock.AnythingOfType("*models.Message"), mock.AnythingOfType("*service.AgentContext")).Return(msg, nil)
+	rt.On("Enabled").Return(false)
+	hb.On("Broadcast", mock.Anything, "ch1", mock.AnythingOfType("[]uint8")).Return()
+
+	req := buildSendRequest(t)
+	ctx := context.WithValue(req.Context(), middleware.AgentIDKey, "a1")
+	ctx = context.WithValue(ctx, middleware.AgentNameKey, "Agent One")
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	h.Send(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	ws.AssertNotCalled(t, "DispatchEvent", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
 func TestSend_UsesHubFallback_WhenCentrifugoDisabled(t *testing.T) {
 	ms := new(mockMessageService)
 	ws := new(mockWebhookService)

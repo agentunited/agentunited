@@ -175,7 +175,8 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dispatch webhooks for message.created event (async)
+	// Dispatch webhooks for message.created event (async), except for agent-authored
+	// messages to prevent agent->webhook->agent feedback loops.
 	webhookPayload := map[string]interface{}{
 		"channel_id":      finalMessage.ChannelID,
 		"message_id":      finalMessage.ID,
@@ -186,7 +187,9 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		"attachment_name": finalMessage.AttachmentName,
 		"created_at":      finalMessage.CreatedAt,
 	}
-	h.webhookService.DispatchEvent(ctx, channelID, "message.created", webhookPayload)
+	if finalMessage.AuthorType != "agent" {
+		h.webhookService.DispatchEvent(ctx, channelID, "message.created", webhookPayload)
+	}
 
 	if h.integrationRouter != nil {
 		_ = h.integrationRouter.RouteEvent(ctx, integrations.Event{
