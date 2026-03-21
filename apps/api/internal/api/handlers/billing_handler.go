@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -111,7 +113,12 @@ func (h *BillingHandler) Status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	relayEnabled := sub.RelaySubdomain != "" || sub.RelayTier != "free"
+	relaySubdomain := sub.RelaySubdomain
+	if relaySubdomain == "" && sub.RelayToken != "" {
+		h := sha1.Sum([]byte(sub.RelayToken))
+		relaySubdomain = "w" + hex.EncodeToString(h[:])[:10]
+	}
+	relayEnabled := relaySubdomain != "" || sub.RelayTier != "free"
 
 	respondJSON(w, http.StatusOK, map[string]any{
 		"plan":                    sub.Plan,
@@ -119,9 +126,9 @@ func (h *BillingHandler) Status(w http.ResponseWriter, r *http.Request) {
 		"entity_count":            entityCount,
 		"entity_limit":            planEntityLimit(sub.Plan),
 		"relay_enabled":           relayEnabled,
-		"relay_hostname":          sub.RelaySubdomain,
+		"relay_hostname":          relaySubdomain,
 		"relay_tier":              sub.RelayTier,
-		"relay_subdomain":         sub.RelaySubdomain,
+		"relay_subdomain":         relaySubdomain,
 		"bandwidth_limit_mb":      sub.RelayBandwidthLimitMB,
 		"subscription_period_end": sub.CurrentPeriodEnd,
 		"stripe_customer_id":      sub.StripeCustomerID,
