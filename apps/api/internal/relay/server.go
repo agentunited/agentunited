@@ -41,10 +41,12 @@ func safeForwardHeaders(h http.Header) http.Header {
 }
 
 type clientConn struct {
-	id        string
-	subdomain string
-	conn      *websocket.Conn
-	writeMu   sync.Mutex
+	id          string
+	subdomain   string
+	token       string
+	workspaceID string
+	conn        *websocket.Conn
+	writeMu     sync.Mutex
 	pending      sync.Map // request_id -> chan ResponseMessage
 	pendingStart sync.Map // request_id -> chan ResponseStartMessage
 	pendingChunk sync.Map // request_id -> chan ResponseChunkMessage
@@ -110,15 +112,35 @@ func (s *Server) handleTunnel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sub := deterministicSubdomain(reg.Token)
+	ctx := context.Background()
+	plan := s.lookupPlan(ctx, reg.Token)
+
+	// Enforce plan expiry.
+	if plan.ExpiresAt != nil && time.Now().UTC().After(*plan.ExpiresAt) {
+		_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "relay subscription expired — please renew"})
+		_ = ws.Close()
+		return
+	}
+
+	sub := plan.Subdomain
+	if sub == "" {
+		sub = deterministicSubdomain(reg.Token)
+	}
+
+	// Enforce connection limit (count existing connections for this subdomain).
+	if active := s.activeConnCount(sub); active >= plan.ConnectionsMax {
+		_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: fmt.Sprintf("connection limit reached (%d/%d) — upgrade plan to connect more clients", active, plan.ConnectionsMax)})
+		_ = ws.Close()
+		return
+	}
+
 	connID := uuid.NewString()
-	cc := &clientConn{id: connID, subdomain: sub, conn: ws}
+	cc := &clientConn{id: connID, subdomain: sub, conn: ws, token: reg.Token, workspaceID: plan.WorkspaceID}
 
 	s.mu.Lock()
 	s.clients[connID] = cc
 	s.mu.Unlock()
 
-	ctx := context.Background()
 	_ = s.redis.Set(ctx, s.redisKeyForSub(sub), connID, 2*time.Minute).Err()
 
 	if err := cc.writeJSON(RegisteredMessage{
@@ -276,6 +298,18 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	plan := s.lookupPlan(ctx, cc.token)
+	if plan.WorkspaceID == "" {
+		plan.WorkspaceID = cc.workspaceID
+	}
+	// Enforce bandwidth cap before forwarding request.
+	if plan.BandwidthLimitMB > 0 && plan.WorkspaceID != "" {
+		if s.bandwidthUsedMB(ctx, plan.WorkspaceID) >= float64(plan.BandwidthLimitMB) {
+			http.Error(w, "bandwidth limit exceeded. Upgrade to continue.", http.StatusTooManyRequests)
+			return
+		}
+	}
+
 	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
 		s.handlePublicWebSocket(w, r, cc)
 		return
@@ -310,6 +344,7 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var totalBytes int64
 	select {
 	case resp := <-respCh:
 		for k, vals := range resp.Headers {
@@ -321,6 +356,10 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		if resp.Body != "" {
 			decoded, _ := base64.StdEncoding.DecodeString(resp.Body)
 			_, _ = w.Write(decoded)
+			totalBytes += int64(len(decoded))
+		}
+		if plan.WorkspaceID != "" && totalBytes > 0 {
+			_ = s.trackBandwidth(ctx, plan.WorkspaceID, plan.BandwidthLimitMB, totalBytes)
 		}
 	case start := <-startCh:
 		for k, vals := range start.Headers {
@@ -344,6 +383,10 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 				decoded, _ := base64.StdEncoding.DecodeString(ch.Body)
 				if len(decoded) > 0 {
 					_, _ = w.Write(decoded)
+					totalBytes += int64(len(decoded))
+					if plan.WorkspaceID != "" {
+						_ = s.trackBandwidth(ctx, plan.WorkspaceID, plan.BandwidthLimitMB, int64(len(decoded)))
+					}
 					flusher.Flush()
 				}
 			case <-endCh:
@@ -463,4 +506,82 @@ func (s *Server) subdomainFromHost(host string) (string, bool) {
 func deterministicSubdomain(token string) string {
 	h := sha1.Sum([]byte(token))
 	return "w" + hex.EncodeToString(h[:])[:10]
+}
+
+// planSnapshot is the decoded value of relay:token:{token} in Redis.
+type planSnapshot struct {
+	WorkspaceID      string     `json:"workspace_id"`
+	Plan             string     `json:"plan"`
+	RelayTier        string     `json:"relay_tier"`
+	Subdomain        string     `json:"subdomain"`
+	BandwidthLimitMB int        `json:"bandwidth_limit_mb"`
+	ConnectionsMax   int        `json:"connections_max"`
+	ExpiresAt        *time.Time `json:"expires_at"`
+}
+
+// freePlan returns safe fail-open defaults when no plan snapshot is found.
+func freePlan(workspaceID string) planSnapshot {
+	return planSnapshot{
+		WorkspaceID:      workspaceID,
+		Plan:             "free",
+		RelayTier:        "free",
+		BandwidthLimitMB: 1024,
+		ConnectionsMax:   3,
+	}
+}
+
+// lookupPlan reads plan snapshot from Redis by relay token. Fail-open: returns free plan on miss.
+func (s *Server) lookupPlan(ctx context.Context, token string) planSnapshot {
+	if token == "" {
+		return freePlan("")
+	}
+	raw, err := s.redis.Get(ctx, "relay:token:"+token).Result()
+	if err != nil {
+		return freePlan("")
+	}
+	var snap planSnapshot
+	if err := json.Unmarshal([]byte(raw), &snap); err != nil {
+		return freePlan("")
+	}
+	if snap.BandwidthLimitMB == 0 {
+		snap.BandwidthLimitMB = 1024
+	}
+	if snap.ConnectionsMax == 0 {
+		snap.ConnectionsMax = 3
+	}
+	return snap
+}
+
+// activeConnCount returns the number of currently active connections for a subdomain.
+func (s *Server) activeConnCount(sub string) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	count := 0
+	for _, cc := range s.clients {
+		if cc.subdomain == sub {
+			count++
+		}
+	}
+	return count
+}
+
+// bandwidthUsedMB returns MB used today for the workspace.
+func (s *Server) bandwidthUsedMB(ctx context.Context, workspaceID string) float64 {
+	key := fmt.Sprintf("relay:bw:%s:%s", workspaceID, time.Now().UTC().Format("2006-01-02"))
+	v, _ := s.redis.Get(ctx, key).Int64()
+	return float64(v) / (1024 * 1024)
+}
+
+// trackBandwidth increments the daily byte counter and returns false if limit is exceeded.
+func (s *Server) trackBandwidth(ctx context.Context, workspaceID string, limitMB int, bytes int64) bool {
+	if workspaceID == "" || limitMB <= 0 {
+		return true
+	}
+	key := fmt.Sprintf("relay:bw:%s:%s", workspaceID, time.Now().UTC().Format("2006-01-02"))
+	used, _ := s.redis.IncrBy(ctx, key, bytes).Result()
+	// Set TTL on first write so key expires after 2 days.
+	if used == bytes {
+		_ = s.redis.Expire(ctx, key, 48*time.Hour).Err()
+	}
+	return used <= int64(limitMB)*1024*1024
 }
