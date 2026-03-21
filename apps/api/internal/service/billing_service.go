@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/hmac"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"github.com/agentunited/backend/internal/models"
 	"github.com/agentunited/backend/internal/repository"
 	"github.com/agentunited/backend/pkg/billing"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,13 +33,14 @@ type billingService struct {
 	repo          repository.SubscriptionRepository
 	userRepo      repository.UserRepository
 	provider      billing.Service
+	redisClient   *redis.Client
 	webhookSecret string
 	priceIDPro    string
 	priceIDTeam   string
 }
 
-func NewBillingService(repo repository.SubscriptionRepository, userRepo repository.UserRepository, provider billing.Service, webhookSecret, priceIDPro, priceIDTeam string) BillingService {
-	return &billingService{repo: repo, userRepo: userRepo, provider: provider, webhookSecret: webhookSecret, priceIDPro: priceIDPro, priceIDTeam: priceIDTeam}
+func NewBillingService(repo repository.SubscriptionRepository, userRepo repository.UserRepository, provider billing.Service, redisClient *redis.Client, webhookSecret, priceIDPro, priceIDTeam string) BillingService {
+	return &billingService{repo: repo, userRepo: userRepo, provider: provider, redisClient: redisClient, webhookSecret: webhookSecret, priceIDPro: priceIDPro, priceIDTeam: priceIDTeam}
 }
 
 func (s *billingService) GetCheckoutURL(ctx context.Context, workspaceID, email, name, plan, successURL, cancelURL string) (string, error) {
@@ -128,6 +131,7 @@ func (s *billingService) HandleWebhook(ctx context.Context, body []byte, signatu
 		sub := &models.Subscription{WorkspaceID: wsID, StripeCustomerID: custID, StripeSubscriptionID: subID, Plan: normalizedPlan, Status: status}
 		applyRelayTierDefaults(sub, normalizedPlan)
 		_ = s.repo.UpsertByWorkspace(ctx, sub)
+		s.updateRelayCache(ctx, wsID)
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted":
 		obj := evt.Data.Object
 		wsID := strVal(mapVal(obj, "metadata")["workspace_id"])
@@ -150,6 +154,7 @@ func (s *billingService) HandleWebhook(ctx context.Context, body []byte, signatu
 		sub := &models.Subscription{WorkspaceID: wsID, StripeCustomerID: custID, StripeSubscriptionID: subID, Plan: plan, Status: status, CurrentPeriodEnd: cpe}
 		applyRelayTierDefaults(sub, plan)
 		_ = s.repo.UpsertByWorkspace(ctx, sub)
+		s.updateRelayCache(ctx, wsID)
 	case "invoice.payment_succeeded", "invoice.payment_failed":
 		obj := evt.Data.Object
 		subID := strVal(obj["subscription"])
@@ -171,6 +176,7 @@ func (s *billingService) HandleWebhook(ctx context.Context, body []byte, signatu
 			sub := &models.Subscription{WorkspaceID: wsID, StripeSubscriptionID: subID, Plan: plan, Status: status, CurrentPeriodEnd: cpe}
 			applyRelayTierDefaults(sub, plan)
 			_ = s.repo.UpsertByWorkspace(ctx, sub)
+			s.updateRelayCache(ctx, wsID)
 		}
 	}
 	return nil
@@ -244,6 +250,36 @@ func normalizeStatus(s string) string {
 		return s
 	default:
 		return "active"
+	}
+}
+
+func (s *billingService) updateRelayCache(ctx context.Context, workspaceID string) {
+	if s.redisClient == nil || workspaceID == "" {
+		return
+	}
+	sub, err := s.repo.GetByWorkspace(ctx, workspaceID)
+	if err != nil || sub == nil || sub.RelayToken == "" {
+		return
+	}
+	subdomain := sub.RelaySubdomain
+	if subdomain == "" {
+		h := sha1.Sum([]byte(sub.RelayToken))
+		subdomain = "w" + fmt.Sprintf("%x", h[:])[:10]
+	}
+	payload := map[string]interface{}{
+		"workspace_id":       workspaceID,
+		"plan":               sub.Plan,
+		"relay_tier":         sub.RelayTier,
+		"subdomain":          subdomain,
+		"bandwidth_limit_mb": sub.RelayBandwidthLimitMB,
+		"connections_max":    sub.RelayConnectionsMax,
+		"expires_at":         sub.RelayExpiresAt,
+	}
+	if b, err := json.Marshal(payload); err == nil {
+		pipe := s.redisClient.TxPipeline()
+		pipe.Set(ctx, "relay:token:"+sub.RelayToken, string(b), 0)
+		pipe.Set(ctx, "relay:workspace:"+workspaceID, sub.RelayToken, 0)
+		_, _ = pipe.Exec(ctx)
 	}
 }
 

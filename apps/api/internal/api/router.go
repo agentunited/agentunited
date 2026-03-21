@@ -90,7 +90,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 		log.Warn().Msg("Stripe not configured - using stub billing provider")
 	}
 
-	billingService := service.NewBillingService(subscriptionRepo, userRepo, billingProvider, cfg.Stripe.WebhookSecret, cfg.Stripe.PriceIDPro, cfg.Stripe.PriceIDTeam)
+	billingService := service.NewBillingService(subscriptionRepo, userRepo, billingProvider, cache.Client, cfg.Stripe.WebhookSecret, cfg.Stripe.PriceIDPro, cfg.Stripe.PriceIDTeam)
 	bootstrapService := service.NewBootstrapService(userRepo, agentRepo, apiKeyRepo, inviteRepo, channelRepo, subscriptionRepo, cfg.JWT.Secret, cfg.FrontendURL, cfg.Relay.Domain, cache.Client)
 	inviteService := service.NewInviteService(userRepo, inviteRepo, subscriptionRepo, channelRepo, agentRepo, messageRepo, cfg.JWT.Secret, cfg.FrontendURL)
 	relayService := service.NewRelayService(subscriptionRepo, cfg.Relay.Domain)
