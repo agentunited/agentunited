@@ -11,7 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/agentunited/backend/internal/api/middleware"
+	"github.com/agentunited/backend/internal/repository"
 	"github.com/agentunited/backend/internal/relay"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,15 +32,19 @@ type PairingCode struct {
 
 // PairingHandler handles instance pairing and admin relay token updates.
 type PairingHandler struct {
-	codes     map[string]PairingCode
-	codesLock sync.RWMutex
+	codes            map[string]PairingCode
+	codesLock        sync.RWMutex
+	subscriptionRepo repository.SubscriptionRepository
+	redisClient      *redis.Client
 }
 
 // NewPairingHandler creates a new pairing handler.
-func NewPairingHandler() *PairingHandler {
+func NewPairingHandler(subscriptionRepo repository.SubscriptionRepository, redisClient *redis.Client) *PairingHandler {
 	return &PairingHandler{
-		codes:     make(map[string]PairingCode),
-		codesLock: sync.RWMutex{},
+		codes:            make(map[string]PairingCode),
+		codesLock:        sync.RWMutex{},
+		subscriptionRepo: subscriptionRepo,
+		redisClient:      redisClient,
 	}
 }
 
@@ -209,6 +216,14 @@ func (h *PairingHandler) SubdomainCheck(w http.ResponseWriter, r *http.Request) 
 	if cfg != nil && cfg.Subdomain != "" && cfg.Subdomain != req.Subdomain {
 		available = false
 	}
+	// Global uniqueness check in DB (workspace-wide), not only local file.
+	if h.subscriptionRepo != nil {
+		if existing, err := h.subscriptionRepo.GetByRelaySubdomain(r.Context(), req.Subdomain); err == nil && existing != nil {
+			if workspaceID, ok := middleware.GetUserID(r.Context()); !ok || existing.WorkspaceID != workspaceID {
+				available = false
+			}
+		}
+	}
 	respondJSON(w, http.StatusOK, map[string]any{"subdomain": req.Subdomain, "available": available})
 }
 
@@ -241,6 +256,35 @@ func (h *PairingHandler) SubdomainClaim(w http.ResponseWriter, r *http.Request) 
 		respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Failed to persist subdomain"})
 		return
 	}
+
+	workspaceID, _ := middleware.GetUserID(r.Context())
+	if workspaceID != "" && h.subscriptionRepo != nil {
+		if err := h.subscriptionRepo.UpsertRelaySubdomain(r.Context(), workspaceID, req.Subdomain); err != nil {
+			respondJSON(w, http.StatusConflict, ErrorResponse{Error: "Subdomain unavailable"})
+			return
+		}
+		// Refresh control-plane cache for this workspace token.
+		if h.redisClient != nil {
+			if sub, err := h.subscriptionRepo.GetByWorkspace(r.Context(), workspaceID); err == nil && sub != nil && sub.RelayToken != "" {
+				payload := map[string]any{
+					"workspace_id":       workspaceID,
+					"plan":               sub.Plan,
+					"relay_tier":         sub.RelayTier,
+					"subdomain":          req.Subdomain,
+					"bandwidth_limit_mb": sub.RelayBandwidthLimitMB,
+					"connections_max":    sub.RelayConnectionsMax,
+					"expires_at":         sub.RelayExpiresAt,
+				}
+				if b, err := json.Marshal(payload); err == nil {
+					pipe := h.redisClient.TxPipeline()
+					pipe.Set(r.Context(), "relay:token:"+sub.RelayToken, string(b), 0)
+					pipe.Set(r.Context(), "relay:workspace:"+workspaceID, sub.RelayToken, 0)
+					_, _ = pipe.Exec(r.Context())
+				}
+			}
+		}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]any{"status": "claimed", "subdomain": req.Subdomain})
 }
 
