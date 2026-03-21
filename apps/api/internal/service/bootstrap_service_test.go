@@ -55,6 +55,14 @@ func (m *mockUserRepository) List(ctx context.Context) ([]*models.User, error) {
 	return args.Get(0).([]*models.User), args.Error(1)
 }
 
+func (m *mockUserRepository) GetEarliestUser(ctx context.Context) (*models.User, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
 type mockAgentRepository struct {
 	mock.Mock
 }
@@ -260,6 +268,32 @@ func (m *mockSubscriptionRepository) UpsertByWorkspace(ctx context.Context, sub 
 
 func (m *mockSubscriptionRepository) UpsertByStripeSubscriptionID(ctx context.Context, sub *models.Subscription) error {
 	args := m.Called(ctx, sub)
+	return args.Error(0)
+}
+
+func (m *mockSubscriptionRepository) GetByRelayToken(ctx context.Context, relayToken string) (*models.Subscription, error) {
+	args := m.Called(ctx, relayToken)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Subscription), args.Error(1)
+}
+
+func (m *mockSubscriptionRepository) GetByRelaySubdomain(ctx context.Context, subdomain string) (*models.Subscription, error) {
+	args := m.Called(ctx, subdomain)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Subscription), args.Error(1)
+}
+
+func (m *mockSubscriptionRepository) SetRelayToken(ctx context.Context, workspaceID, relayToken string) error {
+	args := m.Called(ctx, workspaceID, relayToken)
+	return args.Error(0)
+}
+
+func (m *mockSubscriptionRepository) UpsertRelaySubdomain(ctx context.Context, workspaceID, subdomain string) error {
+	args := m.Called(ctx, workspaceID, subdomain)
 	return args.Error(0)
 }
 

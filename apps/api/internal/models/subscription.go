@@ -16,6 +16,7 @@ type Subscription struct {
 	RelayConnectionsMax   int        `json:"relay_connections_max"`
 	RelayCustomSubdomain  bool       `json:"relay_custom_subdomain"`
 	RelaySubdomain        string     `json:"relay_subdomain,omitempty"`
+	RelayToken            string     `json:"relay_token,omitempty"`
 	RelayExpiresAt        *time.Time `json:"relay_expires_at,omitempty"`
 	CreatedAt             time.Time  `json:"created_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
