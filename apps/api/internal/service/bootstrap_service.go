@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -146,7 +147,6 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 	// Generate relay credentials for this workspace
 	relayToken, relaySubdomain := s.generateRelayCredentials(instanceID)
 	relayURL := fmt.Sprintf("https://%s.%s", relaySubdomain, s.relayDomain)
-	_ = s.persistRelayProvisioning(ctx, relayToken, relaySubdomain)
 	expiresAt := time.Now().Add(30 * 24 * time.Hour).UTC()
 	if err := s.subscriptionRepo.UpsertByWorkspace(ctx, &models.Subscription{
 		WorkspaceID:           primaryUserID,
@@ -158,10 +158,12 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 		RelayConnectionsMax:   3,
 		RelayCustomSubdomain:  false,
 		RelaySubdomain:        relaySubdomain,
+		RelayToken:            relayToken,
 		RelayExpiresAt:        &expiresAt,
 	}); err != nil {
 		return nil, fmt.Errorf("create relay subscription defaults: %w", err)
 	}
+	_ = s.persistRelayProvisioning(ctx, relayToken, primaryUserID, "free", relaySubdomain, &expiresAt)
 
 	// Prepare response
 	resp := &models.BootstrapResponse{
@@ -450,13 +452,31 @@ func (s *BootstrapService) generateRelayCredentials(instanceID string) (string, 
 	return token, "w" + sub[:10]
 }
 
-func (s *BootstrapService) persistRelayProvisioning(ctx context.Context, token, subdomain string) error {
+func (s *BootstrapService) persistRelayProvisioning(ctx context.Context, token, workspaceID, plan, subdomain string, expiresAt *time.Time) error {
 	if s.redisClient == nil || token == "" || subdomain == "" {
 		return nil
 	}
 	pipe := s.redisClient.TxPipeline()
+	// Legacy bootstrap provisioning keys (kept for compatibility)
 	pipe.Set(ctx, "relay:provision:token:"+token, subdomain, 24*time.Hour)
 	pipe.Set(ctx, "relay:provision:subdomain:"+subdomain, token, 24*time.Hour)
+
+	// Control-plane keys (no TTL): token -> plan snapshot, workspace -> token
+	payload := map[string]interface{}{
+		"workspace_id":       workspaceID,
+		"plan":               plan,
+		"relay_tier":         "free",
+		"subdomain":          subdomain,
+		"bandwidth_limit_mb": 1024,
+		"connections_max":    3,
+		"expires_at":         expiresAt,
+	}
+	if b, err := json.Marshal(payload); err == nil {
+		pipe.Set(ctx, "relay:token:"+token, string(b), 0)
+	}
+	if workspaceID != "" {
+		pipe.Set(ctx, "relay:workspace:"+workspaceID, token, 0)
+	}
 	_, err := pipe.Exec(ctx)
 	return err
 }
