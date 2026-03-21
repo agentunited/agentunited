@@ -5,30 +5,12 @@ ALTER TABLE subscriptions
 CREATE INDEX IF NOT EXISTS idx_subscriptions_relay_token
     ON subscriptions(relay_token);
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'subscriptions_relay_subdomain_unique'
-    ) THEN
-        ALTER TABLE subscriptions
-            ADD CONSTRAINT subscriptions_relay_subdomain_unique UNIQUE (relay_subdomain);
-    END IF;
-END$$;
+ALTER TABLE subscriptions
+    ADD CONSTRAINT subscriptions_relay_subdomain_unique UNIQUE (relay_subdomain);
 
 -- +goose Down
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'subscriptions_relay_subdomain_unique'
-    ) THEN
-        ALTER TABLE subscriptions
-            DROP CONSTRAINT subscriptions_relay_subdomain_unique;
-    END IF;
-END$$;
+ALTER TABLE subscriptions
+    DROP CONSTRAINT IF EXISTS subscriptions_relay_subdomain_unique;
 
 DROP INDEX IF EXISTS idx_subscriptions_relay_token;
 
