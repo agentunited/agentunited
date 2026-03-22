@@ -11,6 +11,7 @@ const meta = {
   },
   "agent-quickstart": "Agent Integration Guide",
   "agent-connect": "Connecting Your Agent",
+  "agent-external-workspace": "Connecting to an External Workspace",
   index: {
     title: "Overview",
   },
