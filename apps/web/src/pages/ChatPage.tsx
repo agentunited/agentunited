@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ChatHeader } from '../components/chat/ChatHeader';
@@ -43,6 +43,10 @@ export function ChatPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [channelMembers, setChannelMembers] = useState<{ id: string; name: string; email: string; type: 'agent' | 'human'; online: boolean }[]>([]);
   const [userDirectory, setUserDirectory] = useState<Record<string, { display: string; type: 'agent' | 'human' }>>({});
+  const [showAgentNoReplyIndicator, setShowAgentNoReplyIndicator] = useState(false);
+  const [showAgentGuideTip, setShowAgentGuideTip] = useState(false);
+  const noReplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingHumanMessageIdRef = useRef<string | null>(null);
   
   // Determine if we're viewing a channel or DM
   const isViewingDM = !!selectedDMId;
@@ -190,26 +194,120 @@ export function ChatPage() {
 
   const selectedDM = displayDirectMessages.find(dm => dm.id === selectedDMId) || null;
 
+  const hasAgentParticipant = isViewingDM
+    ? selectedDM?.type === 'agent'
+    : channelMembers.some((member) => member.type === 'agent');
+
+  const channelMemberDirectory = useMemo(() => {
+    const directory: Record<string, string> = {};
+
+    for (const member of channelMembers) {
+      const resolvedName = getDisplayName(member.name);
+      directory[member.id] = resolvedName;
+      directory[member.email] = resolvedName;
+      directory[member.email.toLowerCase()] = resolvedName;
+
+      const localPart = member.email.split('@')[0];
+      if (localPart) {
+        directory[localPart] = resolvedName;
+        directory[localPart.toLowerCase()] = resolvedName;
+      }
+    }
+
+    return directory;
+  }, [channelMembers]);
+
   const displayMessages = useMemo(() => {
     return messages.map((msg) => {
-      const resolved = userDirectory[msg.authorId];
-      if (!resolved) return msg;
+      const candidates = [msg.authorId, msg.author].filter(Boolean) as string[];
 
-      const preferredName = getDisplayName(resolved.display);
+      let preferredName: string | undefined;
 
-      // Prefer resolved directory display name everywhere when available.
+      for (const rawCandidate of candidates) {
+        const candidate = rawCandidate.trim();
+        const lowerCandidate = candidate.toLowerCase();
+
+        const directoryHit =
+          userDirectory[candidate] ||
+          userDirectory[lowerCandidate] ||
+          (candidate.includes('@') ? userDirectory[candidate.toLowerCase()] : undefined);
+
+        if (directoryHit?.display) {
+          preferredName = getDisplayName(directoryHit.display);
+          break;
+        }
+
+        const memberHit =
+          channelMemberDirectory[candidate] ||
+          channelMemberDirectory[lowerCandidate];
+
+        if (memberHit) {
+          preferredName = memberHit;
+          break;
+        }
+      }
+
+      if (!preferredName) return msg;
+
+      // Prefer resolved display_name over username/email prefixes in bubbles.
       if (preferredName && msg.author !== preferredName) {
         return { ...msg, author: preferredName };
       }
 
-      // Replace low-quality author labels (raw UUID, UUID with suffix, etc.) with directory display name.
       if (msg.author === msg.authorId || hasUuid(msg.author)) {
         return { ...msg, author: preferredName };
       }
 
       return msg;
     });
-  }, [messages, userDirectory]);
+  }, [messages, userDirectory, channelMemberDirectory]);
+
+  useEffect(() => {
+    if (noReplyTimerRef.current) {
+      clearTimeout(noReplyTimerRef.current);
+      noReplyTimerRef.current = null;
+    }
+
+    if (!activeConversationId || !hasAgentParticipant || messages.length === 0) {
+      pendingHumanMessageIdRef.current = null;
+      setShowAgentNoReplyIndicator(false);
+      return;
+    }
+
+    const latestMessage = messages[messages.length - 1];
+
+    // Clear indicator as soon as any message arrives after the pending human message.
+    if (
+      pendingHumanMessageIdRef.current &&
+      latestMessage.id !== pendingHumanMessageIdRef.current
+    ) {
+      pendingHumanMessageIdRef.current = null;
+      setShowAgentNoReplyIndicator(false);
+    }
+
+    const latestIsHumanSentByCurrentUser =
+      latestMessage.authorType === 'human' && latestMessage.isOwnMessage;
+
+    if (!latestIsHumanSentByCurrentUser) {
+      return;
+    }
+
+    pendingHumanMessageIdRef.current = latestMessage.id;
+    setShowAgentNoReplyIndicator(false);
+
+    noReplyTimerRef.current = setTimeout(() => {
+      if (pendingHumanMessageIdRef.current === latestMessage.id) {
+        setShowAgentNoReplyIndicator(true);
+      }
+    }, 30_000);
+
+    return () => {
+      if (noReplyTimerRef.current) {
+        clearTimeout(noReplyTimerRef.current);
+        noReplyTimerRef.current = null;
+      }
+    };
+  }, [messages, activeConversationId, hasAgentParticipant]);
 
   const markConversationRead = useCallback(async (kind: 'channel' | 'dm', id: string) => {
     try {
@@ -416,6 +514,17 @@ export function ChatPage() {
   }, [startupToast]);
 
   useEffect(() => {
+    const upgradedThisSession = sessionStorage.getItem('au:plan-upgraded') === '1';
+    const dismissedForever = localStorage.getItem('au:agent-guide-dismissed') === '1';
+    const shownThisSession = sessionStorage.getItem('au:agent-guide-tip-shown') === '1';
+
+    if (upgradedThisSession && !dismissedForever && !shownThisSession) {
+      setShowAgentGuideTip(true);
+      sessionStorage.setItem('au:agent-guide-tip-shown', '1');
+    }
+  }, []);
+
+  useEffect(() => {
     if (!channelCreateWarning) return;
     const timeout = window.setTimeout(() => setChannelCreateWarning(null), 5000);
     return () => window.clearTimeout(timeout);
@@ -589,6 +698,37 @@ export function ChatPage() {
             </div>
           )}
 
+          {showAgentGuideTip && (
+            <div className="border-b border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">👋 Ready to connect your agent?</p>
+                  <p className="text-xs opacity-90">Follow the quickstart to get your first response in under 5 minutes.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href="https://docs.agentunited.ai/docs/agent-connect"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Open guide →
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAgentGuideTip(false);
+                      localStorage.setItem('au:agent-guide-dismissed', '1');
+                    }}
+                    className="text-xs font-medium underline"
+                  >
+                    Maybe later
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isSearching ? (
             // Show search results instead of normal chat
             <SearchResultsPanel
@@ -637,6 +777,12 @@ export function ChatPage() {
                 onMessageUpdated={handleMessageUpdated}
                 onMessageDeleted={handleMessageDeleted}
               />
+
+              {showAgentNoReplyIndicator && (
+                <div className="mx-4 mb-2 rounded-md border border-amber-300/35 bg-amber-50/60 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200/90">
+                  Agent hasn&apos;t responded yet.
+                </div>
+              )}
 
               <MessageInput
                 onSend={handleSendMessage}

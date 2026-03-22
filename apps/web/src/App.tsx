@@ -11,6 +11,7 @@ import { PairInstancePage } from './pages/PairInstancePage';
 import { UserSettingsPage } from './pages/UserSettingsPage';
 import { IntegrationSettingsPage } from './pages/IntegrationSettingsPage';
 import { PricingPage } from './pages/PricingPage';
+import { WelcomePage } from './pages/WelcomePage';
 import { SettingsBillingPage } from './pages/settings/billing';
 import { initializeFromUrlParams } from './services/apiConfig';
 import { AuthService, autoLogin } from './services/authService';
@@ -92,6 +93,14 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/invite" element={<InviteAcceptPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route
+            path="/welcome"
+            element={
+              <ProtectedRoute>
+                <WelcomePage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/chat"
             element={
