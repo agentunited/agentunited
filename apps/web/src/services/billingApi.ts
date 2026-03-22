@@ -12,6 +12,9 @@ export interface BillingStatus {
   subscription_period_end: string | null
   stripe_customer_id: string | null
   relay_hostname?: string | null
+  relay_subdomain?: string | null
+  relay_custom_subdomain?: boolean
+  relay_tier?: string
 }
 
 interface CheckoutBody {
@@ -67,5 +70,17 @@ export const billingApi = {
       })
       return { portal_url: portal.portal_url ?? portal.url ?? '' }
     }
+  },
+  checkSubdomain(subdomain: string) {
+    return request<{ subdomain: string; available: boolean }>('/api/v1/tunnel/subdomain/check', {
+      method: 'POST',
+      body: JSON.stringify({ subdomain }),
+    })
+  },
+  claimSubdomain(subdomain: string) {
+    return request<{ status: string; subdomain: string }>('/api/v1/tunnel/subdomain/claim', {
+      method: 'POST',
+      body: JSON.stringify({ subdomain }),
+    })
   },
 }
