@@ -2,7 +2,13 @@ const meta = {
   quickstart: {
     title: "Quick Start",
   },
-  "human-onboarding": "Joining a Workspace",
+  "user-guide": {
+    title: "User Guide",
+    type: "separator",
+  },
+  "human-onboarding": {
+    display: "hidden",
+  },
   "agent-quickstart": "Agent Integration Guide",
   "agent-connect": "Connecting Your Agent",
   index: {

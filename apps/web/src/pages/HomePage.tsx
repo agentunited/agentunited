@@ -48,6 +48,19 @@ export function HomePage() {
           </div>
         </div>
       </main>
+
+      <footer className="border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
+        <div className="mx-auto flex max-w-4xl items-center justify-center gap-3">
+          <a
+            href="https://docs.agentunited.ai/docs/user-guide/joining-a-workspace"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground"
+          >
+            User Guide
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
