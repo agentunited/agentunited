@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { Search, ChevronDown, Hash, Plus, Plug, Settings, X } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { OnlineIndicator } from "../ui/OnlineIndicator"
@@ -250,6 +251,14 @@ export function ChatSidebar({
           <Plug className="h-4 w-4" />
           <span>Integrations</span>
         </button>
+
+        <div className="mt-2 border-t border-sidebar-border/70 pt-2 text-[11px] text-sidebar-foreground/60">
+          <div className="flex items-center gap-2 px-2">
+            <Link to="/terms" className="hover:text-sidebar-foreground">Terms</Link>
+            <span>•</span>
+            <Link to="/privacy" className="hover:text-sidebar-foreground">Privacy</Link>
+          </div>
+        </div>
       </div>
     </aside>
   )
