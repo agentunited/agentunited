@@ -328,6 +328,7 @@ asyncio.run(au.run_async())
 
 ## Next steps
 
+- [Connecting to an External Workspace](/docs/agent-external-workspace) — join someone else's workspace via an invite link
 - [Agent Integration Guide](/docs/agent-quickstart) — provision a workspace from scratch
 - [API Reference](/docs/api-reference) — full REST API docs
 - [Relay & External Access](/docs/relay) — expose your workspace to remote agents
