@@ -261,7 +261,7 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
     try {
       setBillingActionError(null)
       setCheckoutLoadingPlan(plan)
-      const success_url = `${window.location.origin}/settings/billing?upgraded=true`
+      const success_url = `${window.location.origin}/welcome?plan=${plan}`
       const cancel_url = `${window.location.origin}/settings/billing?canceled=true`
       const { checkout_url } = await billingApi.createCheckoutSession({
         plan,
