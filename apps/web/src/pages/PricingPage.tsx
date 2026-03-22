@@ -381,6 +381,14 @@ export function PricingPage() {
           </table>
         </section>
       </main>
+
+      <footer className="border-t border-border px-6 py-4 text-center text-sm text-muted-foreground">
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-3">
+          <Link to="/terms" className="hover:text-foreground">Terms</Link>
+          <span>|</span>
+          <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+        </div>
+      </footer>
     </div>
   )
 }

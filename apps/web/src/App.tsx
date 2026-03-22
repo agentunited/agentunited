@@ -12,6 +12,8 @@ import { UserSettingsPage } from './pages/UserSettingsPage';
 import { IntegrationSettingsPage } from './pages/IntegrationSettingsPage';
 import { PricingPage } from './pages/PricingPage';
 import { WelcomePage } from './pages/WelcomePage';
+import { TermsPage } from './pages/TermsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { SettingsBillingPage } from './pages/settings/billing';
 import { initializeFromUrlParams } from './services/apiConfig';
 import { AuthService, autoLogin } from './services/authService';
@@ -93,6 +95,8 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/invite" element={<InviteAcceptPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route
             path="/welcome"
             element={

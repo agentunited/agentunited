@@ -59,6 +59,10 @@ export function HomePage() {
           >
             User Guide
           </a>
+          <span>|</span>
+          <Link to="/terms" className="hover:text-foreground">Terms</Link>
+          <span>|</span>
+          <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
         </div>
       </footer>
     </div>
