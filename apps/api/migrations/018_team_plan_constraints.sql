@@ -13,8 +13,8 @@ DO $$
 BEGIN
     IF EXISTS (
         SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'workspaces'
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'workspaces' AND column_name = 'plan'
     ) THEN
         EXECUTE 'ALTER TABLE workspaces DROP CONSTRAINT IF EXISTS workspaces_plan_check';
         EXECUTE 'ALTER TABLE workspaces ADD CONSTRAINT workspaces_plan_check CHECK (plan IN (''free'', ''pro'', ''team'', ''enterprise''))';
@@ -26,8 +26,8 @@ DO $$
 BEGIN
     IF EXISTS (
         SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'relay_token'
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'relay_token' AND column_name = 'plan'
     ) THEN
         EXECUTE 'ALTER TABLE relay_token DROP CONSTRAINT IF EXISTS relay_token_plan_check';
         EXECUTE 'ALTER TABLE relay_token ADD CONSTRAINT relay_token_plan_check CHECK (plan IN (''free'', ''pro'', ''team'', ''enterprise''))';
@@ -45,8 +45,8 @@ DO $$
 BEGIN
     IF EXISTS (
         SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'workspaces'
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'workspaces' AND column_name = 'plan'
     ) THEN
         EXECUTE 'ALTER TABLE workspaces DROP CONSTRAINT IF EXISTS workspaces_plan_check';
         EXECUTE 'ALTER TABLE workspaces ADD CONSTRAINT workspaces_plan_check CHECK (plan IN (''free'', ''pro'', ''enterprise''))';
@@ -57,8 +57,8 @@ DO $$
 BEGIN
     IF EXISTS (
         SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'relay_token'
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'relay_token' AND column_name = 'plan'
     ) THEN
         EXECUTE 'ALTER TABLE relay_token DROP CONSTRAINT IF EXISTS relay_token_plan_check';
         EXECUTE 'ALTER TABLE relay_token ADD CONSTRAINT relay_token_plan_check CHECK (plan IN (''free'', ''pro'', ''enterprise''))';
