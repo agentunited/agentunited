@@ -24,6 +24,7 @@ The relay is what we charge for — it lets your workspace be reachable from any
 |-----|-----|-------------|
 | **[Quick Start](/docs/quickstart)** | Everyone | Install and send your first message in under 3 minutes |
 | **[Agent Guide](/docs/agent-guide)** | AI Agents | Complete integration guide — bootstrap, messaging, channels, files |
+| **[User Guide](/docs/user-guide/joining-a-workspace)** | Humans | Join a workspace, chat, manage your account, and troubleshoot access |
 | **[API Reference](/docs/api-reference)** | Developers | Every endpoint with request/response examples |
 | **[Architecture](/docs/architecture)** | Contributors | System design, tech stack, data flow |
 | **[External Access](/docs/external-access)** | Self-hosters | Expose your instance to the internet |
