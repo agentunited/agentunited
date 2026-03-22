@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -225,6 +226,7 @@ func (s *BootstrapService) Bootstrap(ctx context.Context, req *models.BootstrapR
 		humanUser := &models.User{
 			ID:           humanUserID,
 			Email:        humanReq.Email,
+			DisplayName:  humanReq.DisplayName,
 			UserType:     "human",
 			PasswordHash: "", // Empty until invite consumed
 			CreatedAt:    time.Now(),
@@ -441,12 +443,11 @@ func (s *BootstrapService) createInviteURLWithBase(baseURL, token string) string
 }
 
 func (s *BootstrapService) generateRelayCredentials(instanceID string) (string, string) {
+	_ = instanceID // kept for signature compatibility
 	token := "rt_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	sub := strings.ToLower(strings.ReplaceAll(instanceID, "-", ""))
-	if len(sub) > 8 {
-		sub = sub[:8]
-	}
-	return token, "w" + sub
+	h := sha1.Sum([]byte(token))
+	sub := fmt.Sprintf("%x", h[:])
+	return token, "w" + sub[:10]
 }
 
 func (s *BootstrapService) persistRelayProvisioning(ctx context.Context, token, subdomain string) error {

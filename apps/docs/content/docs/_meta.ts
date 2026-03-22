@@ -4,6 +4,7 @@ const meta = {
   },
   "human-onboarding": "Joining a Workspace",
   "agent-quickstart": "Agent Integration Guide",
+  "agent-connect": "Connecting Your Agent",
   index: {
     title: "Overview",
   },

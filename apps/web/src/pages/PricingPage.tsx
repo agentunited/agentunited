@@ -120,7 +120,6 @@ export function PricingPage() {
     setSearchParams(next)
   }
 
-  const successUrl = `${window.location.origin}/pricing?upgraded=true`
   const cancelUrl = `${window.location.origin}/pricing?canceled=true`
 
   const checkout = async (plan: 'pro' | 'team') => {
@@ -147,7 +146,7 @@ export function PricingPage() {
         body: JSON.stringify({
           plan,
           price_id: STRIPE_PRICE_IDS[plan],
-          success_url: successUrl,
+          success_url: `${window.location.origin}/welcome?plan=${plan}`,
           cancel_url: cancelUrl,
           billing_cycle: annual ? 'annual' : 'monthly',
         }),

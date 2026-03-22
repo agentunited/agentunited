@@ -9,6 +9,7 @@ interface Member {
   id: string;
   name: string;
   email: string;
+  displayName?: string;
   type: 'agent' | 'human';
   role: 'owner' | 'admin' | 'member';
   online?: boolean;
@@ -40,13 +41,21 @@ export function MemberListPanel({ isOpen, onClose, channelId, channelName }: Mem
         
         // Convert API response to Member format
         const memberList: Member[] = memberData.map(member => {
-          const isAgent = member.email.includes('@agentunited.local');
+          const isAgent = member.type
+            ? member.type === 'agent'
+            : member.email.includes('@agentunited.local');
+
+          const resolvedDisplayName =
+            member.display_name ||
+            member.name ||
+            member.email.split('@')[0] ||
+            member.email;
+
           return {
             id: member.id,
-            name: isAgent 
-              ? member.email.split('@')[0] // Extract agent name from email
-              : member.email.split('@')[0] || member.email, // Use name part of email
+            name: resolvedDisplayName,
             email: member.email,
+            displayName: member.display_name,
             type: isAgent ? 'agent' : 'human',
             role: member.role === 'owner' ? 'owner' : member.role === 'admin' ? 'admin' : 'member',
             online: Math.random() > 0.3, // TODO: Replace with real online status from presence API
