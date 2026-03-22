@@ -37,6 +37,11 @@ struct LiveAUAPIClient: AUAPIClient {
         return try await perform(request, expecting: T.self)
     }
 
+    func put<T: Decodable, Body: Encodable>(_ path: String, body: Body) async throws -> T {
+        let request = try makeRequest(path: path, method: "PUT", body: body)
+        return try await perform(request, expecting: T.self)
+    }
+
     func login(email: String, password: String) async throws -> LoginResponse {
         try await post("auth/login", body: LoginRequest(email: email, password: password))
     }
@@ -132,7 +137,7 @@ struct LiveAUAPIClient: AUAPIClient {
     }
 
     func updateProfile(displayName: String) async throws -> UserResponse {
-        try await patch("profile", body: UpdateProfileRequest(displayName: displayName))
+        try await put("me", body: UpdateProfileRequest(displayName: displayName))
     }
 
     private func makeRequest<Body: Encodable>(

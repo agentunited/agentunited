@@ -214,7 +214,7 @@ private struct ChannelListView: View {
             Button {
                 onSelectChannel(channel.id)
             } label: {
-                ConversationRow(item: channel)
+                ChannelRow(item: channel)
             }
             .buttonStyle(.plain)
             .contextMenu {
@@ -245,5 +245,57 @@ private struct ChannelConversationView: View {
 
     var body: some View {
         ConversationView(conversationID: channelID, mode: .channel)
+    }
+}
+
+private struct ChannelRow: View {
+    let item: ConversationListItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.auEmerald.opacity(0.14))
+                    .frame(width: 42, height: 42)
+                Image(systemName: "number")
+                    .foregroundStyle(Color.auEmerald)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text("#\(item.displayName)")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text(item.relativeTimestamp)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 8) {
+                    Text(item.lastMessagePreview)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Spacer()
+                    if item.unreadCount > 0 {
+                        Text(item.unreadCount > 9 ? "9+" : "\(item.unreadCount)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.blue)
+                            .clipShape(Capsule())
+                    }
+                }
+
+                Text("\(max(item.memberCount, 1)) members")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Channel #\(item.displayName), \(item.unreadCount) unread")
     }
 }

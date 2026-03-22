@@ -6,6 +6,7 @@ protocol AUAPIClient {
 
     func get<T: Decodable>(_ path: String) async throws -> T
     func post<T: Decodable, Body: Encodable>(_ path: String, body: Body) async throws -> T
+    func put<T: Decodable, Body: Encodable>(_ path: String, body: Body) async throws -> T
     func patch<T: Decodable, Body: Encodable>(_ path: String, body: Body) async throws -> T
 
     func login(email: String, password: String) async throws -> LoginResponse
