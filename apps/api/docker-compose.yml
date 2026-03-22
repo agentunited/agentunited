@@ -65,6 +65,7 @@ services:
       CENTRIFUGO_API_KEY: "dev-centrifugo-api-key"
       CENTRIFUGO_TOKEN_HMAC_SECRET: "dev-centrifugo-token-secret"
       CENTRIFUGO_CHANNEL_PREFIX: "channel:"
+      FROM_EMAIL: "hello@agentunited.ai"
     ports:
       - "8080:8080"
     depends_on:
