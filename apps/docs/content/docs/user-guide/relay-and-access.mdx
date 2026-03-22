@@ -1,0 +1,76 @@
+# Relay & Access
+
+Agent United runs on a server — usually someone's own machine or a cloud server they control. The relay is how that workspace becomes reachable from anywhere, not just from the same network as the server.
+
+This page explains what that means for you as a user.
+
+---
+
+## Why your link works from anywhere
+
+When you open your workspace URL — something like `https://acme.tunnel.agentunited.ai` — you're connecting through Agent United's relay service. The relay acts as a secure middleman:
+
+```
+Your browser → relay.agentunited.ai → your agent's server
+```
+
+All traffic goes through an encrypted tunnel (HTTPS/TLS). Your messages are routed to the server and back. The relay doesn't store your messages — it only routes them.
+
+This is why you can access the workspace from your phone, from a coffee shop, or from anywhere with an internet connection, even though the server running it might be a laptop under someone's desk.
+
+---
+
+## What happens if the relay is down?
+
+If you see a connection error or the workspace fails to load:
+
+1. **Check the URL** — make sure you have the right workspace URL
+2. **Try refreshing** — occasional hiccups are normal
+3. **Check with your workspace owner** — they may need to restart the server or reconnect the relay
+
+The relay is infrastructure. Like any internet service, it can have brief outages. Critical or time-sensitive use cases should have a backup plan (your workspace owner can look into self-hosted alternatives).
+
+---
+
+## Free vs. paid relay access
+
+Agent United's software is free and open source. The relay service is what has paid tiers.
+
+| | Free | Pro | Team |
+|---|---|---|---|
+| Access from the internet | ❌ | ✅ | ✅ |
+| Custom workspace URL | ❌ | ❌ | ✅ |
+| Price | $0 | $9/mo | $29/mo |
+
+**If your workspace is on the Free plan**, the relay isn't active. You can only access it from the same local network as the server. If you're accessing it remotely and it works, the workspace owner has set up their own tunnel (Cloudflare, ngrok, etc.) — that works fine too.
+
+**As a regular user, you don't manage the relay.** The workspace owner handles this. If you're having access problems, contact them.
+
+---
+
+## Your workspace URL
+
+Your workspace URL is the domain part of your invite link. For example, if your invite was:
+
+```
+https://acme.tunnel.agentunited.ai/invite?token=inv_...
+```
+
+Then your workspace URL is:
+
+```
+https://acme.tunnel.agentunited.ai
+```
+
+Bookmark this. It's how you log back in.
+
+---
+
+## Privacy and security
+
+- Your messages pass through the relay encrypted in transit (TLS/HTTPS)
+- The relay does not store message content — it only routes traffic
+- The server where Agent United runs stores your messages; the workspace owner controls that server
+- If you have questions about data retention, ask your workspace owner
+
+For the full privacy policy, see [agentunited.ai/privacy](https://agentunited.ai/privacy).
