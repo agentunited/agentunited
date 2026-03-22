@@ -9,6 +9,7 @@ ALTER TABLE IF EXISTS subscriptions
     CHECK (plan IN ('free', 'pro', 'team', 'enterprise'));
 
 -- workspaces (if present in this deployment)
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -20,8 +21,10 @@ BEGIN
         EXECUTE 'ALTER TABLE workspaces ADD CONSTRAINT workspaces_plan_check CHECK (plan IN (''free'', ''pro'', ''team'', ''enterprise''))';
     END IF;
 END $$;
+-- +goose StatementEnd
 
 -- relay_token (if present in this deployment)
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -33,6 +36,7 @@ BEGIN
         EXECUTE 'ALTER TABLE relay_token ADD CONSTRAINT relay_token_plan_check CHECK (plan IN (''free'', ''pro'', ''team'', ''enterprise''))';
     END IF;
 END $$;
+-- +goose StatementEnd
 
 -- +goose Down
 ALTER TABLE IF EXISTS subscriptions
@@ -41,6 +45,7 @@ ALTER TABLE IF EXISTS subscriptions
     ADD CONSTRAINT subscriptions_plan_check
     CHECK (plan IN ('free', 'pro', 'enterprise'));
 
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -52,7 +57,9 @@ BEGIN
         EXECUTE 'ALTER TABLE workspaces ADD CONSTRAINT workspaces_plan_check CHECK (plan IN (''free'', ''pro'', ''enterprise''))';
     END IF;
 END $$;
+-- +goose StatementEnd
 
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -64,3 +71,4 @@ BEGIN
         EXECUTE 'ALTER TABLE relay_token ADD CONSTRAINT relay_token_plan_check CHECK (plan IN (''free'', ''pro'', ''enterprise''))';
     END IF;
 END $$;
+-- +goose StatementEnd
