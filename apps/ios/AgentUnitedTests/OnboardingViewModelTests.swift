@@ -658,8 +658,7 @@ final class AUAPIClientTests: XCTestCase {
             let json = """
             {
               "token": "jwt_123",
-              "userID": "usr_1",
-              "expiresAt": "2026-03-20T00:00:00Z"
+              "user_id": "usr_1"
             }
             """
             return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
@@ -671,6 +670,51 @@ final class AUAPIClientTests: XCTestCase {
         XCTAssertEqual(capturedRequest?.httpMethod, "POST")
         XCTAssertEqual(response.token, "jwt_123")
         XCTAssertEqual(response.userID, "usr_1")
+        XCTAssertNil(response.expiresAt)
+    }
+
+    func testLoginDecodesNestedUserObjectWhenUserIDIsNotTopLevel() async throws {
+        let session = makeSession()
+        MockURLProtocol.requestHandler = { request in
+            let json = """
+            {
+              "token": "jwt_nested",
+              "user": {
+                "id": "usr_nested"
+              }
+            }
+            """
+            return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
+        }
+
+        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, session: session)
+        let response = try await client.login(email: "alice@example.com", password: "password-1234")
+
+        XCTAssertEqual(response.token, "jwt_nested")
+        XCTAssertEqual(response.userID, "usr_nested")
+    }
+
+    func testLoginFailsWithExactErrorWhenUserIDMissingEverywhere() async throws {
+        let session = makeSession()
+        MockURLProtocol.requestHandler = { request in
+            let json = """
+            {
+              "token": "jwt_only"
+            }
+            """
+            return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
+        }
+
+        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, session: session)
+
+        do {
+            _ = try await client.login(email: "alice@example.com", password: "password-1234")
+            XCTFail("Expected decode failure")
+        } catch AUAPIError.decodingError(let error) {
+            XCTAssertTrue(String(describing: error).contains("Missing user id in login response"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testSendMessagePostsChannelPayloadAndDecodesMessage() async throws {

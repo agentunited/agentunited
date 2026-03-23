@@ -43,7 +43,23 @@ struct LiveAUAPIClient: AUAPIClient {
     }
 
     func login(email: String, password: String) async throws -> LoginResponse {
-        try await post("auth/login", body: LoginRequest(email: email, password: password))
+        let request = try makeRequest(path: "auth/login", method: "POST", body: LoginRequest(email: email, password: password))
+        let data = try await performRequest(request)
+
+#if DEBUG
+        if let json = String(data: data, encoding: .utf8) {
+            NSLog("[AU][login] raw response: %@", json)
+        }
+#endif
+
+        do {
+            return try decoder.decode(LoginResponse.self, from: data)
+        } catch {
+#if DEBUG
+            NSLog("[AU][login] decode failed: %@", String(describing: error))
+#endif
+            throw AUAPIError.decodingError(error)
+        }
     }
 
     func validateInvite(token: String) async throws -> InviteValidationResponse {
