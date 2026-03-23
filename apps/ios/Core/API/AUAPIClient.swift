@@ -60,9 +60,24 @@ struct LoginResponse: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: FlexibleCodingKeys.self)
         token = try container.decodeOne(of: ["token", "jwt_token"])
-        userID = try container.decodeOne(of: ["user_id", "userID"])
+
+        if let directUserID: String = try container.decodeIfPresentOne(of: ["user_id", "userID", "id"]) {
+            userID = directUserID
+        } else if let userObject = try container.decodeIfPresent(LoginUserObject.self, forKey: FlexibleCodingKeys("user")) {
+            userID = userObject.id
+        } else {
+            throw DecodingError.keyNotFound(
+                FlexibleCodingKeys("user_id"),
+                DecodingError.Context(codingPath: container.codingPath, debugDescription: "Missing user id in login response")
+            )
+        }
+
         expiresAt = try container.decodeIfPresentOne(of: ["expires_at", "expiresAt"])
     }
+}
+
+private struct LoginUserObject: Decodable {
+    let id: String
 }
 
 struct InviteAcceptResponse: Decodable {
