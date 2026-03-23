@@ -107,6 +107,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/claim/generate", app.claimGenerate)
 	mux.HandleFunc("POST /api/v1/claim/validate", app.claimValidate)
 	mux.HandleFunc("POST /api/v1/claim/consume", app.claimConsume)
+	mux.HandleFunc("GET /api/v1/workspaces", app.workspaces)
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	go func() {
@@ -276,6 +277,44 @@ func (a *App) claimConsume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+func (a *App) workspaces(w http.ResponseWriter, r *http.Request) {
+	userID, err := a.authUserID(r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	type workspace struct {
+		WorkspaceID string    `json:"workspace_id"`
+		CreatedAt   time.Time `json:"created_at"`
+	}
+	rows, err := a.db.Query(r.Context(), `
+		SELECT workspace_id, joined_at
+		FROM workspace_members
+		WHERE central_user_id=$1
+		ORDER BY joined_at DESC
+	`, userID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "workspaces_failed"})
+		return
+	}
+	defer rows.Close()
+
+	out := make([]workspace, 0)
+	for rows.Next() {
+		var ws workspace
+		if err := rows.Scan(&ws.WorkspaceID, &ws.CreatedAt); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "workspaces_failed"})
+			return
+		}
+		out = append(out, ws)
+	}
+	if rows.Err() != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "workspaces_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspaces": out})
 }
 
 func (a *App) authUserID(r *http.Request) (string, error) {
