@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -52,6 +53,14 @@ type loginReq struct {
 	Password string `json:"password"`
 }
 
+type claimGenerateReq struct {
+	WorkspaceID string `json:"workspace_id"`
+}
+
+type claimKeyReq struct {
+	ClaimKey string `json:"claim_key"`
+}
+
 type centralUser struct {
 	ID          string
 	Email       string
@@ -95,6 +104,9 @@ func main() {
 	mux.HandleFunc("GET /.well-known/jwks.json", app.jwks)
 	mux.HandleFunc("POST /api/v1/users/register", app.register)
 	mux.HandleFunc("POST /api/v1/users/login", app.login)
+	mux.HandleFunc("POST /api/v1/claim/generate", app.claimGenerate)
+	mux.HandleFunc("POST /api/v1/claim/validate", app.claimValidate)
+	mux.HandleFunc("POST /api/v1/claim/consume", app.claimConsume)
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	go func() {
@@ -175,6 +187,124 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	tok, err := a.issueToken(u)
 	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"token_failed"}); return }
 	writeJSON(w, http.StatusOK, map[string]any{"token":tok, "user_id":u.ID, "plan":u.Plan})
+}
+
+func (a *App) claimGenerate(w http.ResponseWriter, r *http.Request) {
+	userID, err := a.authUserID(r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	var req claimGenerateReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.WorkspaceID = strings.TrimSpace(req.WorkspaceID)
+	if req.WorkspaceID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "workspace_id_required"})
+		return
+	}
+	claimKey, err := generateClaimKey()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "generate_failed"})
+		return
+	}
+	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
+	_, err = a.db.Exec(r.Context(), `
+		INSERT INTO claim_keys (user_id, key, expires_at, workspace_id)
+		VALUES ($1, $2, $3, $4)
+	`, userID, claimKey, expiresAt, req.WorkspaceID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "generate_failed"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"claim_key": claimKey, "expires_at": expiresAt.Format(time.RFC3339)})
+}
+
+func (a *App) claimValidate(w http.ResponseWriter, r *http.Request) {
+	var req claimKeyReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.ClaimKey = strings.TrimSpace(req.ClaimKey)
+	if req.ClaimKey == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "claim_key_required"})
+		return
+	}
+	var workspaceID string
+	err := a.db.QueryRow(r.Context(), `
+		SELECT workspace_id
+		FROM claim_keys
+		WHERE key=$1 AND consumed_at IS NULL AND expires_at > NOW()
+	`, req.ClaimKey).Scan(&workspaceID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "validate_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "workspace_id": workspaceID})
+}
+
+func (a *App) claimConsume(w http.ResponseWriter, r *http.Request) {
+	_, err := a.authUserID(r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	var req claimKeyReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.ClaimKey = strings.TrimSpace(req.ClaimKey)
+	if req.ClaimKey == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "claim_key_required"})
+		return
+	}
+	_, err = a.db.Exec(r.Context(), `
+		UPDATE claim_keys
+		SET consumed_at = COALESCE(consumed_at, NOW())
+		WHERE key=$1
+	`, req.ClaimKey)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "consume_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+func (a *App) authUserID(r *http.Request) (string, error) {
+	auth := strings.TrimSpace(r.Header.Get("Authorization"))
+	if auth == "" || !strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		return "", errors.New("missing bearer")
+	}
+	tokenStr := strings.TrimSpace(auth[len("Bearer "):])
+	tok, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if token.Method != jwt.SigningMethodRS256 {
+			return nil, errors.New("invalid signing method")
+		}
+		return a.pubKey, nil
+	})
+	if err != nil || !tok.Valid {
+		return "", errors.New("invalid token")
+	}
+	claims, ok := tok.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", errors.New("invalid claims")
+	}
+	if iss, _ := claims["iss"].(string); iss != a.cfg.Issuer {
+		return "", errors.New("invalid issuer")
+	}
+	sub, _ := claims["sub"].(string)
+	if strings.TrimSpace(sub) == "" {
+		return "", errors.New("missing sub")
+	}
+	return sub, nil
 }
 
 func (a *App) issueToken(u centralUser) (string, error) {
@@ -270,4 +400,12 @@ func durationFromHours(h string) time.Duration {
 	_, err := fmt.Sscanf(h, "%d", &n)
 	if err != nil || n <= 0 { return 24 * time.Hour }
 	return time.Duration(n) * time.Hour
+}
+
+func generateClaimKey() (string, error) {
+	b := make([]byte, 18)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return "au_claim_" + base64.RawURLEncoding.EncodeToString(b), nil
 }
