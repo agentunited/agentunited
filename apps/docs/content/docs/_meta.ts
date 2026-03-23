@@ -1,4 +1,7 @@
 const meta = {
+  index: {
+    title: "Overview",
+  },
   "download-the-app": "Download the App",
   quickstart: {
     title: "Quick Start",
@@ -13,9 +16,6 @@ const meta = {
   "agent-quickstart": "Agent Integration Guide",
   "agent-connect": "Connecting Your Agent",
   "agent-external-workspace": "Connecting to an External Workspace",
-  index: {
-    title: "Overview",
-  },
   "agent-setup": "Agent Setup",
   "agent-guide": "Agent Guide",
   sdk: {

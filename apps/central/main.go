@@ -1,0 +1,273 @@
+package main
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"math/big"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type Config struct {
+	Port      string
+	Database  string
+	Issuer    string
+	JWTTTL    time.Duration
+	KID       string
+	PrivKeyPEM string
+}
+
+type App struct {
+	cfg     Config
+	db      *pgxpool.Pool
+	privKey *rsa.PrivateKey
+	pubKey  *rsa.PublicKey
+}
+
+type registerReq struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DisplayName string `json:"display_name"`
+}
+
+type loginReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type centralUser struct {
+	ID          string
+	Email       string
+	DisplayName string
+	Plan        string
+	PasswordHash string
+}
+
+func main() {
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	cfg := Config{
+		Port:      getenv("PORT", "8080"),
+		Database:  os.Getenv("DATABASE_URL"),
+		Issuer:    getenv("JWT_ISSUER", "https://agentunited.ai"),
+		JWTTTL:    durationFromHours(getenv("JWT_TTL_HOURS", "24")),
+		KID:       getenv("JWT_KID", "2026-v1"),
+		PrivKeyPEM: os.Getenv("RSA_PRIVATE_KEY"),
+	}
+	if cfg.Database == "" {
+		log.Fatal().Msg("missing DATABASE_URL")
+	}
+	if cfg.PrivKeyPEM == "" {
+		k, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to generate fallback rsa key")
+		}
+		cfg.PrivKeyPEM = string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}))
+		log.Warn().Msg("RSA_PRIVATE_KEY missing; generated ephemeral key for this process")
+	}
+
+	app, err := newApp(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("init failed")
+	}
+	defer app.db.Close()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", app.health)
+	mux.HandleFunc("GET /.well-known/jwks.json", app.jwks)
+	mux.HandleFunc("POST /api/v1/users/register", app.register)
+	mux.HandleFunc("POST /api/v1/users/login", app.login)
+
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	go func() {
+		log.Info().Str("addr", srv.Addr).Msg("central service listening")
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("server failed")
+		}
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	<-ctx.Done()
+	stop()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutdownCtx)
+}
+
+func newApp(cfg Config) (*App, error) {
+	pool, err := pgxpool.New(context.Background(), cfg.Database)
+	if err != nil {
+		return nil, fmt.Errorf("db connect: %w", err)
+	}
+	if err := ensureSchema(context.Background(), pool); err != nil {
+		return nil, err
+	}
+	priv, err := parseRSAPrivateKey(cfg.PrivKeyPEM)
+	if err != nil {
+		return nil, err
+	}
+	return &App{cfg: cfg, db: pool, privKey: priv, pubKey: &priv.PublicKey}, nil
+}
+
+func (a *App) health(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, map[string]string{"status": "ok"}) }
+
+func (a *App) register(w http.ResponseWriter, r *http.Request) {
+	var req registerReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_json"}); return }
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.DisplayName = strings.TrimSpace(req.DisplayName)
+	if req.Email == "" || req.DisplayName == "" || len(req.Password) < 12 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_input"}); return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
+	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"hash_failed"}); return }
+
+	var u centralUser
+	err = a.db.QueryRow(r.Context(), `
+		INSERT INTO central_users (email, display_name, password_hash)
+		VALUES ($1,$2,$3)
+		RETURNING id::text, email, display_name, plan
+	`, req.Email, req.DisplayName, string(hash)).Scan(&u.ID, &u.Email, &u.DisplayName, &u.Plan)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			writeJSON(w, http.StatusConflict, map[string]string{"error":"email_already_registered"}); return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"register_failed"}); return
+	}
+	tok, err := a.issueToken(u)
+	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"token_failed"}); return }
+	writeJSON(w, http.StatusCreated, map[string]any{"user_id":u.ID, "email":u.Email, "display_name":u.DisplayName, "plan":u.Plan, "token":tok})
+}
+
+func (a *App) login(w http.ResponseWriter, r *http.Request) {
+	var req loginReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_json"}); return }
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	if req.Email == "" || req.Password == "" { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_credentials"}); return }
+
+	var u centralUser
+	err := a.db.QueryRow(r.Context(), `
+		SELECT id::text, email, display_name, plan, password_hash
+		FROM central_users WHERE email=$1
+	`, req.Email).Scan(&u.ID, &u.Email, &u.DisplayName, &u.Plan, &u.PasswordHash)
+	if err != nil { writeJSON(w, http.StatusUnauthorized, map[string]string{"error":"invalid_credentials"}); return }
+	if bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)) != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error":"invalid_credentials"}); return
+	}
+	tok, err := a.issueToken(u)
+	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"token_failed"}); return }
+	writeJSON(w, http.StatusOK, map[string]any{"token":tok, "user_id":u.ID, "plan":u.Plan})
+}
+
+func (a *App) issueToken(u centralUser) (string, error) {
+	now := time.Now().UTC()
+	claims := jwt.MapClaims{
+		"iss": a.cfg.Issuer,
+		"aud": []string{"agentunited:workspace"},
+		"sub": u.ID,
+		"email": u.Email,
+		"plan": u.Plan,
+		"display_name": u.DisplayName,
+		"iat": now.Unix(),
+		"exp": now.Add(a.cfg.JWTTTL).Unix(),
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	t.Header["kid"] = a.cfg.KID
+	return t.SignedString(a.privKey)
+}
+
+func (a *App) jwks(w http.ResponseWriter, _ *http.Request) {
+	n := base64.RawURLEncoding.EncodeToString(a.pubKey.N.Bytes())
+	e := big.NewInt(int64(a.pubKey.E)).Bytes()
+	jwks := map[string]any{"keys": []map[string]string{{
+		"kty": "RSA", "use": "sig", "kid": a.cfg.KID, "alg": "RS256", "n": n, "e": base64.RawURLEncoding.EncodeToString(e),
+	}}}
+	writeJSON(w, http.StatusOK, jwks)
+}
+
+func ensureSchema(ctx context.Context, db *pgxpool.Pool) error {
+	_, err := db.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS central_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  plan TEXT NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT,
+  email_verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_central_users_email ON central_users(email);
+
+CREATE TABLE IF NOT EXISTS claim_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES central_users(id) ON DELETE CASCADE,
+  key TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  workspace_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_claim_keys_key ON claim_keys(key);
+CREATE INDEX IF NOT EXISTS idx_claim_keys_user_id ON claim_keys(user_id);
+
+CREATE TABLE IF NOT EXISTS workspace_members (
+  workspace_id TEXT NOT NULL,
+  central_user_id UUID NOT NULL REFERENCES central_users(id),
+  relay_url TEXT NOT NULL,
+  workspace_name TEXT,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ,
+  PRIMARY KEY (workspace_id, central_user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_workspace_members_user ON workspace_members(central_user_id);
+`)
+	if err != nil { return fmt.Errorf("ensure schema: %w", err) }
+	return nil
+}
+
+func parseRSAPrivateKey(pemStr string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(pemStr))
+	if block == nil { return nil, errors.New("invalid RSA_PRIVATE_KEY pem") }
+	if k, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil { return k, nil }
+	kAny, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil { return nil, err }
+	k, ok := kAny.(*rsa.PrivateKey)
+	if !ok { return nil, errors.New("RSA_PRIVATE_KEY is not RSA") }
+	return k, nil
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func getenv(k, d string) string { if v := os.Getenv(k); v != "" { return v }; return d }
+
+func durationFromHours(h string) time.Duration {
+	if h == "" { return 24 * time.Hour }
+	var n int
+	_, err := fmt.Sscanf(h, "%d", &n)
+	if err != nil || n <= 0 { return 24 * time.Hour }
+	return time.Duration(n) * time.Hour
+}
