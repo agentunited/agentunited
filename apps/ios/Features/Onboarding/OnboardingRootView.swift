@@ -17,14 +17,13 @@ struct OnboardingRootView: View {
                 isInvitePresented: $coordinator.isPresentingInvite,
                 sessionStore: sessionStore
             )
+            .navigationDestination(isPresented: $coordinator.isPresentingInvite) {
+                InviteAcceptScene(
+                    pendingInvite: pendingInvite,
+                    sessionStore: sessionStore
+                )
+            }
         }
-        .navigationDestination(isPresented: $coordinator.isPresentingInvite) {
-            InviteAcceptScene(
-                pendingInvite: pendingInvite,
-                sessionStore: sessionStore
-            )
-        }
-
         .onAppear {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true

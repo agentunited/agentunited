@@ -55,7 +55,14 @@ enum AUAPIError: LocalizedError {
 struct LoginResponse: Decodable {
     let token: String
     let userID: String
-    let expiresAt: Date
+    let expiresAt: Date?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: FlexibleCodingKeys.self)
+        token = try container.decodeOne(of: ["token", "jwt_token"])
+        userID = try container.decodeOne(of: ["user_id", "userID"])
+        expiresAt = try container.decodeIfPresentOne(of: ["expires_at", "expiresAt"])
+    }
 }
 
 struct InviteAcceptResponse: Decodable {
