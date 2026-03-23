@@ -230,6 +230,9 @@ private final class SignInViewModel: ObservableObject {
             )
             return true
         } catch {
+#if DEBUG
+            NSLog("[AU][signin] failed: %@", String(describing: error))
+#endif
             errorMessage = "Sign in failed. Check workspace URL, email, and password."
             return false
         }
