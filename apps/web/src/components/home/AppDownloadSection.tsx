@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 
 const MAC_OS_URL = 'https://github.com/agentunited/agentunited/releases/latest'
-const IOS_URL = 'https://testflight.apple.com/join/PLACEHOLDER'
 const BROWSER_URL = '/login'
 
 export function AppDownloadSection() {
@@ -23,14 +22,7 @@ export function AppDownloadSection() {
         >
           <span>💻</span> Download for macOS
         </a>
-        <a
-          href={IOS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted sm:w-auto"
-        >
-          <span>🍎</span> Get on TestFlight (iOS)
-        </a>
+
       </div>
 
       <Link
