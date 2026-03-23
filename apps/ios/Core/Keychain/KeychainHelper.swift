@@ -24,6 +24,12 @@ struct KeychainHelper {
     }
 
     func storeJWT(_ token: String, for userID: String) throws {
+        #if targetEnvironment(simulator)
+        // Keychain requires entitlements not present in unsigned simulator builds.
+        // Use UserDefaults as a safe fallback in the simulator.
+        UserDefaults.standard.set(token, forKey: "jwt.\(userID)")
+        return
+        #else
         let encoded = Data(token.utf8)
         let query = baseQuery(for: userID)
 
@@ -49,9 +55,13 @@ struct KeychainHelper {
         guard addStatus == errSecSuccess else {
             throw KeychainHelperError.unhandledStatus(addStatus)
         }
+        #endif
     }
 
     func readJWT(for userID: String) throws -> String? {
+        #if targetEnvironment(simulator)
+        return UserDefaults.standard.string(forKey: "jwt.\(userID)")
+        #else
         var query = baseQuery(for: userID)
         query[kSecReturnData as String] = kCFBooleanTrue
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -70,13 +80,18 @@ struct KeychainHelper {
         default:
             throw KeychainHelperError.unhandledStatus(status)
         }
+        #endif
     }
 
     func deleteJWT(for userID: String) throws {
+        #if targetEnvironment(simulator)
+        UserDefaults.standard.removeObject(forKey: "jwt.\(userID)")
+        #else
         let status = SecItemDelete(baseQuery(for: userID) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainHelperError.unhandledStatus(status)
         }
+        #endif
     }
 
     private func baseQuery(for userID: String) -> [String: Any] {
