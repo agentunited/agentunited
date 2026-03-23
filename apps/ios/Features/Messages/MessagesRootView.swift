@@ -921,6 +921,7 @@ struct ConversationView: View {
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1...5)
                 .accessibilityLabel("Message input")
+                .accessibilityIdentifier("compose-input")
 
                 Button {
                     Task {
@@ -1531,9 +1532,14 @@ final class LiveMessagesStore: ConversationStoreProtocol {
 
     func syncConversationList() async throws -> [ConversationListItem] {
         let client = try makeClient()
-        let conversations = try await client.listDMs()
-        try syncConversations(conversations)
-        return try localConversationList()
+        do {
+            let conversations = try await client.listDMs()
+            try syncConversations(conversations)
+            return try localConversationList()
+        } catch AUAPIError.notFound {
+            // Some deployments may not expose /dms yet. Treat as empty list instead of surfacing decode/network failure.
+            return try localConversationList()
+        }
     }
 
     func localConversationList() throws -> [ConversationListItem] {
