@@ -403,6 +403,9 @@ func (h *ChannelHandler) ListDMs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return success response
+	if channels == nil {
+		channels = []*models.ChannelWithMembers{}
+	}
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"channels": channels,
 	})
