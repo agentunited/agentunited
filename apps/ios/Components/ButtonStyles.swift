@@ -7,7 +7,7 @@ struct AUPrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.headline)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: 50)
             .padding(.horizontal, 16)
             .background(
                 Color.auEmerald.opacity(
@@ -22,6 +22,27 @@ struct AUPrimaryButtonStyle: ButtonStyle {
     }
 }
 
+struct AUGhostButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(isEnabled ? (configuration.isPressed ? 0.08 : 0.02) : 0.01))
+            )
+            .foregroundStyle(Color.white.opacity(isEnabled ? 1.0 : 0.6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(isEnabled ? (configuration.isPressed ? 0.72 : 0.84) : 0.32), lineWidth: 1)
+            }
+    }
+}
+
 struct AUSecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -29,7 +50,7 @@ struct AUSecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.headline)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: 50)
             .padding(.horizontal, 16)
             .background(Color.auSecondary.opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1.0) : 0.55))
             .foregroundStyle(Color.auLabel)

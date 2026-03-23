@@ -23,6 +23,7 @@ struct MainTabView: View {
                 }
                 .tag(AppCoordinator.ActiveTab.profile)
         }
+        .background(Color.auBackground.ignoresSafeArea())
         .tint(.auEmerald)
     }
 }

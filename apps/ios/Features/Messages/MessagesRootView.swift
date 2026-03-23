@@ -621,6 +621,7 @@ private struct ConversationListView: View {
             }
         }
         .navigationTitle("Messages")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: onCompose) {
@@ -660,8 +661,10 @@ private struct ConversationListView: View {
                 .accessibilityLabel("\(conversation.isMuted ? "Unmute" : "Mute") conversation with \(conversation.displayName)")
             }
             .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
+        .contentMargins(.top, 8, for: .scrollContent)
     }
 
     private func errorBanner(text: String) -> some View {
@@ -747,6 +750,7 @@ private struct NewMessageView: View {
             }
         }
         .navigationTitle("New Message")
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $viewModel.searchText, prompt: "Search agents and people")
         .task {
             viewModel.configure(modelContext: modelContext)

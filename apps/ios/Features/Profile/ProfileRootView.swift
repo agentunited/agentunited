@@ -56,6 +56,7 @@ struct ProfileRootView: View {
                 }
             }
             .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.large)
             .task {
                 await viewModel.load(modelContext: modelContext)
             }
@@ -92,6 +93,7 @@ private struct BillingView: View {
             }
         }
         .navigationTitle("Billing")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showSafari) {
             if let billingPortalURL {
                 SafariView(url: billingPortalURL)
