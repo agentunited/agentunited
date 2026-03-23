@@ -40,3 +40,18 @@ struct AUSecondaryButtonStyle: ButtonStyle {
             }
     }
 }
+
+struct AUGhostButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .padding(.horizontal, 16)
+            .foregroundStyle(Color.white.opacity(configuration.isPressed ? 0.6 : 1.0))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+            }
+    }
+}

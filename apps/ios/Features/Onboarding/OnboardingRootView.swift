@@ -25,7 +25,7 @@ struct OnboardingRootView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.auBackground.ignoresSafeArea())
+        .background(Color(hex: 0x0F172A).ignoresSafeArea())
         .onAppear {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true
@@ -46,36 +46,35 @@ private struct WelcomeScreen: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color.auBackground, Color.auEmeraldLight.opacity(0.55)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [Color(hex: 0x064E3B), Color(hex: 0x0F172A)],
+                startPoint: .top,
+                endPoint: .bottom
             )
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                Spacer(minLength: 40)
+                Spacer()
 
-                VStack(spacing: 20) {
+                VStack(spacing: 16) {
                     ZStack {
                         Circle()
-                            .fill(Color.white.opacity(0.9))
-                            .frame(width: 96, height: 96)
-                            .shadow(color: Color.auEmerald.opacity(0.16), radius: 24, y: 12)
+                            .fill(Color.auEmerald.opacity(0.18))
+                            .frame(width: 88, height: 88)
 
                         Image(systemName: "message.badge.waveform.fill")
-                            .font(.system(size: 40, weight: .semibold))
+                            .font(.system(size: 38, weight: .semibold))
                             .foregroundStyle(Color.auEmerald)
                     }
                     .accessibilityHidden(true)
 
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         Text("Agent United")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(Color.auLabel)
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundStyle(Color.white)
 
                         Text("Your workspace, everywhere.")
-                            .font(.system(size: 15))
-                            .foregroundStyle(Color.auSecondaryLabel)
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color.white.opacity(0.6))
                     }
                 }
 
@@ -86,7 +85,6 @@ private struct WelcomeScreen: View {
                         isInvitePresented = true
                     }
                     .buttonStyle(AUPrimaryButtonStyle())
-                    .accessibilityLabel("Accept an invite")
                     .accessibilityIdentifier("accept-invite-button")
 
                     NavigationLink {
@@ -94,19 +92,12 @@ private struct WelcomeScreen: View {
                     } label: {
                         Text("Sign in")
                     }
-                    .buttonStyle(AUSecondaryButtonStyle())
-                    .accessibilityLabel("Sign in")
+                    .buttonStyle(AUGhostButtonStyle())
                     .accessibilityIdentifier("sign-in-button")
                 }
-                .padding(20)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.6), lineWidth: 1)
-                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
         }
         .navigationBarHidden(true)
     }
@@ -170,7 +161,11 @@ private struct SignInScene: View {
             }
         }
         .navigationTitle("Sign In")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(Color(hex: 0x064E3B), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .tint(Color.auEmerald)
     }
 }
 

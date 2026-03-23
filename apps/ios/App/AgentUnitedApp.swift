@@ -39,7 +39,7 @@ private struct RootView: View {
     @EnvironmentObject private var sessionStore: AppSessionStore
 
     var body: some View {
-        Group {
+        ZStack {
             switch coordinator.authState {
             case .authenticated:
                 MainTabView()
@@ -47,6 +47,9 @@ private struct RootView: View {
                 OnboardingRootView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(hex: 0x0F172A).ignoresSafeArea())
+        .tint(Color.auEmerald)
         .task {
             if coordinator.authState == .launching {
                 coordinator.finishLaunch(isAuthenticated: sessionStore.restoreAuthentication())
