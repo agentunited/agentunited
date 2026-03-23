@@ -13,10 +13,10 @@ struct LiveAUAPIClient: AUAPIClient {
         self.authToken = authToken
 
         let config = URLSessionConfiguration.default
-        // Relay does not support HTTP/3. Prefer HTTP/1.1/2 by clearing Alt-Svc on client requests.
-        var headers = config.httpAdditionalHeaders ?? [:]
-        headers["Alt-Svc"] = "clear"
-        config.httpAdditionalHeaders = headers
+        // Relay tunnel does not support HTTP/3/QUIC — force HTTP/1.1 or HTTP/2 only.
+        if #available(iOS 15.0, *) {
+            config.assumesHTTP3Capable = false
+        }
         self.session = URLSession(configuration: config)
 
         let encoder = JSONEncoder()
