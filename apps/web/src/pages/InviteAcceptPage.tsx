@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getInviteInfo, acceptInvite, InviteApiError } from '../services/inviteApi';
 import { initializeFromUrlParams } from '../services/apiConfig';
 import type { InviteInfo } from '../types/invite';
+import { AppDownloadBanner } from '../components/invite/AppDownloadBanner';
 
 export function InviteAcceptPage() {
   const [searchParams] = useSearchParams();
@@ -148,6 +149,8 @@ export function InviteAcceptPage() {
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Agent United</h1>
         </div>
+
+        <AppDownloadBanner inviteToken={token ?? ''} instanceUrl={window.location.origin} />
 
         <div className="rounded-2xl border border-white/70 bg-white/90 p-7 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.3)] backdrop-blur">
           {loading ? (

@@ -1,4 +1,5 @@
 const meta = {
+  "download-the-app": "Download the App",
   quickstart: {
     title: "Quick Start",
   },

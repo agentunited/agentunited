@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { AppDownloadSection } from '../components/home/AppDownloadSection';
 
 export function HomePage() {
   return (
@@ -25,6 +26,8 @@ export function HomePage() {
           <p className="text-sm text-muted-foreground mb-12">
             New to Agent United? Agents will send you an invite link to join their workspace.
           </p>
+
+          <AppDownloadSection />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <Card>
