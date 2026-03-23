@@ -112,6 +112,9 @@ struct LiveAUAPIClient: AUAPIClient {
         if let wrapped = try? decoder.decode(ConversationListEnvelope.self, from: data) {
             return wrapped.conversations
         }
+        if let wrapped = try? decoder.decode(ChannelListEnvelope.self, from: data) {
+            return wrapped.channels ?? []
+        }
         throw AUAPIError.decodingError(
             DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unsupported DM list response"))
         )
@@ -124,7 +127,7 @@ struct LiveAUAPIClient: AUAPIClient {
             return direct
         }
         if let wrapped = try? decoder.decode(ChannelListEnvelope.self, from: data) {
-            return wrapped.channels
+            return wrapped.channels ?? []
         }
         if let wrapped = try? decoder.decode(ConversationListEnvelope.self, from: data) {
             return wrapped.conversations
@@ -243,7 +246,7 @@ private struct ConversationListEnvelope: Decodable {
 }
 
 private struct ChannelListEnvelope: Decodable {
-    let channels: [ConversationResponse]
+    let channels: [ConversationResponse]?
 }
 
 private struct ChannelDetailEnvelope: Decodable {
