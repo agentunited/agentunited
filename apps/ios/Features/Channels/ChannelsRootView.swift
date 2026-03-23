@@ -197,6 +197,7 @@ private struct ChannelListView: View {
             }
         }
         .navigationTitle("Channels")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Image(systemName: "plus")
@@ -223,8 +224,10 @@ private struct ChannelListView: View {
                 }
             }
             .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
+        .contentMargins(.top, 8, for: .scrollContent)
     }
 
     private func errorBanner(text: String) -> some View {

@@ -17,7 +17,6 @@ struct AgentUnitedApp: App {
             RootView()
                 .environmentObject(coordinator)
                 .environmentObject(sessionStore)
-                .preferredColorScheme(.light) // AU v1 — light mode only; dark mode scheduled for v2.
                 .onOpenURL { url in
                     coordinator.handleIncomingURL(url)
                 }
@@ -39,7 +38,9 @@ private struct RootView: View {
     @EnvironmentObject private var sessionStore: AppSessionStore
 
     var body: some View {
-        Group {
+        ZStack {
+            Color.clear.ignoresSafeArea()
+
             switch coordinator.authState {
             case .authenticated:
                 MainTabView()
@@ -47,8 +48,7 @@ private struct RootView: View {
                 OnboardingRootView()
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.auBackground.ignoresSafeArea())
+        .preferredColorScheme(.light) // AU v1 — light mode only; moved inside RootView so it doesn't wrap the safe-area context
         .task {
             if coordinator.authState == .launching {
                 coordinator.finishLaunch(isAuthenticated: sessionStore.restoreAuthentication())

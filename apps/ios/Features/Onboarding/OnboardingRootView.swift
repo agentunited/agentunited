@@ -3,6 +3,7 @@ import SwiftUI
 struct OnboardingRootView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var sessionStore: AppSessionStore
+    @State private var isPresentingSignIn = false
 
     private var pendingInvite: AppCoordinator.PendingInvite? {
         if case let .invite(invite) = coordinator.pendingRoute {
@@ -12,20 +13,25 @@ struct OnboardingRootView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            WelcomeScreen(
-                isInvitePresented: $coordinator.isPresentingInvite,
-                sessionStore: sessionStore
-            )
-            .navigationDestination(isPresented: $coordinator.isPresentingInvite) {
+        WelcomeScreen(
+            isInvitePresented: $coordinator.isPresentingInvite,
+            isSignInPresented: $isPresentingSignIn
+        )
+        .fullScreenCover(isPresented: $isPresentingSignIn) {
+            NavigationStack {
+                SignInScene(sessionStore: sessionStore)
+            }
+            .tint(.auEmerald)
+        }
+        .fullScreenCover(isPresented: $coordinator.isPresentingInvite) {
+            NavigationStack {
                 InviteAcceptScene(
                     pendingInvite: pendingInvite,
                     sessionStore: sessionStore
                 )
             }
+            .tint(.auEmerald)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.auBackground.ignoresSafeArea())
         .onAppear {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true
@@ -41,79 +47,96 @@ struct OnboardingRootView: View {
 
 private struct WelcomeScreen: View {
     @Binding var isInvitePresented: Bool
-    let sessionStore: AppSessionStore
+    @Binding var isSignInPresented: Bool
 
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color.auBackground, Color.auEmeraldLight.opacity(0.55)],
+                colors: [Color(hex: 0x064E3B), Color(hex: 0x0F172A)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 40)
+            WelcomePattern()
+                .ignoresSafeArea()
 
-                VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.9))
-                            .frame(width: 96, height: 96)
-                            .shadow(color: Color.auEmerald.opacity(0.16), radius: 24, y: 12)
+            VStack(alignment: .leading, spacing: 24) {
+                Spacer(minLength: 0)
 
-                        Image(systemName: "message.badge.waveform.fill")
-                            .font(.system(size: 40, weight: .semibold))
-                            .foregroundStyle(Color.auEmerald)
-                    }
-                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 24) {
+                    logoMark
 
-                    VStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("Agent United")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(Color.auLabel)
+                            .font(.title.bold())
+                            .foregroundStyle(.white)
 
                         Text("Your workspace, everywhere.")
-                            .font(.system(size: 15))
-                            .foregroundStyle(Color.auSecondaryLabel)
+                            .font(.subheadline)
+                            .foregroundStyle(Color.white.opacity(0.78))
                     }
-                }
-
-                Spacer()
-
-                VStack(spacing: 12) {
-                    Button("Accept an invite") {
-                        isInvitePresented = true
-                    }
-                    .buttonStyle(AUPrimaryButtonStyle())
-                    .accessibilityLabel("Accept an invite")
-                    .accessibilityIdentifier("accept-invite-button")
-
-                    NavigationLink {
-                        SignInScene(sessionStore: sessionStore)
-                    } label: {
-                        Text("Sign in")
-                    }
-                    .buttonStyle(AUSecondaryButtonStyle())
-                    .accessibilityLabel("Sign in")
-                    .accessibilityIdentifier("sign-in-button")
-                }
-                .padding(20)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.6), lineWidth: 1)
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+            .padding(.top, 40)
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 12) {
+                Button("Accept an invite") {
+                    isInvitePresented = true
+                }
+                .buttonStyle(AUPrimaryButtonStyle())
+                .accessibilityLabel("Accept an invite")
+                .accessibilityIdentifier("accept-invite-button")
+
+                Button("Sign in") {
+                    isSignInPresented = true
+                }
+                .buttonStyle(AUGhostButtonStyle())
+                .accessibilityLabel("Sign in")
+                .accessibilityIdentifier("sign-in-button")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 16)
+            .background(Color.clear)
         }
         .navigationBarHidden(true)
+    }
+
+    private var logoMark: some View {
+        ZStack {
+            Circle()
+                .fill(Color.auEmerald.opacity(0.26))
+                .frame(width: 104, height: 104)
+                .blur(radius: 16)
+
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.2), Color.white.opacity(0.06)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    Circle()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                }
+                .frame(width: 96, height: 96)
+
+            Image(systemName: "message.badge.waveform.fill")
+                .font(.system(size: 38, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+        .accessibilityHidden(true)
     }
 }
 
 private struct SignInScene: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SignInViewModel
 
     init(sessionStore: AppSessionStore) {
@@ -121,35 +144,45 @@ private struct SignInScene: View {
     }
 
     var body: some View {
-        Form {
-            Section("Workspace") {
-                TextField("https://workspace.example.com", text: $viewModel.workspaceURL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .accessibilityIdentifier("workspace-url-field")
-            }
-
-            Section("Credentials") {
-                TextField("Email", text: $viewModel.email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .accessibilityIdentifier("email-field")
-
-                SecureField("Password", text: $viewModel.password)
-                    .accessibilityIdentifier("password-field")
-            }
-
-            if let errorMessage = viewModel.errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
-                        .font(.footnote)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sign in")
+                        .font(.title.bold())
+                    Text("Connect to your workspace with the same credentials you use on the web.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.auSecondaryLabel)
                 }
-            }
 
-            Section {
+                VStack(alignment: .leading, spacing: 20) {
+                    SignInFieldSection(title: "Workspace") {
+                        TextField("https://workspace.example.com", text: $viewModel.workspaceURL)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
+                            .accessibilityIdentifier("workspace-url-field")
+                    }
+
+                    SignInFieldSection(title: "Email") {
+                        TextField("name@workspace.com", text: $viewModel.email)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
+                            .accessibilityIdentifier("email-field")
+                    }
+
+                    SignInFieldSection(title: "Password") {
+                        SecureField("Enter your password", text: $viewModel.password)
+                            .accessibilityIdentifier("password-field")
+                    }
+                }
+
+                if let errorMessage = viewModel.errorMessage {
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.red)
+                }
+
                 Button {
                     Task {
                         let success = await viewModel.signIn()
@@ -165,12 +198,24 @@ private struct SignInScene: View {
                         Text("Sign in")
                     }
                 }
+                .buttonStyle(AUPrimaryButtonStyle())
                 .disabled(viewModel.canSubmit == false)
                 .accessibilityIdentifier("submit-sign-in-button")
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 32)
         }
+        .background(Color.auGrouped.ignoresSafeArea())
         .navigationTitle("Sign In")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
+        }
     }
 }
 
@@ -365,7 +410,7 @@ private struct InviteAcceptScreen: View {
     private var validState: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(spacing: 14) {
+                VStack(spacing: 16) {
                     ZStack {
                         Circle()
                             .fill(Color.auEmeraldLight)
@@ -382,14 +427,14 @@ private struct InviteAcceptScreen: View {
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.auSecondaryLabel)
                         Text("\(inviteDetails?.inviter ?? "Your agent") invited you to join")
-                            .font(.footnote)
+                            .font(.caption)
                             .foregroundStyle(Color.auSecondaryLabel)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.top, 12)
+                .padding(.top, 16)
 
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 16) {
                     formField(
                         title: "Display name",
                         prompt: "How should we call you?",
@@ -407,7 +452,7 @@ private struct InviteAcceptScreen: View {
                             Text("Password")
                             Spacer()
                             Text(passwordCountText)
-                                .font(.footnote.monospacedDigit())
+                                .font(.caption.monospacedDigit())
                                 .foregroundStyle(password.count >= 12 ? Color.auEmerald : Color.auSecondaryLabel)
                         }
                         .foregroundStyle(Color.auSecondaryLabel)
@@ -440,7 +485,7 @@ private struct InviteAcceptScreen: View {
 
                 if let submissionErrorMessage, submissionErrorMessage.isEmpty == false {
                     Text(submissionErrorMessage)
-                        .font(.footnote)
+                        .font(.caption)
                         .foregroundStyle(Color.red)
                         .accessibilityLabel("Join workspace error: \(submissionErrorMessage)")
                 }
@@ -478,9 +523,10 @@ private struct InviteAcceptScreen: View {
             switch error {
             case .invalidInvite:
                 Text("This invite link has expired or already been used.")
-                    .font(.title3.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .multilineTextAlignment(.center)
                 Text("Ask your agent for a new invite link to join this workspace.")
+                    .font(.subheadline)
                     .foregroundStyle(Color.auSecondaryLabel)
                     .multilineTextAlignment(.center)
 
@@ -492,9 +538,10 @@ private struct InviteAcceptScreen: View {
 
             case let .network(message):
                 Text("We couldn’t validate this invite.")
-                    .font(.title3.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .multilineTextAlignment(.center)
                 Text(message)
+                    .font(.subheadline)
                     .foregroundStyle(Color.auSecondaryLabel)
                     .multilineTextAlignment(.center)
 
@@ -534,6 +581,7 @@ private struct InviteAcceptScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             if let title {
                 Text(title)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.auSecondaryLabel)
             }
 
@@ -564,20 +612,74 @@ private struct InviteAcceptScreen: View {
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(Color.auBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .frame(height: 50)
+            .background(Color.auSecondary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(error == nil ? Color.auSeparator.opacity(0.55) : Color.red.opacity(0.45), lineWidth: 1)
             }
             .accessibilityLabel(accessibilityLabel)
 
             if let error {
                 Text(error)
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(Color.red)
                     .accessibilityLabel("\(accessibilityLabel) error: \(error)")
             }
+        }
+    }
+}
+
+private struct WelcomePattern: View {
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let height = geometry.size.height
+
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.06))
+                    .frame(width: width * 0.72)
+                    .blur(radius: 24)
+                    .offset(x: width * 0.28, y: -height * 0.22)
+
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(Color.auEmerald.opacity(0.12))
+                    .frame(width: width * 0.84, height: 220)
+                    .rotationEffect(.degrees(-14))
+                    .offset(x: -width * 0.16, y: -height * 0.08)
+
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .frame(width: width * 0.7, height: 180)
+                    .rotationEffect(.degrees(18))
+                    .offset(x: width * 0.18, y: height * 0.2)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct SignInFieldSection<Content: View>: View {
+    let title: String
+    let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.auSecondaryLabel)
+
+            content
+                .padding(.horizontal, 14)
+                .frame(height: 50)
+                .background(Color.auSecondary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 }
