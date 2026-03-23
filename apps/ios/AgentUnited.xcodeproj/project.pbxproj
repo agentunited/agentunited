@@ -422,14 +422,8 @@
 				CODE_SIGNING_REQUIRED = NO;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_TESTABILITY = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleURLName = AgentUnited;
-						CFBundleURLSchemes = (
-							agentunited,
-						);
-					},
-				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AgentUnited/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.agentunited.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -447,14 +441,8 @@
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				ENABLE_APP_SANDBOX = NO;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleURLName = AgentUnited;
-						CFBundleURLSchemes = (
-							agentunited,
-						);
-					},
-				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AgentUnited/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.agentunited.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
