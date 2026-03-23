@@ -26,6 +26,12 @@ export function InviteAcceptPage() {
   const passwordsMatch = password === confirmPassword;
   const canSubmit = isValidDisplayName && isValidPassword && passwordsMatch && !submitting;
 
+  const isIOSDevice = typeof navigator !== 'undefined' && (
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+  const iOSDeepLink = `agentunited://invite?token=${encodeURIComponent(token ?? '')}`;
+
   useEffect(() => {
     // Initialize instance URL from URL params before any API calls
     // This fixes a race condition where App.tsx's useEffect runs after this one
@@ -149,6 +155,15 @@ export function InviteAcceptPage() {
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Agent United</h1>
         </div>
+
+        {isIOSDevice && token && (
+          <a
+            href={iOSDeepLink}
+            className="mb-4 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
+          >
+            Open in Agent United App
+          </a>
+        )}
 
         <AppDownloadBanner inviteToken={token ?? ''} instanceUrl={window.location.origin} />
 
