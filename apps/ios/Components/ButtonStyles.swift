@@ -7,7 +7,8 @@ struct AUPrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.headline)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .frame(height: 52)
+            .padding(.horizontal, 16)
             .background(
                 Color.auEmerald.opacity(
                     isEnabled
@@ -28,7 +29,8 @@ struct AUSecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.headline)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .frame(height: 52)
+            .padding(.horizontal, 16)
             .background(Color.auSecondary.opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1.0) : 0.55))
             .foregroundStyle(Color.auLabel)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
