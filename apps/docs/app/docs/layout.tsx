@@ -24,6 +24,9 @@ export default async function DocsLayout({
               <Link href="/docs">Docs</Link>
               <Link href="/docs/quickstart">Quickstart</Link>
               <Link href="/docs/api-reference">API Reference</Link>
+              <Link href="https://discord.gg/gqZwSfkU5A" target="_blank" rel="noreferrer">
+                Community
+              </Link>
             </div>
           </div>
         </Footer>
