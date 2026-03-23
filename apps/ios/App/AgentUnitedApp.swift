@@ -47,6 +47,8 @@ private struct RootView: View {
                 OnboardingRootView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.auBackground.ignoresSafeArea())
         .task {
             if coordinator.authState == .launching {
                 coordinator.finishLaunch(isAuthenticated: sessionStore.restoreAuthentication())
