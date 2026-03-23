@@ -63,6 +63,15 @@ export function HomePage() {
           <Link to="/terms" className="hover:text-foreground">Terms</Link>
           <span>|</span>
           <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+          <span>|</span>
+          <a
+            href="https://discord.gg/gqZwSfkU5A"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground"
+          >
+            Community
+          </a>
         </div>
       </footer>
     </div>
