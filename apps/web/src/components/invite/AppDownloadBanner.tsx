@@ -13,7 +13,6 @@ export function AppDownloadBanner({ inviteToken, instanceUrl }: AppDownloadBanne
   if (dismissed) return null
 
   const deepLink = `agentunited://invite?token=${encodeURIComponent(inviteToken)}&instance=${encodeURIComponent(instanceUrl)}`
-  const testFlightUrl = 'https://testflight.apple.com/join/PLACEHOLDER'
   const macOSUrl = 'https://github.com/agentunited/agentunited/releases/latest'
 
   const dismiss = () => {
@@ -43,14 +42,6 @@ export function AppDownloadBanner({ inviteToken, instanceUrl }: AppDownloadBanne
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <a
-          href={testFlightUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-        >
-          🍎 <span>iOS — TestFlight</span>
-        </a>
         <a
           href={macOSUrl}
           target="_blank"
