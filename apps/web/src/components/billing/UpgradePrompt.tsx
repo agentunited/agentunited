@@ -11,7 +11,7 @@ interface UpgradePromptProps {
 
 export function UpgradePrompt({ plan, onUpgrade, loading = false, error = null, className = '' }: UpgradePromptProps) {
   const isPro = plan === 'pro'
-  const ctaLabel = isPro ? 'Upgrade to Team — $99/mo →' : 'Upgrade to Pro — $29/mo →'
+  const ctaLabel = isPro ? 'Upgrade to Team — $29/mo →' : 'Upgrade to Pro — $9/mo →'
   const body = isPro
     ? "You've reached your 10-entity limit on the Pro plan. Upgrade to Team for unlimited entities."
     : "You've reached your 3-entity limit on the Free plan. Upgrade to Pro to add up to 10 agents and humans."

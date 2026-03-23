@@ -60,7 +60,9 @@ func (s *billingService) GetCheckoutURL(ctx context.Context, workspaceID, email,
 		if err != nil {
 			return "", err
 		}
-		_ = s.repo.UpsertByWorkspace(ctx, &models.Subscription{WorkspaceID: workspaceID, StripeCustomerID: customerID, Plan: "free", Status: "active"})
+		if err := s.repo.UpsertByWorkspace(ctx, &models.Subscription{WorkspaceID: workspaceID, StripeCustomerID: customerID, Plan: "free", Status: "active"}); err != nil {
+			return "", err
+		}
 	}
 	priceID := s.priceIDForPlan(plan)
 	return s.provider.CreateCheckoutSession(ctx, customerID, priceID, successURL, cancelURL)
@@ -119,7 +121,9 @@ func (s *billingService) HandleWebhook(ctx context.Context, body []byte, signatu
 		normalizedPlan := normalizePlan(plan)
 		sub := &models.Subscription{WorkspaceID: wsID, StripeCustomerID: custID, StripeSubscriptionID: subID, Plan: normalizedPlan, Status: status}
 		applyRelayTierDefaults(sub, normalizedPlan)
-		_ = s.repo.UpsertByWorkspace(ctx, sub)
+		if err := s.repo.UpsertByWorkspace(ctx, sub); err != nil {
+			return fmt.Errorf("upsert subscription: %w", err)
+		}
 		s.updateRelayCache(ctx, wsID)
 		s.sendUpgradeConfirmationEmail(ctx, wsID, normalizedPlan)
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted":
@@ -143,7 +147,9 @@ func (s *billingService) HandleWebhook(ctx context.Context, body []byte, signatu
 		}
 		sub := &models.Subscription{WorkspaceID: wsID, StripeCustomerID: custID, StripeSubscriptionID: subID, Plan: plan, Status: status, CurrentPeriodEnd: cpe}
 		applyRelayTierDefaults(sub, plan)
-		_ = s.repo.UpsertByWorkspace(ctx, sub)
+		if err := s.repo.UpsertByWorkspace(ctx, sub); err != nil {
+			return fmt.Errorf("upsert subscription: %w", err)
+		}
 		s.updateRelayCache(ctx, wsID)
 	case "invoice.payment_succeeded", "invoice.payment_failed":
 		obj := evt.Data.Object
@@ -165,7 +171,9 @@ func (s *billingService) HandleWebhook(ctx context.Context, body []byte, signatu
 			}
 			sub := &models.Subscription{WorkspaceID: wsID, StripeSubscriptionID: subID, Plan: plan, Status: status, CurrentPeriodEnd: cpe}
 			applyRelayTierDefaults(sub, plan)
-			_ = s.repo.UpsertByWorkspace(ctx, sub)
+			if err := s.repo.UpsertByWorkspace(ctx, sub); err != nil {
+				return fmt.Errorf("upsert subscription: %w", err)
+			}
 			s.updateRelayCache(ctx, wsID)
 		}
 	}

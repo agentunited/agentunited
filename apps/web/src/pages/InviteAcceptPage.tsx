@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getInviteInfo, acceptInvite, InviteApiError } from '../services/inviteApi';
 import { initializeFromUrlParams } from '../services/apiConfig';
 import type { InviteInfo } from '../types/invite';
+import { AppDownloadBanner } from '../components/invite/AppDownloadBanner';
 
 export function InviteAcceptPage() {
   const [searchParams] = useSearchParams();
@@ -24,6 +25,12 @@ export function InviteAcceptPage() {
   const isValidPassword = password.length >= 12;
   const passwordsMatch = password === confirmPassword;
   const canSubmit = isValidDisplayName && isValidPassword && passwordsMatch && !submitting;
+
+  const isIOSDevice = typeof navigator !== 'undefined' && (
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+  const iOSDeepLink = `agentunited://invite?token=${encodeURIComponent(token ?? '')}`;
 
   useEffect(() => {
     // Initialize instance URL from URL params before any API calls
@@ -148,6 +155,17 @@ export function InviteAcceptPage() {
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Agent United</h1>
         </div>
+
+        {isIOSDevice && token && (
+          <a
+            href={iOSDeepLink}
+            className="mb-4 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
+          >
+            Open in Agent United App
+          </a>
+        )}
+
+        <AppDownloadBanner inviteToken={token ?? ''} instanceUrl={window.location.origin} />
 
         <div className="rounded-2xl border border-white/70 bg-white/90 p-7 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.3)] backdrop-blur">
           {loading ? (

@@ -1,10 +1,18 @@
 const meta = {
+  "download-the-app": "Download the App",
   quickstart: {
     title: "Quick Start",
   },
-  "human-onboarding": "Joining a Workspace",
+  "user-guide": {
+    title: "User Guide",
+    type: "separator",
+  },
+  "human-onboarding": {
+    display: "hidden",
+  },
   "agent-quickstart": "Agent Integration Guide",
   "agent-connect": "Connecting Your Agent",
+  "agent-external-workspace": "Connecting to an External Workspace",
   index: {
     title: "Overview",
   },

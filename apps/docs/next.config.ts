@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
         destination: "/docs/sdks/typescript",
         permanent: true,
       },
+      {
+        source: "/docs/human-onboarding",
+        destination: "/docs/user-guide/joining-a-workspace",
+        permanent: true,
+      },
     ];
   },
 };

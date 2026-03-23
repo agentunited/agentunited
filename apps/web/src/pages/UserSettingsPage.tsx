@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { userApi, type MeProfile } from '../services/userApi'
 import { billingApi, type BillingStatus, type Plan } from '../services/billingApi'
 import { UpgradePrompt } from '../components/billing/UpgradePrompt'
+import { SubdomainClaimSection } from '../components/billing/SubdomainClaimSection'
 
 interface UserSettingsPageProps {
   initialTab?: 'profile' | 'password' | 'billing'
@@ -546,6 +547,17 @@ export function UserSettingsPage({ initialTab = 'profile' }: UserSettingsPagePro
                   </p>
                 ) : null}
               </div>
+
+              <SubdomainClaimSection
+                plan={billingStatus.plan}
+                currentSubdomain={billingStatus.relay_subdomain ?? null}
+                onClaimed={() => {
+                  void loadBilling()
+                }}
+                onUpgradeToTeam={billingStatus.plan !== 'team' ? () => {
+                  void checkout('team')
+                } : undefined}
+              />
 
               {billingActionError ? <p className="text-sm text-destructive">{billingActionError}</p> : null}
 
