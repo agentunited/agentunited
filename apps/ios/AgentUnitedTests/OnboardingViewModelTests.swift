@@ -664,7 +664,7 @@ final class AUAPIClientTests: XCTestCase {
             return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
         }
 
-        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, session: session)
+        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, testingSession: session)
         let response = try await client.login(email: "alice@example.com", password: "password-1234")
 
         XCTAssertEqual(capturedRequest?.httpMethod, "POST")
@@ -687,7 +687,7 @@ final class AUAPIClientTests: XCTestCase {
             return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
         }
 
-        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, session: session)
+        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, testingSession: session)
         let response = try await client.login(email: "alice@example.com", password: "password-1234")
 
         XCTAssertEqual(response.token, "jwt_nested")
@@ -705,7 +705,7 @@ final class AUAPIClientTests: XCTestCase {
             return (HTTPURLResponse(url: request.url ?? URL(string: "https://workspace.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(json.utf8))
         }
 
-        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, session: session)
+        let client = LiveAUAPIClient(instanceURL: URL(string: "https://workspace.example.com")!, testingSession: session)
 
         do {
             _ = try await client.login(email: "alice@example.com", password: "password-1234")

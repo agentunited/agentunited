@@ -8,10 +8,30 @@ struct LiveAUAPIClient: AUAPIClient {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
-    init(instanceURL: URL, authToken: String? = nil, session: URLSession = .shared) {
+    init(instanceURL: URL, authToken: String? = nil) {
         self.instanceURL = instanceURL
         self.authToken = authToken
-        self.session = session
+
+        let config = URLSessionConfiguration.default
+        // Relay does not support HTTP/3. Prefer HTTP/1.1/2 by clearing Alt-Svc on client requests.
+        var headers = config.httpAdditionalHeaders ?? [:]
+        headers["Alt-Svc"] = "clear"
+        config.httpAdditionalHeaders = headers
+        self.session = URLSession(configuration: config)
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        self.encoder = encoder
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        self.decoder = decoder
+    }
+
+    init(instanceURL: URL, authToken: String? = nil, testingSession: URLSession) {
+        self.instanceURL = instanceURL
+        self.authToken = authToken
+        self.session = testingSession
 
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
