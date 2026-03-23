@@ -24,6 +24,8 @@ struct OnboardingRootView: View {
                 )
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.auBackground.ignoresSafeArea())
         .onAppear {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true
@@ -68,11 +70,11 @@ private struct WelcomeScreen: View {
 
                     VStack(spacing: 10) {
                         Text("Agent United")
-                            .font(.system(size: 30, weight: .semibold))
+                            .font(.system(size: 28, weight: .semibold))
                             .foregroundStyle(Color.auLabel)
 
                         Text("Your workspace, everywhere.")
-                            .font(.system(size: 17))
+                            .font(.system(size: 15))
                             .foregroundStyle(Color.auSecondaryLabel)
                     }
                 }
