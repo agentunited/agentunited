@@ -48,7 +48,7 @@ private struct RootView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(hex: 0x0F172A).ignoresSafeArea())
+        .background(Color.clear)
         .tint(Color.auEmerald)
         .task {
             if coordinator.authState == .launching {

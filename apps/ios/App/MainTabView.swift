@@ -23,6 +23,8 @@ struct MainTabView: View {
                 }
                 .tag(AppCoordinator.ActiveTab.profile)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground).ignoresSafeArea())
         .tint(.auEmerald)
     }
 }
