@@ -261,6 +261,10 @@ func registerProtectedRoutes(
 	r.Post("/dm", channelHandler.CreateDM)
 	r.Get("/dm", channelHandler.ListDMs)
 	r.Post("/dm/{id}/read", channelHandler.MarkDMRead)
+
+	// Alias routes for clients expecting plural form
+	r.Get("/dms", channelHandler.ListDMs)
+	r.Post("/dms/{id}/read", channelHandler.MarkDMRead)
 }
 
 // loggerMiddleware logs HTTP requests using zerolog
