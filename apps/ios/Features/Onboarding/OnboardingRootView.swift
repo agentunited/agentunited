@@ -13,14 +13,18 @@ struct OnboardingRootView: View {
 
     var body: some View {
         NavigationStack {
-            WelcomeScreen(isInvitePresented: $coordinator.isPresentingInvite)
-                .navigationDestination(isPresented: $coordinator.isPresentingInvite) {
-                    InviteAcceptScene(
-                        pendingInvite: pendingInvite,
-                        sessionStore: sessionStore
-                    )
-                }
+            WelcomeScreen(
+                isInvitePresented: $coordinator.isPresentingInvite,
+                sessionStore: sessionStore
+            )
         }
+        .navigationDestination(isPresented: $coordinator.isPresentingInvite) {
+            InviteAcceptScene(
+                pendingInvite: pendingInvite,
+                sessionStore: sessionStore
+            )
+        }
+
         .onAppear {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true
@@ -36,6 +40,7 @@ struct OnboardingRootView: View {
 
 private struct WelcomeScreen: View {
     @Binding var isInvitePresented: Bool
+    let sessionStore: AppSessionStore
 
     var body: some View {
         ZStack {
@@ -81,11 +86,16 @@ private struct WelcomeScreen: View {
                     }
                     .buttonStyle(AUPrimaryButtonStyle())
                     .accessibilityLabel("Accept an invite")
+                    .accessibilityIdentifier("accept-invite-button")
 
-                    Button("Sign in") {
+                    NavigationLink {
+                        SignInScene(sessionStore: sessionStore)
+                    } label: {
+                        Text("Sign in")
                     }
                     .buttonStyle(AUSecondaryButtonStyle())
                     .accessibilityLabel("Sign in")
+                    .accessibilityIdentifier("sign-in-button")
                 }
                 .padding(20)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -98,6 +108,131 @@ private struct WelcomeScreen: View {
             .padding(.bottom, 24)
         }
         .navigationBarHidden(true)
+    }
+}
+
+private struct SignInScene: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @StateObject private var viewModel: SignInViewModel
+
+    init(sessionStore: AppSessionStore) {
+        _viewModel = StateObject(wrappedValue: SignInViewModel(sessionStore: sessionStore))
+    }
+
+    var body: some View {
+        Form {
+            Section("Workspace") {
+                TextField("https://workspace.example.com", text: $viewModel.workspaceURL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .accessibilityIdentifier("workspace-url-field")
+            }
+
+            Section("Credentials") {
+                TextField("Email", text: $viewModel.email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .accessibilityIdentifier("email-field")
+
+                SecureField("Password", text: $viewModel.password)
+                    .accessibilityIdentifier("password-field")
+            }
+
+            if let errorMessage = viewModel.errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
+            }
+
+            Section {
+                Button {
+                    Task {
+                        let success = await viewModel.signIn()
+                        if success {
+                            coordinator.setAuthenticated(true)
+                        }
+                    }
+                } label: {
+                    if viewModel.isSubmitting {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Sign in")
+                    }
+                }
+                .disabled(viewModel.canSubmit == false)
+                .accessibilityIdentifier("submit-sign-in-button")
+            }
+        }
+        .navigationTitle("Sign In")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+@MainActor
+private final class SignInViewModel: ObservableObject {
+    @Published var workspaceURL: String = ""
+    @Published var email: String = ""
+    @Published var password: String = ""
+    @Published var isSubmitting: Bool = false
+    @Published var errorMessage: String?
+
+    private let sessionStore: AppSessionStore
+
+    init(sessionStore: AppSessionStore) {
+        self.sessionStore = sessionStore
+    }
+
+    var canSubmit: Bool {
+        workspaceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            && email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            && password.isEmpty == false
+            && isSubmitting == false
+    }
+
+    func signIn() async -> Bool {
+        errorMessage = nil
+
+        guard let url = URL(string: workspaceURL.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            errorMessage = "Enter a valid workspace URL."
+            return false
+        }
+
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            let client = LiveAUAPIClient(instanceURL: url)
+            let response = try await client.login(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password
+            )
+
+            let fallbackDisplayName = email
+                .split(separator: "@")
+                .first
+                .map(String.init)
+                .flatMap { $0.isEmpty ? nil : $0 }
+                ?? "User"
+
+            try sessionStore.persistInviteSession(
+                instanceURL: url,
+                userID: response.userID,
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                displayName: fallbackDisplayName,
+                token: response.token,
+                expiresAt: response.expiresAt,
+                userType: "human"
+            )
+            return true
+        } catch {
+            errorMessage = "Sign in failed. Check workspace URL, email, and password."
+            return false
+        }
     }
 }
 
