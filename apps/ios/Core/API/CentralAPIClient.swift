@@ -161,7 +161,8 @@ struct CentralClaimKeyResponse: Decodable {
     }
 }
 
-struct CentralWorkspace: Decodable {
+struct CentralWorkspace: Decodable, Identifiable {
+    var id: String { workspaceID }
     let workspaceID: String
     let name: String
     let relayURL: String

@@ -29,6 +29,10 @@
 		AA0000000000000000000093 /* SignUpScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000094 /* SignUpScene.swift */; };
 		AA0000000000000000000095 /* ClaimKeyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000096 /* ClaimKeyScene.swift */; };
 		AA0000000000000000000097 /* CentralAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000098 /* CentralAPIClient.swift */; };
+		AA000000000000000000009F /* GetStartedScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000A0 /* GetStartedScene.swift */; };
+		AA000000000000000000009D /* WorkspaceListScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000009E /* WorkspaceListScene.swift */; };
+		AA000000000000000000009B /* SelfHostedSignInScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000009C /* SelfHostedSignInScene.swift */; };
+		AA0000000000000000000099 /* OrientationScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000009A /* OrientationScene.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +70,10 @@
 		AA0000000000000000000094 /* SignUpScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpScene.swift; sourceTree = "<group>"; };
 		AA0000000000000000000096 /* ClaimKeyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimKeyScene.swift; sourceTree = "<group>"; };
 		AA0000000000000000000098 /* CentralAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CentralAPIClient.swift; sourceTree = "<group>"; };
+		AA00000000000000000000A0 /* GetStartedScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GetStartedScene.swift; sourceTree = "<group>"; };
+		AA000000000000000000009E /* WorkspaceListScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceListScene.swift; sourceTree = "<group>"; };
+		AA000000000000000000009C /* SelfHostedSignInScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfHostedSignInScene.swift; sourceTree = "<group>"; };
+		AA000000000000000000009A /* OrientationScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationScene.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -184,6 +192,10 @@
 				AA0000000000000000000026 /* OnboardingViewModel.swift */,
 				AA0000000000000000000094 /* SignUpScene.swift */,
 				AA0000000000000000000096 /* ClaimKeyScene.swift */,
+				AA00000000000000000000A0 /* GetStartedScene.swift */,
+				AA000000000000000000009E /* WorkspaceListScene.swift */,
+				AA000000000000000000009C /* SelfHostedSignInScene.swift */,
+				AA000000000000000000009A /* OrientationScene.swift */,
 			);
 		};
 		AA0000000000000000000043 /* AgentUnitedTests */ = {
@@ -338,6 +350,10 @@
 				AA0000000000000000000093 /* SignUpScene.swift in Sources */,
 				AA0000000000000000000095 /* ClaimKeyScene.swift in Sources */,
 				AA0000000000000000000097 /* CentralAPIClient.swift in Sources */,
+				AA000000000000000000009F /* GetStartedScene.swift in Sources */,
+				AA000000000000000000009D /* WorkspaceListScene.swift in Sources */,
+				AA000000000000000000009B /* SelfHostedSignInScene.swift in Sources */,
+				AA0000000000000000000099 /* OrientationScene.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
