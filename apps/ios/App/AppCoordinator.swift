@@ -18,6 +18,7 @@ final class AppCoordinator: ObservableObject {
     enum Route: Equatable {
         case invite(PendingInvite)
         case claim(String)
+        case workspace(url: String)  // agentunited://workspace?url=xxx → pre-fills SelfHostedSignInScene
         case dm(String)
         case channel(String)
     }
@@ -83,6 +84,12 @@ final class AppCoordinator: ObservableObject {
             }
             pendingRoute = .claim(key)
 
+        case "workspace":
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            guard let wsURL = components?.queryItems?.first(where: { $0.name == "url" })?.value,
+                  !wsURL.isEmpty else { return }
+            pendingRoute = .workspace(url: wsURL)
+
         case "dm":
             guard let id = pathComponents.first, !id.isEmpty else {
                 return
@@ -121,7 +128,7 @@ final class AppCoordinator: ObservableObject {
         }
 
         switch route {
-        case .invite, .claim:
+        case .invite, .claim, .workspace:
             break
         case let .dm(id):
             selectedTab = .messages

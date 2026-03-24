@@ -2,9 +2,16 @@ import SwiftUI
 
 struct SignUpScene: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = SignUpViewModel()
+    @StateObject private var viewModel: SignUpViewModel
     let onOpenSignIn: () -> Void
     let onRegistered: (String, String) -> Void
+
+    /// Pass `needsClaimKey: false` in relay-first flows — just register, skip claim key generation.
+    init(needsClaimKey: Bool = true, onOpenSignIn: @escaping () -> Void, onRegistered: @escaping (String, String) -> Void) {
+        _viewModel = StateObject(wrappedValue: SignUpViewModel(needsClaimKey: needsClaimKey))
+        self.onOpenSignIn = onOpenSignIn
+        self.onRegistered = onRegistered
+    }
 
     var body: some View {
         ScrollView {
@@ -150,6 +157,12 @@ final class SignUpViewModel: ObservableObject {
     @Published var isSubmitting = false
     @Published var errorMessage: String?
 
+    private let needsClaimKey: Bool
+
+    init(needsClaimKey: Bool = true) {
+        self.needsClaimKey = needsClaimKey
+    }
+
     /// True only when confirmPassword is non-empty and doesn't match password.
     var showPasswordMismatch: Bool {
         !confirmPassword.isEmpty && confirmPassword != password
@@ -183,6 +196,10 @@ final class SignUpViewModel: ObservableObject {
 
             let keychain = KeychainHelper()
             try? keychain.storeJWT(authResp.token, for: "au.central.jwt")
+
+            guard needsClaimKey else {
+                return Result(claimKey: "", centralJWT: authResp.token)
+            }
 
             let claimClient = CentralAPIClient(authToken: authResp.token)
             let claimResp = try await claimClient.generateClaimKey()

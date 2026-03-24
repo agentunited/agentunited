@@ -3,63 +3,103 @@ import SwiftUI
 struct OnboardingRootView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var sessionStore: AppSessionStore
-    @State private var isPresentingSignIn = false
-    @State private var isPresentingSetup = false
+
+    // Orientation gate — UserDefaults-backed; OrientationScene writes true on "Got it →"
+    @AppStorage("hasSeenOrientation") private var hasSeenOrientation = false
+
+    // Relay-first primary flow
+    @State private var isPresentingRelaySignIn = false
+    @State private var isPresentingSignUp = false
+    @State private var isPresentingWorkspaceList = false
+    @State private var centralJWT = ""
+
+    // Self-hosted sign-in (workspace deep link entry)
+    @State private var isPresentingSelfHostedSignIn = false
+    @State private var prefilledWorkspaceURL = ""
+
+    // Claim key deep link (Path B)
     @State private var isPresentingClaimKey = false
-    @State private var claimKey: String = ""
-    @State private var centralJWT: String = ""
+    @State private var claimKey = ""
 
     private var pendingInvite: AppCoordinator.PendingInvite? {
-        if case let .invite(invite) = coordinator.pendingRoute {
-            return invite
-        }
+        if case let .invite(invite) = coordinator.pendingRoute { return invite }
         return nil
     }
 
     var body: some View {
-        WelcomeScreen(
-            isInvitePresented: $coordinator.isPresentingInvite,
-            isSignInPresented: $isPresentingSignIn,
-            isSetupPresented: $isPresentingSetup
-        )
-        .fullScreenCover(isPresented: $isPresentingSignIn) {
-            NavigationStack {
-                SignInScene(
-                    sessionStore: sessionStore,
-                    onOpenSignUp: {
-                        isPresentingSignIn = false
-                        Task {
-                            try? await Task.sleep(nanoseconds: 200_000_000)
-                            isPresentingSetup = true
-                        }
-                    }
+        Group {
+            if hasSeenOrientation {
+                WelcomeScreen(
+                    isSignInPresented: $isPresentingRelaySignIn,
+                    isGetStartedPresented: $isPresentingSignUp
                 )
+            } else {
+                OrientationScene()
             }
-            .tint(.auEmerald)
         }
-        .fullScreenCover(isPresented: $isPresentingSetup) {
+        // Relay sign-in (R4) → WorkspaceListScene (R5)
+        .fullScreenCover(isPresented: $isPresentingRelaySignIn) {
             NavigationStack {
-                SignUpScene(
-                    onOpenSignIn: {
-                        isPresentingSetup = false
+                RelaySignInScene(
+                    sessionStore: sessionStore,
+                    onAuthenticated: { jwt in
+                        centralJWT = jwt
+                        isPresentingRelaySignIn = false
                         Task {
                             try? await Task.sleep(nanoseconds: 200_000_000)
-                            isPresentingSignIn = true
+                            isPresentingWorkspaceList = true
                         }
                     },
-                    onRegistered: { key, jwt in
-                        claimKey = key
-                        centralJWT = jwt
-                        isPresentingSetup = false
+                    onSelfHosted: {
+                        isPresentingRelaySignIn = false
                         Task {
                             try? await Task.sleep(nanoseconds: 200_000_000)
-                            isPresentingClaimKey = true
+                            isPresentingSelfHostedSignIn = true
                         }
                     }
                 )
             }
             .tint(.auEmerald)
         }
+        // Sign-up (R3) → WorkspaceListScene (R5)
+        .fullScreenCover(isPresented: $isPresentingSignUp) {
+            NavigationStack {
+                SignUpScene(
+                    needsClaimKey: false,
+                    onOpenSignIn: {
+                        isPresentingSignUp = false
+                        Task {
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            isPresentingRelaySignIn = true
+                        }
+                    },
+                    onRegistered: { _, jwt in
+                        centralJWT = jwt
+                        isPresentingSignUp = false
+                        Task {
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            isPresentingWorkspaceList = true
+                        }
+                    }
+                )
+            }
+            .tint(.auEmerald)
+        }
+        // Workspace list (R5) — contains nav to GetStartedScene (R7)
+        .fullScreenCover(isPresented: $isPresentingWorkspaceList) {
+            WorkspaceListScene(centralJWT: centralJWT)
+        }
+        // Self-hosted sign-in (R6) — workspace deep link or from GetStartedScene
+        .fullScreenCover(isPresented: $isPresentingSelfHostedSignIn) {
+            NavigationStack {
+                SelfHostedSignInScene(
+                    sessionStore: sessionStore,
+                    prefilledURL: prefilledWorkspaceURL
+                )
+            }
+            .tint(.auEmerald)
+        }
+        // Claim key deep link (Path B legacy)
         .fullScreenCover(isPresented: $isPresentingClaimKey) {
             NavigationStack {
                 ClaimKeyScene(
@@ -70,7 +110,6 @@ struct OnboardingRootView: View {
                         let userID = payload?["sub"] as? String ?? "central-user"
                         let email = payload?["email"] as? String ?? "user@agentunited.ai"
                         let displayName = payload?["display_name"] as? String ?? "User"
-
                         try? sessionStore.persistInviteSession(
                             instanceURL: relayURL,
                             userID: userID,
@@ -87,6 +126,7 @@ struct OnboardingRootView: View {
             }
             .tint(.auEmerald)
         }
+        // Invite deep link (Path A) — unchanged
         .fullScreenCover(isPresented: $coordinator.isPresentingInvite) {
             NavigationStack {
                 InviteAcceptScene(
@@ -105,6 +145,10 @@ struct OnboardingRootView: View {
                 centralJWT = (try? KeychainHelper().readJWT(for: "au.central.jwt")) ?? ""
                 isPresentingClaimKey = true
             }
+            if case let .workspace(url) = coordinator.pendingRoute {
+                prefilledWorkspaceURL = url
+                isPresentingSelfHostedSignIn = true
+            }
         }
         .onChange(of: coordinator.pendingRoute) { _, newValue in
             if case .invite = newValue {
@@ -115,14 +159,20 @@ struct OnboardingRootView: View {
                 centralJWT = (try? KeychainHelper().readJWT(for: "au.central.jwt")) ?? ""
                 isPresentingClaimKey = true
             }
+            if case let .workspace(url) = newValue {
+                prefilledWorkspaceURL = url
+                isPresentingSelfHostedSignIn = true
+            }
         }
     }
 }
 
 private struct WelcomeScreen: View {
-    @Binding var isInvitePresented: Bool
     @Binding var isSignInPresented: Bool
-    @Binding var isSetupPresented: Bool
+    @Binding var isGetStartedPresented: Bool
+
+    @State private var clipboardInviteURL: String?
+    @State private var isBannerVisible = false
 
     var body: some View {
         ZStack {
@@ -133,20 +183,16 @@ private struct WelcomeScreen: View {
             )
             .ignoresSafeArea()
 
-            WelcomePattern()
-                .ignoresSafeArea()
+            WelcomePattern().ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 24) {
                 Spacer(minLength: 0)
-
                 VStack(alignment: .leading, spacing: 24) {
                     logoMark
-
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Agent United")
                             .font(.title.bold())
                             .foregroundStyle(.white)
-
                         Text("Your workspace, everywhere.")
                             .font(.subheadline)
                             .foregroundStyle(Color.white.opacity(0.78))
@@ -157,33 +203,42 @@ private struct WelcomeScreen: View {
             .padding(.top, 40)
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 12) {
-                Button("Accept an invite") {
-                    isInvitePresented = true
+            VStack(spacing: 0) {
+                if isBannerVisible, clipboardInviteURL != nil {
+                    ClipboardInviteBanner(
+                        onTap: {
+                            if let str = clipboardInviteURL, let url = URL(string: str) {
+                                withAnimation { isBannerVisible = false }
+                                UIApplication.shared.open(url)
+                            }
+                        },
+                        onDismiss: { withAnimation { isBannerVisible = false } }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .buttonStyle(AUPrimaryButtonStyle())
-                .accessibilityLabel("Accept an invite")
-                .accessibilityIdentifier("accept-invite-button")
+                VStack(spacing: 12) {
+                    Button("Get started for free") {
+                        isGetStartedPresented = true
+                    }
+                    .buttonStyle(AUPrimaryButtonStyle())
+                    .accessibilityIdentifier("get-started-button")
 
-                Button("Sign in") {
-                    isSignInPresented = true
+                    Button("Sign in") {
+                        isSignInPresented = true
+                    }
+                    .buttonStyle(AUGhostButtonStyle())
+                    .accessibilityIdentifier("sign-in-button")
                 }
-                .buttonStyle(AUGhostButtonStyle())
-                .accessibilityLabel("Sign in")
-                .accessibilityIdentifier("sign-in-button")
-
-                Button("Set up a new workspace") {
-                    isSetupPresented = true
-                }
-                .buttonStyle(AUGhostButtonStyle())
-                .accessibilityIdentifier("setup-workspace-button")
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 16)
-            .background(Color.clear)
         }
         .navigationBarHidden(true)
+        .onAppear { checkClipboard() }
+        .animation(.easeInOut(duration: 0.25), value: isBannerVisible)
     }
 
     private var logoMark: some View {
@@ -192,28 +247,199 @@ private struct WelcomeScreen: View {
                 .fill(Color.auEmerald.opacity(0.26))
                 .frame(width: 104, height: 104)
                 .blur(radius: 16)
-
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.2), Color.white.opacity(0.06)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    Circle()
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                }
+                .fill(LinearGradient(
+                    colors: [Color.white.opacity(0.2), Color.white.opacity(0.06)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+                .overlay { Circle().stroke(Color.white.opacity(0.18), lineWidth: 1) }
                 .frame(width: 96, height: 96)
-
             Image(systemName: "message.badge.waveform.fill")
                 .font(.system(size: 38, weight: .semibold))
                 .foregroundStyle(.white)
         }
         .accessibilityHidden(true)
     }
+
+    private func checkClipboard() {
+        guard let text = UIPasteboard.general.string,
+              text.range(of: #"agentunited://|agentunited\.ai/invite\?token="#, options: .regularExpression) != nil
+        else { return }
+        clipboardInviteURL = text
+        withAnimation { isBannerVisible = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            withAnimation { isBannerVisible = false }
+        }
+    }
 }
+
+private struct ClipboardInviteBanner: View {
+    let onTap: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "link")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.auEmerald)
+                .accessibilityHidden(true)
+            Text("Looks like you have an invite link.")
+                .font(.footnote)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Button("Open it →", action: onTap)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.auEmerald)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.45))
+            }
+            .accessibilityLabel("Dismiss invite banner")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+        .accessibilityIdentifier("clipboard-invite-banner")
+    }
+}
+
+// MARK: - Relay sign-in (R4) — email + password only, no workspace URL
+
+private struct RelaySignInScene: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel: RelaySignInViewModel
+    let onAuthenticated: (String) -> Void
+    let onSelfHosted: () -> Void
+
+    init(sessionStore: AppSessionStore, onAuthenticated: @escaping (String) -> Void, onSelfHosted: @escaping () -> Void) {
+        self.onAuthenticated = onAuthenticated
+        self.onSelfHosted = onSelfHosted
+        _viewModel = StateObject(wrappedValue: RelaySignInViewModel(sessionStore: sessionStore))
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sign in")
+                        .font(.title.bold())
+                    Text("Sign in with your Agent United account.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.auSecondaryLabel)
+                }
+                VStack(alignment: .leading, spacing: 20) {
+                    SignInFieldSection(title: "Email") {
+                        TextField("you@example.com", text: $viewModel.email)
+                            .keyboardType(.emailAddress)
+                            .textContentType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
+                            .accessibilityIdentifier("relay-email-field")
+                    }
+                    SignInFieldSection(title: "Password") {
+                        SecureField("Enter your password", text: $viewModel.password)
+                            .textContentType(.password)
+                            .accessibilityIdentifier("relay-password-field")
+                    }
+                }
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                }
+                Button {
+                    Task {
+                        if let jwt = await viewModel.signIn() { onAuthenticated(jwt) }
+                    }
+                } label: {
+                    if viewModel.isSubmitting {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else {
+                        Text("Sign in")
+                    }
+                }
+                .buttonStyle(AUPrimaryButtonStyle())
+                .disabled(!viewModel.canSubmit)
+                .accessibilityIdentifier("relay-sign-in-button")
+
+                Divider().padding(.vertical, 8)
+
+                Button {
+                    dismiss()
+                    onSelfHosted()
+                } label: {
+                    (Text("Connecting to a self-hosted workspace?")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary))
+                    + (Text("  →")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.auEmerald))
+                }
+                .accessibilityIdentifier("self-hosted-link")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 32)
+        }
+        .background(Color.auGrouped.ignoresSafeArea())
+        .navigationTitle("Sign In")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Close") { dismiss() }
+            }
+        }
+    }
+}
+
+@MainActor
+private final class RelaySignInViewModel: ObservableObject {
+    @Published var email = ""
+    @Published var password = ""
+    @Published var isSubmitting = false
+    @Published var errorMessage: String?
+
+    private let sessionStore: AppSessionStore
+
+    init(sessionStore: AppSessionStore) {
+        self.sessionStore = sessionStore
+    }
+
+    var canSubmit: Bool {
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty && !isSubmitting
+    }
+
+    func signIn() async -> String? {
+        errorMessage = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            let resp = try await CentralAPIClient().login(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password
+            )
+            try? KeychainHelper().storeJWT(resp.token, for: "au.central.jwt")
+            return resp.token
+        } catch let e as CentralAPIError {
+            if case .invalidCredentials = e {
+                errorMessage = "Incorrect email or password."
+            } else {
+                errorMessage = "Sign in failed. Please try again."
+            }
+            return nil
+        } catch {
+            errorMessage = "Sign in failed. Please try again."
+            return nil
+        }
+    }
+}
+
 
 private struct SignInScene: View {
     enum Mode {
@@ -919,7 +1145,7 @@ private struct InviteAcceptScreen: View {
     }
 }
 
-private struct WelcomePattern: View {
+struct WelcomePattern: View {
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
