@@ -83,12 +83,12 @@ func TestValidatePassword(t *testing.T) {
 		pw   string
 		want bool
 	}{
-		{"Pass123", false},  // 7 chars — too short
-		{"password", false}, // no digit
-		{"12345678", false}, // no letter
-		{"Pass1234", true},
-		{"abc12345", true},
-		{"A1bcdefg", true},
+		{"short1", false},              // 6 chars — too short
+		{"Pass123", false},             // 7 chars — too short
+		{"password", true},             // 8 chars letters-only — valid
+		{"12345678", true},             // 8 digits — valid
+		{"Pass1234", true},             // 8 chars mixed — valid
+		{"Gm3s-9kPx-vR4t-hWj2", true}, // Apple Keychain format — valid
 	}
 	for _, tc := range cases {
 		err := validatePassword(tc.pw)
@@ -106,9 +106,8 @@ func TestValidatePassword(t *testing.T) {
 func TestRegister_WeakPassword(t *testing.T) {
 	app := testApp(t)
 
-	cases := []string{"short1", "noDig1ts", "12345678"}
-	// Note: "noDig1ts" actually has a digit — use cleaner examples
-	cases = []string{"short1", "nodigits", "12345678"}
+	// Only length < 8 is rejected; no complexity requirements.
+	cases := []string{"short", "1234567", "abc"}
 	for _, pw := range cases {
 		rr := httptest.NewRecorder()
 		app.register(rr, httptest.NewRequest(http.MethodPost, "/", jsonBody(t, map[string]string{

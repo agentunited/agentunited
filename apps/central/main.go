@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -61,6 +63,15 @@ type claimKeyReq struct {
 	ClaimKey string `json:"claim_key"`
 }
 
+type forgotPasswordReq struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordReq struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
 type centralUser struct {
 	ID          string
 	Email       string
@@ -104,6 +115,8 @@ func main() {
 	mux.HandleFunc("GET /.well-known/jwks.json", app.jwks)
 	mux.HandleFunc("POST /api/v1/users/register", app.register)
 	mux.HandleFunc("POST /api/v1/users/login", app.login)
+	mux.HandleFunc("POST /api/v1/users/forgot-password", app.forgotPassword)
+	mux.HandleFunc("POST /api/v1/users/reset-password", app.resetPassword)
 	mux.HandleFunc("POST /api/v1/claim/generate", app.claimGenerate)
 	mux.HandleFunc("POST /api/v1/claim/validate", app.claimValidate)
 	mux.HandleFunc("POST /api/v1/claim/consume", app.claimConsume)
@@ -147,8 +160,11 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_json"}); return }
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
-	if req.Email == "" || req.DisplayName == "" || len(req.Password) < 12 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_input"}); return
+	if req.Email == "" || req.DisplayName == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_input"}); return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()}); return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"hash_failed"}); return }
@@ -409,6 +425,12 @@ CREATE TABLE IF NOT EXISTS workspace_members (
   PRIMARY KEY (workspace_id, central_user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_workspace_members_user ON workspace_members(central_user_id);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  token      TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '1 hour'
+);
 `)
 	if err != nil { return fmt.Errorf("ensure schema: %w", err) }
 	return nil
@@ -447,4 +469,174 @@ func generateClaimKey() (string, error) {
 		return "", err
 	}
 	return "au_claim_" + base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// validatePassword enforces a minimum length of 8 characters.
+// No complexity requirements — Apple Keychain and similar tools generate
+// formats like "Gm3s-9kPx-vR4t-hWj2" that must not be rejected.
+func validatePassword(pw string) error {
+	if len(pw) < 8 {
+		return errors.New("weak_password")
+	}
+	return nil
+}
+
+// generateResetToken generates a 32-byte hex reset token.
+func generateResetToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// sendResetEmail sends a password-reset email via SendGrid, or logs if key is absent.
+func sendResetEmail(ctx context.Context, toEmail, token string) {
+	resetLink := "agentunited://reset-password?token=" + token
+	subject := "Reset your Agent United password"
+	body := fmt.Sprintf(
+		"Click to reset your password: %s\n\nThis link expires in 1 hour. If you didn't request a reset, ignore this email.",
+		resetLink,
+	)
+
+	apiKey := os.Getenv("SENDGRID_API_KEY")
+	if apiKey == "" {
+		log.Info().Str("to", toEmail).Str("reset_link", resetLink).Msg("password reset email (log fallback; SENDGRID_API_KEY not set)")
+		return
+	}
+
+	from := getenv("FROM_EMAIL", "noreply@agentunited.ai")
+	payload := map[string]any{
+		"personalizations": []map[string]any{{"to": []map[string]string{{"email": toEmail}}}},
+		"from":             map[string]string{"email": from},
+		"subject":          subject,
+		"content":          []map[string]string{{"type": "text/plain", "value": body}},
+	}
+	b, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.sendgrid.com/v3/mail/send", bytes.NewReader(b))
+	if err != nil {
+		log.Error().Err(err).Msg("build sendgrid request failed")
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Error().Err(err).Str("to", toEmail).Msg("failed to send reset email")
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		log.Error().Int("status", resp.StatusCode).Str("to", toEmail).Msg("sendgrid rejected reset email")
+	}
+}
+
+// forgotPassword handles POST /api/v1/users/forgot-password
+func (a *App) forgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req forgotPasswordReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	okMsg := map[string]string{"message": "If that email is registered, you'll receive a reset link shortly."}
+
+	if req.Email == "" {
+		writeJSON(w, http.StatusOK, okMsg)
+		return
+	}
+
+	var userID, userEmail string
+	err := a.db.QueryRow(r.Context(),
+		`SELECT id::text, email FROM central_users WHERE email=$1`, req.Email,
+	).Scan(&userID, &userEmail)
+	if err != nil {
+		writeJSON(w, http.StatusOK, okMsg) // don't leak existence
+		return
+	}
+
+	token, err := generateResetToken()
+	if err != nil {
+		log.Error().Err(err).Msg("generate reset token failed")
+		writeJSON(w, http.StatusOK, okMsg)
+		return
+	}
+
+	_, err = a.db.Exec(r.Context(), `
+		INSERT INTO password_reset_tokens (token, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (token) DO NOTHING
+	`, token, userID)
+	if err != nil {
+		log.Error().Err(err).Msg("insert reset token failed")
+		writeJSON(w, http.StatusOK, okMsg)
+		return
+	}
+
+	go sendResetEmail(context.Background(), userEmail, token)
+
+	writeJSON(w, http.StatusOK, okMsg)
+}
+
+// resetPassword handles POST /api/v1/users/reset-password
+func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
+	var req resetPasswordReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.Token = strings.TrimSpace(req.Token)
+
+	if req.Token == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_or_expired_token"})
+		return
+	}
+	if err := validatePassword(req.NewPassword); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "weak_password"})
+		return
+	}
+
+	var userID string
+	err := a.db.QueryRow(r.Context(), `
+		SELECT user_id FROM password_reset_tokens
+		WHERE token=$1 AND expires_at > NOW()
+	`, req.Token).Scan(&userID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_or_expired_token"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 12)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "hash_failed"})
+		return
+	}
+
+	tx, err := a.db.Begin(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "tx_failed"})
+		return
+	}
+	defer tx.Rollback(r.Context()) //nolint:errcheck
+
+	if _, err := tx.Exec(r.Context(),
+		`UPDATE central_users SET password_hash=$1, updated_at=NOW() WHERE id::text=$2`,
+		string(hash), userID,
+	); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
+		return
+	}
+	if _, err := tx.Exec(r.Context(),
+		`DELETE FROM password_reset_tokens WHERE token=$1`, req.Token,
+	); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cleanup_failed"})
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "commit_failed"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Password updated successfully."})
 }
