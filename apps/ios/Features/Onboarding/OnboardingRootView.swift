@@ -452,44 +452,13 @@ private struct InviteAcceptScene: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Join Workspace")
-                .font(.title.bold())
-
-            if let details = viewModel.inviteDetails {
-                Text("\(details.email) invited by \(details.inviter ?? "your agent")")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        Group {
+            if viewModel.hasPendingInvite {
+                inviteGateBody
+            } else {
+                noTokenHoldingBody
             }
-
-            if viewModel.isSubmitting {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Connecting your account…")
-                        .font(.body)
-                }
-            }
-
-            if let error = viewModel.errorMessage {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
-
-            Button("Sign in to Agent United") {
-                isPresentingSignIn = true
-            }
-            .buttonStyle(AUPrimaryButtonStyle())
-
-            Button("Create an account") {
-                isPresentingSignUp = true
-            }
-            .buttonStyle(AUGhostButtonStyle())
-
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
         .navigationTitle("Join Workspace")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -535,6 +504,73 @@ private struct InviteAcceptScene: View {
             .tint(.auEmerald)
         }
     }
+
+    // MARK: - Sub-views
+
+    private var noTokenHoldingBody: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Check your invite")
+                .font(.title.bold())
+
+            Text("Your agent will send you an invite link via message or email. Open that link to join their workspace.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 0)
+
+            Button {
+                dismiss()
+            } label: {
+                Label("Back", systemImage: "chevron.left")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(AUSecondaryButtonStyle())
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .padding(.bottom, 24)
+    }
+
+    private var inviteGateBody: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Join Workspace")
+                .font(.title.bold())
+
+            if let details = viewModel.inviteDetails {
+                Text("\(details.email) invited by \(details.inviter ?? "your agent")")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if viewModel.isSubmitting {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Connecting your account…")
+                        .font(.body)
+                }
+            }
+
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+
+            Button("Sign in to Agent United") {
+                isPresentingSignIn = true
+            }
+            .buttonStyle(AUPrimaryButtonStyle())
+
+            Button("Create an account") {
+                isPresentingSignUp = true
+            }
+            .buttonStyle(AUGhostButtonStyle())
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+    }
 }
 
 @MainActor
@@ -546,6 +582,12 @@ private final class InviteAcceptGateViewModel: ObservableObject {
     let sessionStore: AppSessionStore
     private let pendingInvite: AppCoordinator.PendingInvite?
     private let keychain = KeychainHelper()
+
+    /// True only when we arrived from a real deep link with an invite token.
+    var hasPendingInvite: Bool {
+        guard let token = pendingInvite?.token else { return false }
+        return !token.isEmpty
+    }
 
     init(pendingInvite: AppCoordinator.PendingInvite?, sessionStore: AppSessionStore) {
         self.pendingInvite = pendingInvite
