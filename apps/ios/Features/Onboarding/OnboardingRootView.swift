@@ -4,6 +4,10 @@ struct OnboardingRootView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var sessionStore: AppSessionStore
     @State private var isPresentingSignIn = false
+    @State private var isPresentingSetup = false
+    @State private var isPresentingClaimKey = false
+    @State private var claimKey: String = ""
+    @State private var centralJWT: String = ""
 
     private var pendingInvite: AppCoordinator.PendingInvite? {
         if case let .invite(invite) = coordinator.pendingRoute {
@@ -15,11 +19,66 @@ struct OnboardingRootView: View {
     var body: some View {
         WelcomeScreen(
             isInvitePresented: $coordinator.isPresentingInvite,
-            isSignInPresented: $isPresentingSignIn
+            isSignInPresented: $isPresentingSignIn,
+            isSetupPresented: $isPresentingSetup
         )
         .fullScreenCover(isPresented: $isPresentingSignIn) {
             NavigationStack {
-                SignInScene(sessionStore: sessionStore)
+                SignInScene(
+                    sessionStore: sessionStore,
+                    onOpenSignUp: {
+                        isPresentingSignIn = false
+                        Task {
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            isPresentingSetup = true
+                        }
+                    }
+                )
+            }
+            .tint(.auEmerald)
+        }
+        .fullScreenCover(isPresented: $isPresentingSetup) {
+            NavigationStack {
+                SignUpScene(
+                    onOpenSignIn: {
+                        isPresentingSetup = false
+                        Task {
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            isPresentingSignIn = true
+                        }
+                    },
+                    onRegistered: { key, jwt in
+                        claimKey = key
+                        centralJWT = jwt
+                        isPresentingSetup = false
+                        Task {
+                            try? await Task.sleep(nanoseconds: 200_000_000)
+                            isPresentingClaimKey = true
+                        }
+                    }
+                )
+            }
+            .tint(.auEmerald)
+        }
+        .fullScreenCover(isPresented: $isPresentingClaimKey) {
+            NavigationStack {
+                ClaimKeyScene(
+                    claimKey: claimKey,
+                    centralJWT: centralJWT,
+                    onConnected: { relayURL, jwt in
+                        try? sessionStore.persistInviteSession(
+                            instanceURL: relayURL,
+                            userID: "central-user",
+                            email: "user@agentunited.ai",
+                            displayName: "User",
+                            token: jwt,
+                            expiresAt: nil,
+                            userType: "human"
+                        )
+                        isPresentingClaimKey = false
+                        coordinator.setAuthenticated(true)
+                    }
+                )
             }
             .tint(.auEmerald)
         }
@@ -36,10 +95,20 @@ struct OnboardingRootView: View {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true
             }
+            if case let .claim(key) = coordinator.pendingRoute {
+                claimKey = key
+                centralJWT = "central_mock_jwt"
+                isPresentingClaimKey = true
+            }
         }
         .onChange(of: coordinator.pendingRoute) { _, newValue in
             if case .invite = newValue {
                 coordinator.isPresentingInvite = true
+            }
+            if case let .claim(key) = newValue {
+                claimKey = key
+                centralJWT = "central_mock_jwt"
+                isPresentingClaimKey = true
             }
         }
     }
@@ -48,6 +117,7 @@ struct OnboardingRootView: View {
 private struct WelcomeScreen: View {
     @Binding var isInvitePresented: Bool
     @Binding var isSignInPresented: Bool
+    @Binding var isSetupPresented: Bool
 
     var body: some View {
         ZStack {
@@ -96,6 +166,12 @@ private struct WelcomeScreen: View {
                 .buttonStyle(AUGhostButtonStyle())
                 .accessibilityLabel("Sign in")
                 .accessibilityIdentifier("sign-in-button")
+
+                Button("Set up a new workspace") {
+                    isSetupPresented = true
+                }
+                .buttonStyle(AUGhostButtonStyle())
+                .accessibilityIdentifier("setup-workspace-button")
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -138,8 +214,10 @@ private struct SignInScene: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SignInViewModel
+    let onOpenSignUp: () -> Void
 
-    init(sessionStore: AppSessionStore) {
+    init(sessionStore: AppSessionStore, onOpenSignUp: @escaping () -> Void) {
+        self.onOpenSignUp = onOpenSignUp
         _viewModel = StateObject(wrappedValue: SignInViewModel(sessionStore: sessionStore))
     }
 
@@ -201,6 +279,37 @@ private struct SignInScene: View {
                 .buttonStyle(AUPrimaryButtonStyle())
                 .disabled(viewModel.canSubmit == false)
                 .accessibilityIdentifier("submit-sign-in-button")
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                VStack(spacing: 6) {
+                    Text("Don't have an account?")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    Text("Accounts are created when you accept an invite from your agent. Go back and tap \"Accept an invite\".")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 4)
+
+                Button("← Back to Welcome") {
+                    dismiss()
+                }
+                .font(.footnote)
+                .foregroundStyle(Color.auEmerald)
+                .padding(.top, 4)
+
+                Button("Setting up? Get a claim key →") {
+                    dismiss()
+                    onOpenSignUp()
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.auEmerald)
+                .padding(.top, 2)
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
