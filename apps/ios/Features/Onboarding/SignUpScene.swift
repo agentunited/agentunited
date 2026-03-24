@@ -46,7 +46,7 @@ struct SignUpScene: View {
 
                     // MARK: Password
                     fieldLabel("Password")
-                    SecureField("Minimum 8 characters", text: $viewModel.password)
+                    SecureField("Min 8 chars, letters + numbers", text: $viewModel.password)
                         .textContentType(.newPassword)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
@@ -172,6 +172,8 @@ final class SignUpViewModel: ObservableObject {
         !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         email.trimmingCharacters(in: .whitespacesAndNewlines).contains("@") &&
         password.count >= 8 &&
+        password.range(of: "[a-zA-Z]", options: .regularExpression) != nil &&
+        password.range(of: "[0-9]", options: .regularExpression) != nil &&
         confirmPassword == password &&
         !isSubmitting
     }
