@@ -201,6 +201,29 @@ private struct SignInScene: View {
                 .buttonStyle(AUPrimaryButtonStyle())
                 .disabled(viewModel.canSubmit == false)
                 .accessibilityIdentifier("submit-sign-in-button")
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                VStack(spacing: 6) {
+                    Text("Don't have an account?")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    Text("Accounts are created when you accept an invite from your agent. Go back and tap \"Accept an invite\".")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 4)
+
+                Button("← Back to Welcome") {
+                    dismiss()
+                }
+                .font(.footnote)
+                .foregroundStyle(Color.auEmerald)
+                .padding(.top, 4)
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -211,9 +234,10 @@ private struct SignInScene: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Close") {
+                Button("Cancel") {
                     dismiss()
                 }
+                .foregroundStyle(Color.auEmerald)
             }
         }
     }
@@ -287,6 +311,7 @@ private final class SignInViewModel: ObservableObject {
 
 private struct InviteAcceptScene: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: OnboardingViewModel
     @FocusState private var focusedField: Field?
 
@@ -332,6 +357,9 @@ private struct InviteAcceptScene: View {
             },
             onSubmit: {
                 await viewModel.submit()
+            },
+            onDismiss: {
+                dismiss()
             }
         )
         .environmentObject(coordinator)
@@ -366,6 +394,7 @@ private struct InviteAcceptScreen: View {
     let onRetry: () async -> Void
     let onConfirmBlur: () -> Void
     let onSubmit: () async -> Void
+    let onDismiss: () -> Void
 
     var body: some View {
         Group {
@@ -382,6 +411,14 @@ private struct InviteAcceptScreen: View {
         }
         .navigationTitle("Join Workspace")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cancel") {
+                    onDismiss()
+                }
+                .foregroundStyle(Color.auEmerald)
+            }
+        }
         .task {
             await onLoad()
         }
