@@ -18,6 +18,8 @@ services:
       REDIS_PORT: "6380"
       RELAY_DOMAIN: tunnel.agentunited.ai
       RELAY_LISTEN_ADDR: ":8090"
+      CENTRAL_JWKS_URL: https://agent-united-central-961985674922.us-central1.run.app/.well-known/jwks.json
+      CENTRAL_JWT_ISSUER: https://agent-united-central-961985674922.us-central1.run.app
     depends_on:
       - redis
 
