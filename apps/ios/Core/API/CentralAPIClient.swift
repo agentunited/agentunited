@@ -137,12 +137,28 @@ struct CentralAuthResponse: Decodable {
     let email: String?
     let displayName: String?
     let plan: String?
+
+    // convertFromSnakeCase maps user_id → userId, not userID.
+    // Explicit CodingKeys avoid the mismatch.
+    private enum CodingKeys: String, CodingKey {
+        case token
+        case userID = "user_id"
+        case email
+        case displayName = "display_name"
+        case plan
+    }
 }
 
 struct CentralClaimKeyResponse: Decodable {
     let claimKey: String
     let expiresAt: Date
     let deepLink: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case claimKey = "claim_key"
+        case expiresAt = "expires_at"
+        case deepLink = "deep_link"
+    }
 }
 
 struct CentralWorkspace: Decodable {
@@ -151,6 +167,15 @@ struct CentralWorkspace: Decodable {
     let relayURL: String
     let joinedAt: Date?
     let status: String?
+
+    // relay_url → relayUrl (not relayURL) under convertFromSnakeCase.
+    private enum CodingKeys: String, CodingKey {
+        case workspaceID = "workspace_id"
+        case name
+        case relayURL = "relay_url"
+        case joinedAt = "joined_at"
+        case status
+    }
 }
 
 struct CentralWorkspacesResponse: Decodable {
@@ -171,19 +196,21 @@ extension CentralAPIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "The central service URL is invalid."
+            return "Something went wrong. Please try again."
         case .unauthorized:
             return "You need to sign in again."
         case .emailAlreadyRegistered:
             return "That email is already registered."
         case .invalidCredentials:
             return "Incorrect email or password."
-        case let .serverError(status):
-            return "The central service returned an error (\(status))."
+        case let .serverError(status) where status >= 500:
+            return "Our servers are having trouble. Please try again in a moment."
+        case .serverError:
+            return "Something went wrong. Please try again."
         case .networkError:
-            return "Unable to reach the central service."
+            return "Check your connection and try again."
         case .decodingError:
-            return "The central service response could not be read."
+            return "Something went wrong. Please try again."
         }
     }
 }
