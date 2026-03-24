@@ -12,6 +12,7 @@ protocol AUAPIClient {
     func login(email: String, password: String) async throws -> LoginResponse
     func validateInvite(token: String) async throws -> InviteValidationResponse
     func acceptInvite(token: String, displayName: String, password: String) async throws -> InviteAcceptResponse
+    func acceptInvite(token: String, centralJWT: String) async throws -> InviteAcceptResponse
     func listMessages(channelId: String, before: String?) async throws -> [MessageResponse]
     func sendMessage(channelId: String, text: String, replyToID: String?) async throws -> MessageResponse
     func listDMs() async throws -> [ConversationResponse]

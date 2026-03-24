@@ -211,14 +211,23 @@ private struct WelcomeScreen: View {
 }
 
 private struct SignInScene: View {
+    enum Mode {
+        case workspace
+        case central
+    }
+
     @EnvironmentObject private var coordinator: AppCoordinator
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SignInViewModel
+    let mode: Mode
     let onOpenSignUp: () -> Void
+    let onAuthenticated: ((String) -> Void)?
 
-    init(sessionStore: AppSessionStore, onOpenSignUp: @escaping () -> Void) {
+    init(sessionStore: AppSessionStore, mode: Mode = .workspace, onOpenSignUp: @escaping () -> Void, onAuthenticated: ((String) -> Void)? = nil) {
+        self.mode = mode
         self.onOpenSignUp = onOpenSignUp
-        _viewModel = StateObject(wrappedValue: SignInViewModel(sessionStore: sessionStore))
+        self.onAuthenticated = onAuthenticated
+        _viewModel = StateObject(wrappedValue: SignInViewModel(sessionStore: sessionStore, mode: mode))
     }
 
     var body: some View {
@@ -233,12 +242,14 @@ private struct SignInScene: View {
                 }
 
                 VStack(alignment: .leading, spacing: 20) {
-                    SignInFieldSection(title: "Workspace") {
-                        TextField("https://workspace.example.com", text: $viewModel.workspaceURL)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled(true)
-                            .accessibilityIdentifier("workspace-url-field")
+                    if mode == .workspace {
+                        SignInFieldSection(title: "Workspace") {
+                            TextField("https://workspace.example.com", text: $viewModel.workspaceURL)
+                                .keyboardType(.URL)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .accessibilityIdentifier("workspace-url-field")
+                        }
                     }
 
                     SignInFieldSection(title: "Email") {
@@ -263,9 +274,13 @@ private struct SignInScene: View {
 
                 Button {
                     Task {
-                        let success = await viewModel.signIn()
-                        if success {
-                            coordinator.setAuthenticated(true)
+                        let result = await viewModel.signIn()
+                        if let result {
+                            if mode == .workspace {
+                                coordinator.setAuthenticated(true)
+                            } else {
+                                onAuthenticated?(result.centralJWT)
+                            }
                         }
                     }
                 } label: {
@@ -330,6 +345,10 @@ private struct SignInScene: View {
 
 @MainActor
 private final class SignInViewModel: ObservableObject {
+    struct Result {
+        let centralJWT: String
+    }
+
     @Published var workspaceURL: String = ""
     @Published var email: String = ""
     @Published var password: String = ""
@@ -337,28 +356,36 @@ private final class SignInViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let sessionStore: AppSessionStore
+    private let mode: SignInScene.Mode
 
-    init(sessionStore: AppSessionStore) {
+    init(sessionStore: AppSessionStore, mode: SignInScene.Mode) {
         self.sessionStore = sessionStore
+        self.mode = mode
     }
 
     var canSubmit: Bool {
-        workspaceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        let hasWorkspace = mode == .central || workspaceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        return hasWorkspace
             && email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
             && password.isEmpty == false
             && isSubmitting == false
     }
 
-    func signIn() async -> Bool {
+    func signIn() async -> Result? {
         errorMessage = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        if mode == .central {
+            // Mock central auth for now until backend endpoint is finalized.
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            return Result(centralJWT: "central_mock_jwt")
+        }
 
         guard let url = URL(string: workspaceURL.trimmingCharacters(in: .whitespacesAndNewlines)) else {
             errorMessage = "Enter a valid workspace URL."
-            return false
+            return nil
         }
-
-        isSubmitting = true
-        defer { isSubmitting = false }
 
         do {
             let client = LiveAUAPIClient(instanceURL: url)
@@ -383,74 +410,169 @@ private final class SignInViewModel: ObservableObject {
                 expiresAt: response.expiresAt,
                 userType: "human"
             )
-            return true
+            return Result(centralJWT: response.token)
         } catch {
-#if DEBUG
-            NSLog("[AU][signin] failed: %@", String(describing: error))
-#endif
             errorMessage = "Sign in failed. Check workspace URL, email, and password."
-            return false
+            return nil
         }
     }
 }
 
 private struct InviteAcceptScene: View {
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @StateObject private var viewModel: OnboardingViewModel
-    @FocusState private var focusedField: Field?
-
     enum Field: Hashable {
         case displayName
         case password
         case confirmPassword
     }
 
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel: InviteAcceptGateViewModel
+    @State private var isPresentingSignIn = false
+    @State private var isPresentingSignUp = false
+
     init(pendingInvite: AppCoordinator.PendingInvite?, sessionStore: AppSessionStore) {
-        _viewModel = StateObject(
-            wrappedValue: OnboardingViewModel(
-                pendingInvite: pendingInvite,
-                service: LiveOnboardingService(),
-                sessionStore: sessionStore
-            )
-        )
+        _viewModel = StateObject(wrappedValue: InviteAcceptGateViewModel(pendingInvite: pendingInvite, sessionStore: sessionStore))
     }
 
     var body: some View {
-        InviteAcceptScreen(
-            phase: viewModel.phase,
-            inviteDetails: viewModel.inviteDetails,
-            displayName: $viewModel.displayName,
-            password: $viewModel.password,
-            confirmPassword: $viewModel.confirmPassword,
-            displayNameError: viewModel.displayNameError,
-            passwordError: viewModel.passwordError,
-            confirmPasswordError: viewModel.confirmPasswordError,
-            passwordCountText: viewModel.passwordCountText,
-            canSubmit: viewModel.canSubmit,
-            isSubmitting: viewModel.isSubmitting,
-            submissionErrorMessage: viewModel.submissionErrorMessage,
-            focusedField: $focusedField,
-            onLoad: {
-                await viewModel.loadInviteIfNeeded()
-            },
-            onRetry: {
-                await viewModel.retry()
-            },
-            onConfirmBlur: {
-                viewModel.confirmPasswordBlurred()
-            },
-            onSubmit: {
-                await viewModel.submit()
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Join Workspace")
+                .font(.title.bold())
+
+            if let details = viewModel.inviteDetails {
+                Text("\(details.email) invited by \(details.inviter ?? "your agent")")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-        )
-        .environmentObject(coordinator)
-        .onAppear {
-            viewModel.attachCoordinator(coordinator)
+
+            if viewModel.isSubmitting {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Connecting your account…")
+                        .font(.body)
+                }
+            }
+
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+
+            Button("Sign in to Agent United") {
+                isPresentingSignIn = true
+            }
+            .buttonStyle(AUPrimaryButtonStyle())
+
+            Button("Create an account") {
+                isPresentingSignUp = true
+            }
+            .buttonStyle(AUGhostButtonStyle())
+
+            Spacer(minLength: 0)
         }
-        .onChange(of: focusedField) { oldValue, newValue in
-            if oldValue == .confirmPassword, newValue != .confirmPassword {
-                viewModel.confirmPasswordBlurred()
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .navigationTitle("Join Workspace")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cancel") { dismiss() }
+                    .foregroundStyle(Color.auEmerald)
             }
+        }
+        .task {
+            await viewModel.loadInvite()
+            await viewModel.tryAutoAcceptWithStoredCentralJWT(coordinator: coordinator)
+        }
+        .fullScreenCover(isPresented: $isPresentingSignIn) {
+            NavigationStack {
+                SignInScene(
+                    sessionStore: viewModel.sessionStore,
+                    mode: .central,
+                    onOpenSignUp: {
+                        isPresentingSignIn = false
+                        Task { try? await Task.sleep(nanoseconds: 200_000_000); isPresentingSignUp = true }
+                    },
+                    onAuthenticated: { jwt in
+                        isPresentingSignIn = false
+                        Task { await viewModel.acceptInvite(withCentralJWT: jwt, coordinator: coordinator) }
+                    }
+                )
+            }
+            .tint(.auEmerald)
+        }
+        .fullScreenCover(isPresented: $isPresentingSignUp) {
+            NavigationStack {
+                SignUpScene(
+                    onOpenSignIn: {
+                        isPresentingSignUp = false
+                        Task { try? await Task.sleep(nanoseconds: 200_000_000); isPresentingSignIn = true }
+                    },
+                    onRegistered: { _, jwt in
+                        isPresentingSignUp = false
+                        Task { await viewModel.acceptInvite(withCentralJWT: jwt, coordinator: coordinator) }
+                    }
+                )
+            }
+            .tint(.auEmerald)
+        }
+    }
+}
+
+@MainActor
+private final class InviteAcceptGateViewModel: ObservableObject {
+    @Published var inviteDetails: OnboardingInviteDetails?
+    @Published var isSubmitting = false
+    @Published var errorMessage: String?
+
+    let sessionStore: AppSessionStore
+    private let pendingInvite: AppCoordinator.PendingInvite?
+    private let keychain = KeychainHelper()
+
+    init(pendingInvite: AppCoordinator.PendingInvite?, sessionStore: AppSessionStore) {
+        self.pendingInvite = pendingInvite
+        self.sessionStore = sessionStore
+    }
+
+    func loadInvite() async {
+        guard let pendingInvite, let instanceURL = pendingInvite.instanceURL else { return }
+        do {
+            let response = try await LiveOnboardingService().validateInvite(token: pendingInvite.token, instanceURL: instanceURL)
+            inviteDetails = OnboardingInviteDetails(email: response.email, inviter: response.inviter, suggestedDisplayName: response.displayName)
+        } catch {
+            errorMessage = "Unable to validate invite."
+        }
+    }
+
+    func tryAutoAcceptWithStoredCentralJWT(coordinator: AppCoordinator) async {
+        if let jwt = try? keychain.readJWT(for: "au.central.jwt"), !jwt.isEmpty {
+            await acceptInvite(withCentralJWT: jwt, coordinator: coordinator)
+        }
+    }
+
+    func acceptInvite(withCentralJWT jwt: String, coordinator: AppCoordinator) async {
+        guard let pendingInvite, let instanceURL = pendingInvite.instanceURL else { return }
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+        do {
+            try keychain.storeJWT(jwt, for: "au.central.jwt")
+            let client = LiveAUAPIClient(instanceURL: instanceURL)
+            let response = try await client.acceptInvite(token: pendingInvite.token, centralJWT: jwt)
+            try sessionStore.persistInviteSession(
+                instanceURL: instanceURL,
+                userID: response.userID,
+                email: inviteDetails?.email ?? "user@agentunited.ai",
+                displayName: inviteDetails?.email.components(separatedBy: "@").first ?? "User",
+                token: response.token,
+                expiresAt: response.expiresAt,
+                userType: "human"
+            )
+            coordinator.setAuthenticated(true)
+        } catch {
+            errorMessage = "Failed to join workspace."
         }
     }
 }
