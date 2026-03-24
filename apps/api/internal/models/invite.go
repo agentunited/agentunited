@@ -27,11 +27,10 @@ type InviteWithToken struct {
 	PlaintextToken string `json:"plaintext_token"`
 }
 
-// InviteAcceptRequest represents invite acceptance payload
+// InviteAcceptRequest represents invite acceptance payload (central identity flow)
 type InviteAcceptRequest struct {
-	Token       string `json:"token" validate:"required"`
-	Password    string `json:"password" validate:"required,min=12"`
-	DisplayName string `json:"display_name,omitempty"`
+	InviteToken string `json:"invite_token" validate:"required"`
+	CentralJWT  string `json:"central_jwt" validate:"required"`
 }
 
 // InviteCreateRequest represents creating a new invite for a human user.

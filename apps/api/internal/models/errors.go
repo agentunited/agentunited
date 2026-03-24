@@ -70,4 +70,7 @@ var (
 
 	// ErrEntityLimitReached indicates workspace entity cap is reached for current plan.
 	ErrEntityLimitReached = errors.New("entity limit reached")
+
+	// ErrUnauthorized indicates authentication/authorization failed (e.g. invalid central JWT)
+	ErrUnauthorized = errors.New("unauthorized")
 )

@@ -99,13 +99,13 @@ func TestInviteService_AcceptInvite_HappyPath(t *testing.T) {
 
 	// Mock password update
 	userRepo.On("Update", ctx, mock.MatchedBy(func(u *models.User) bool {
-		return u.ID == "user-456" && u.PasswordHash != "" && u.DisplayName == "Siinn"
+		return u.ID == "user-456" && u.AuthType == "central" && u.CentralUserID == "central-test-user"
 	})).Return(nil)
 
 	// Mock token consumption
 	inviteRepo.On("ConsumeToken", ctx, expectedHash).Return(nil)
 
-	jwtToken, dmChannelID, err := service.AcceptInvite(ctx, "test-token", "securepassword123", "Siinn")
+	jwtToken, dmChannelID, err := service.AcceptInvite(ctx, "test-token", "test-central-jwt")
 	require.NoError(t, err)
 	assert.NotEmpty(t, jwtToken)
 	assert.Empty(t, dmChannelID)
@@ -125,14 +125,14 @@ func TestInviteService_AcceptInvite_InvalidToken(t *testing.T) {
 	expectedHash := hashTestToken("invalid-token")
 	inviteRepo.On("ValidateToken", ctx, expectedHash).Return(nil, models.ErrInviteNotFound)
 
-	_, _, err := service.AcceptInvite(ctx, "invalid-token", "securepassword123", "")
+	_, _, err := service.AcceptInvite(ctx, "invalid-token", "test-central-jwt")
 	require.Error(t, err)
 	assert.Equal(t, models.ErrInviteNotFound, err)
 
 	inviteRepo.AssertExpectations(t)
 }
 
-func TestInviteService_AcceptInvite_WeakPassword(t *testing.T) {
+func TestInviteService_AcceptInvite_MissingCentralJWT(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	inviteRepo := &mockInviteRepository{}
 	subscriptionRepo := &mockSubscriptionRepository{}
@@ -140,9 +140,9 @@ func TestInviteService_AcceptInvite_WeakPassword(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, _, err := service.AcceptInvite(ctx, "test-token", "weak", "")
+	_, _, err := service.AcceptInvite(ctx, "test-token", "")
 	require.Error(t, err)
-	assert.Equal(t, models.ErrWeakPassword, err)
+	assert.Equal(t, models.ErrUnauthorized, err)
 
 	// No repository calls should be made for weak password
 	inviteRepo.AssertExpectations(t)

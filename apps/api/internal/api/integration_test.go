@@ -151,8 +151,8 @@ func TestBootstrapIntegration_HappyPath(t *testing.T) {
 
 	// 3. Test invite acceptance
 	acceptReq := models.InviteAcceptRequest{
-		Token:    inviteToken,
-		Password: "humanpassword123",
+		InviteToken: inviteToken,
+		CentralJWT:  "test-central-jwt",
 	}
 
 	acceptJSON, _ := json.Marshal(acceptReq)
@@ -235,8 +235,8 @@ func TestInviteIntegration_ErrorCases(t *testing.T) {
 
 	// Test weak password on accept
 	acceptReq := models.InviteAcceptRequest{
-		Token:    "any-token",
-		Password: "weak", // Too short
+		InviteToken: "any-token",
+		CentralJWT:  "test-central-jwt",
 	}
 
 	acceptJSON, _ := json.Marshal(acceptReq)

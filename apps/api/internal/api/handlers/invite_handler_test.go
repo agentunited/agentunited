@@ -27,8 +27,8 @@ func (m *mockInviteService) ValidateInvite(ctx context.Context, token string) (*
 	return args.Get(0).(*models.Invite), args.Get(1).(*models.User), args.Error(2)
 }
 
-func (m *mockInviteService) AcceptInvite(ctx context.Context, token, password, displayName string) (string, string, error) {
-	args := m.Called(ctx, token, password, displayName)
+func (m *mockInviteService) AcceptInvite(ctx context.Context, inviteToken, centralJWT string) (string, string, error) {
+	args := m.Called(ctx, inviteToken, centralJWT)
 	return args.String(0), args.String(1), args.Error(2)
 }
 
@@ -137,11 +137,11 @@ func TestInviteHandler_AcceptInvite_HappyPath(t *testing.T) {
 	mockService := &mockInviteService{}
 	handler := NewInviteHandler(mockService)
 
-	mockService.On("AcceptInvite", mock.Anything, "valid-token", "securepassword123", "").Return("jwt-token", "", nil)
+	mockService.On("AcceptInvite", mock.Anything, "valid-token", "test-central-jwt").Return("jwt-token", "", nil)
 
 	reqBody := models.InviteAcceptRequest{
-		Token:    "valid-token",
-		Password: "securepassword123",
+		InviteToken: "valid-token",
+		CentralJWT:  "test-central-jwt",
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -166,11 +166,11 @@ func TestInviteHandler_AcceptInvite_InvalidToken(t *testing.T) {
 	mockService := &mockInviteService{}
 	handler := NewInviteHandler(mockService)
 
-	mockService.On("AcceptInvite", mock.Anything, "invalid-token", "securepassword123", "").Return("", "", models.ErrInviteNotFound)
+	mockService.On("AcceptInvite", mock.Anything, "invalid-token", "test-central-jwt").Return("", "", models.ErrInviteNotFound)
 
 	reqBody := models.InviteAcceptRequest{
-		Token:    "invalid-token",
-		Password: "securepassword123",
+		InviteToken: "invalid-token",
+		CentralJWT:  "test-central-jwt",
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -190,13 +190,15 @@ func TestInviteHandler_AcceptInvite_InvalidToken(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestInviteHandler_AcceptInvite_WeakPassword(t *testing.T) {
+func TestInviteHandler_AcceptInvite_InvalidCentralJWT(t *testing.T) {
 	mockService := &mockInviteService{}
 	handler := NewInviteHandler(mockService)
 
+	mockService.On("AcceptInvite", mock.Anything, "valid-token", "bad-jwt").Return("", "", models.ErrUnauthorized)
+
 	reqBody := models.InviteAcceptRequest{
-		Token:    "valid-token",
-		Password: "weak", // Too short
+		InviteToken: "valid-token",
+		CentralJWT:  "bad-jwt",
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -206,12 +208,9 @@ func TestInviteHandler_AcceptInvite_WeakPassword(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.AcceptInvite(rr, req)
 
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 
-	var errResp map[string]interface{}
-	err := json.Unmarshal(rr.Body.Bytes(), &errResp)
-	require.NoError(t, err)
-	assert.Contains(t, errResp["error"], "validation")
+	mockService.AssertExpectations(t)
 }
 
 func TestInviteHandler_AcceptInvite_InvalidJSON(t *testing.T) {

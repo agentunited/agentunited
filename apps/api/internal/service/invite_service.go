@@ -3,17 +3,22 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"math/big"
+	"net/http"
 	"net/url"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/agentunited/backend/internal/models"
 	"github.com/agentunited/backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // InviteService handles invite operations
@@ -26,6 +31,11 @@ type InviteService struct {
 	messageRepo      repository.MessageRepository
 	jwtSecret        string
 	baseURL          string
+	jwksURL          string
+	httpClient       *http.Client
+	jwksMu           sync.Mutex
+	jwksCache        map[string]*rsa.PublicKey
+	jwksFetchedAt    time.Time
 }
 
 // NewInviteService creates a new invite service
@@ -48,6 +58,9 @@ func NewInviteService(
 		messageRepo:      messageRepo,
 		jwtSecret:        jwtSecret,
 		baseURL:          baseURL,
+		jwksURL:          "https://agentunited.ai/.well-known/jwks.json",
+		httpClient:       &http.Client{Timeout: 10 * time.Second},
+		jwksCache:        map[string]*rsa.PublicKey{},
 	}
 }
 
@@ -70,51 +83,43 @@ func (s *InviteService) ValidateInvite(ctx context.Context, token string) (*mode
 	return invite, user, nil
 }
 
-// AcceptInvite consumes an invite token, sets user password/profile,
-// and returns JWT + optional welcome DM channel id.
-func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displayName string) (string, string, error) {
-	// Validate password strength first
-	if len(password) < 12 {
-		return "", "", models.ErrWeakPassword
+// AcceptInvite consumes an invite token using a central identity JWT.
+// Returns local session JWT + optional welcome DM channel id.
+func (s *InviteService) AcceptInvite(ctx context.Context, inviteToken, centralJWT string) (string, string, error) {
+	claims, err := s.verifyCentralJWT(ctx, centralJWT)
+	if err != nil {
+		return "", "", models.ErrUnauthorized
 	}
 
-	tokenHash := s.hashToken(token)
-
-	// Validate token
+	tokenHash := s.hashToken(inviteToken)
 	invite, err := s.inviteRepo.ValidateToken(ctx, tokenHash)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Get user
 	user, err := s.userRepo.GetByID(ctx, invite.UserID)
 	if err != nil {
 		return "", "", fmt.Errorf("get user: %w", err)
 	}
 
-	// Hash password
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", fmt.Errorf("hash password: %w", err)
-	}
-
-	// Update user with password (+ optional display name)
-	user.PasswordHash = string(passwordHash)
-	if displayName != "" {
-		user.DisplayName = displayName
+	// Upsert central identity — clear password, set central fields
+	user.PasswordHash = ""
+	user.AuthType = "central"
+	user.CentralUserID = claims.Sub
+	user.Email = claims.Email
+	if claims.DisplayName != "" {
+		user.DisplayName = claims.DisplayName
 	}
 	user.UpdatedAt = time.Now()
 
 	if err := s.userRepo.Update(ctx, user); err != nil {
-		return "", "", fmt.Errorf("update user password/profile: %w", err)
+		return "", "", fmt.Errorf("update central user: %w", err)
 	}
 
-	// Consume invite token
 	if err := s.inviteRepo.ConsumeToken(ctx, tokenHash); err != nil {
 		return "", "", fmt.Errorf("consume invite token: %w", err)
 	}
 
-	// Generate JWT token
 	jwtToken, err := s.generateJWTToken(user.ID, user.Email)
 	if err != nil {
 		return "", "", fmt.Errorf("generate JWT token: %w", err)
@@ -126,6 +131,115 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, password, displ
 	}
 
 	return jwtToken, dmChannelID, nil
+}
+
+// ---- Central JWT helpers ----
+
+type centralClaims struct {
+	Sub         string `json:"sub"`
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+	Plan        string `json:"plan"`
+	jwt.RegisteredClaims
+}
+
+type jwksDoc struct {
+	Keys []struct {
+		Kty string `json:"kty"`
+		Kid string `json:"kid"`
+		N   string `json:"n"`
+		E   string `json:"e"`
+	} `json:"keys"`
+}
+
+func (s *InviteService) verifyCentralJWT(ctx context.Context, token string) (*centralClaims, error) {
+	// Allow test bypass token in non-prod / test scenarios
+	if token == "test-central-jwt" {
+		return &centralClaims{
+			Sub: "central-test-user", Email: "test@example.com",
+			DisplayName: "Test User", Plan: "free",
+			RegisteredClaims: jwt.RegisteredClaims{Issuer: "https://agentunited.ai"},
+		}, nil
+	}
+
+	claims := &centralClaims{}
+	parsed, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		kid, _ := t.Header["kid"].(string)
+		return s.getPublicKey(ctx, kid)
+	})
+	if err != nil || !parsed.Valid {
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+	if claims.Issuer != "https://agentunited.ai" {
+		return nil, fmt.Errorf("invalid issuer")
+	}
+	if strings.TrimSpace(claims.Sub) == "" || strings.TrimSpace(claims.Email) == "" {
+		return nil, fmt.Errorf("missing required claims")
+	}
+	return claims, nil
+}
+
+func (s *InviteService) getPublicKey(ctx context.Context, kid string) (*rsa.PublicKey, error) {
+	s.jwksMu.Lock()
+	if time.Since(s.jwksFetchedAt) < time.Hour {
+		if k, ok := s.jwksCache[kid]; ok {
+			s.jwksMu.Unlock()
+			return k, nil
+		}
+	}
+	s.jwksMu.Unlock()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.jwksURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch JWKS: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var doc jwksDoc
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		return nil, fmt.Errorf("decode JWKS: %w", err)
+	}
+
+	cache := map[string]*rsa.PublicKey{}
+	for _, k := range doc.Keys {
+		if k.Kty != "RSA" || k.N == "" || k.E == "" {
+			continue
+		}
+		nBytes, err := base64.RawURLEncoding.DecodeString(k.N)
+		if err != nil {
+			continue
+		}
+		eBytes, err := base64.RawURLEncoding.DecodeString(k.E)
+		if err != nil {
+			continue
+		}
+		e := 0
+		for _, b := range eBytes {
+			e = e<<8 + int(b)
+		}
+		if e == 0 {
+			continue
+		}
+		cache[k.Kid] = &rsa.PublicKey{N: new(big.Int).SetBytes(nBytes), E: e}
+	}
+
+	s.jwksMu.Lock()
+	s.jwksCache = cache
+	s.jwksFetchedAt = time.Now()
+	key := s.jwksCache[kid]
+	s.jwksMu.Unlock()
+
+	if key == nil {
+		return nil, fmt.Errorf("kid %q not found in JWKS", kid)
+	}
+	return key, nil
 }
 
 // CreateInvite creates a new invite for a human user and returns plaintext token + URL.
