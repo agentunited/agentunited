@@ -32,6 +32,7 @@ func main() {
 	defer cache.Close()
 
 	r := relay.NewServer(cache.Client, cfg.Relay.Domain)
+	r.Start(ctx) // fetch JWKS + start refresh loop
 	mux := http.NewServeMux()
 	r.Routes(mux)
 
