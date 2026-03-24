@@ -298,18 +298,12 @@ private struct SignInScene: View {
                 Divider()
                     .padding(.vertical, 8)
 
-                VStack(spacing: 6) {
-                    Text("Don't have an account?")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-
-                    Text("Accounts are created when you accept an invite from your agent. Go back and tap \"Accept an invite\".")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, 4)
+                Text("No account yet? Accept an invite from your agent.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 4)
 
                 Button("← Back to Welcome") {
                     dismiss()
