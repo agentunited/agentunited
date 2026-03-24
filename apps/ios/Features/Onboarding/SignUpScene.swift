@@ -18,25 +18,48 @@ struct SignUpScene: View {
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
+                    // MARK: Name
                     fieldLabel("Display name")
-                    textField("Your name", text: $viewModel.displayName)
+                    TextField("Your name", text: $viewModel.displayName)
+                        .textContentType(.name)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled(true)
+                        .styled()
                         .accessibilityIdentifier("signup-display-name-field")
 
+                    // MARK: Email
                     fieldLabel("Email")
-                    textField("you@example.com", text: $viewModel.email)
+                    TextField("you@example.com", text: $viewModel.email)
+                        .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
+                        .styled()
                         .accessibilityIdentifier("signup-email-field")
 
+                    // MARK: Password
                     fieldLabel("Password")
-                    SecureField("Minimum 12 characters", text: $viewModel.password)
-                        .font(.body)
-                        .padding(.horizontal, 14)
-                        .frame(height: 50)
-                        .background(Color.auSecondary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    SecureField("Minimum 8 characters", text: $viewModel.password)
+                        .textContentType(.newPassword)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .styled()
                         .accessibilityIdentifier("signup-password-field")
+
+                    // MARK: Confirm password
+                    fieldLabel("Confirm password")
+                    SecureField("Confirm password", text: $viewModel.confirmPassword)
+                        .textContentType(.newPassword)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .styled()
+                        .accessibilityIdentifier("signup-confirm-password-field")
+
+                    if viewModel.showPasswordMismatch {
+                        Text("Passwords don't match")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 if let errorMessage = viewModel.errorMessage {
@@ -96,9 +119,13 @@ struct SignUpScene: View {
             .font(.subheadline.weight(.medium))
             .foregroundStyle(Color.auSecondaryLabel)
     }
+}
 
-    private func textField(_ placeholder: String, text: Binding<String>) -> some View {
-        TextField(placeholder, text: text)
+// MARK: - Field style helper
+
+private extension View {
+    func styled() -> some View {
+        self
             .font(.body)
             .padding(.horizontal, 14)
             .frame(height: 50)
@@ -106,6 +133,8 @@ struct SignUpScene: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
+
+// MARK: - ViewModel
 
 @MainActor
 final class SignUpViewModel: ObservableObject {
@@ -117,20 +146,27 @@ final class SignUpViewModel: ObservableObject {
     @Published var displayName = ""
     @Published var email = ""
     @Published var password = ""
+    @Published var confirmPassword = ""
     @Published var isSubmitting = false
     @Published var errorMessage: String?
 
+    /// True only when confirmPassword is non-empty and doesn't match password.
+    var showPasswordMismatch: Bool {
+        !confirmPassword.isEmpty && confirmPassword != password
+    }
+
     var canSubmit: Bool {
-        displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false &&
-        email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false &&
-        password.count >= 12 &&
-        isSubmitting == false
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        email.trimmingCharacters(in: .whitespacesAndNewlines).contains("@") &&
+        password.count >= 8 &&
+        confirmPassword == password &&
+        !isSubmitting
     }
 
     func register() async -> Result? {
         errorMessage = nil
         guard canSubmit else {
-            errorMessage = "Please complete all fields. Password must be at least 12 characters."
+            errorMessage = "Please complete all fields correctly."
             return nil
         }
 
