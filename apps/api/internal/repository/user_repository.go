@@ -155,11 +155,17 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *models.User) 
 			display_name = $3,
 			avatar_url = $4,
 			user_type = $5,
-			updated_at = $6
+			updated_at = $6,
+			auth_type = $7,
+			central_user_id = NULLIF($8, '')
 		WHERE id = $1
 	`
 
-	result, err := r.db.Pool.Exec(ctx, query, user.ID, user.PasswordHash, user.DisplayName, user.AvatarURL, defaultUserType(user.UserType), user.UpdatedAt)
+	authType := user.AuthType
+	if authType == "" {
+		authType = "local"
+	}
+	result, err := r.db.Pool.Exec(ctx, query, user.ID, user.PasswordHash, user.DisplayName, user.AvatarURL, defaultUserType(user.UserType), user.UpdatedAt, authType, user.CentralUserID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique violation

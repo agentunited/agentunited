@@ -15,7 +15,7 @@ import (
 // InviteService defines invite operations
 type InviteService interface {
 	ValidateInvite(ctx context.Context, token string) (*models.Invite, *models.User, error)
-	AcceptInvite(ctx context.Context, token, password, displayName string) (string, string, error)
+	AcceptInvite(ctx context.Context, inviteToken, centralJWT string) (string, string, error)
 	CreateInvite(ctx context.Context, workspaceID, email, displayName string) (string, string, error)
 }
 
@@ -125,17 +125,17 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Accept invite
-	jwtToken, dmChannelID, err := h.service.AcceptInvite(r.Context(), req.Token, req.Password, req.DisplayName)
+	jwtToken, dmChannelID, err := h.service.AcceptInvite(r.Context(), req.InviteToken, req.CentralJWT)
 	if err != nil {
 		switch {
+		case errors.Is(err, models.ErrUnauthorized):
+			respondError(w, http.StatusUnauthorized, "invalid or expired central JWT")
 		case errors.Is(err, models.ErrInviteNotFound):
 			respondError(w, http.StatusNotFound, "invite not found")
 		case errors.Is(err, models.ErrInviteExpired):
 			respondError(w, http.StatusNotFound, "invite has expired")
 		case errors.Is(err, models.ErrInviteAlreadyConsumed):
 			respondError(w, http.StatusConflict, "invite has already been used")
-		case errors.Is(err, models.ErrWeakPassword):
-			respondError(w, http.StatusBadRequest, "password must be at least 12 characters")
 		default:
 			log.Error().Err(err).Msg("accept invite failed")
 			respondError(w, http.StatusInternalServerError, "internal server error")
