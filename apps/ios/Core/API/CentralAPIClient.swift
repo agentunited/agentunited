@@ -114,6 +114,12 @@ struct CentralAPIClient {
                     throw CentralAPIError.invalidCredentials
                 }
                 throw CentralAPIError.unauthorized
+            case 400:
+                if let errorCode = try? decoder.decode(CentralErrorResponse.self, from: data).error,
+                   errorCode == "weak_password" {
+                    throw CentralAPIError.weakPassword
+                }
+                throw CentralAPIError.serverError(httpResponse.statusCode)
             case 409:
                 if let errorCode = try? decoder.decode(CentralErrorResponse.self, from: data).error,
                    errorCode == "email_already_registered" {
@@ -188,6 +194,7 @@ enum CentralAPIError: Error {
     case unauthorized
     case emailAlreadyRegistered
     case invalidCredentials
+    case weakPassword
     case serverError(Int)
     case networkError(Error)
     case decodingError(Error)
@@ -204,6 +211,8 @@ extension CentralAPIError: LocalizedError {
             return "That email is already registered."
         case .invalidCredentials:
             return "Incorrect email or password."
+        case .weakPassword:
+            return "Password is too weak. Use at least 8 characters with a mix of letters and numbers."
         case let .serverError(status) where status >= 500:
             return "Our servers are having trouble. Please try again in a moment."
         case .serverError:
