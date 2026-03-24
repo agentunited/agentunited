@@ -137,10 +137,27 @@ final class SignUpViewModel: ObservableObject {
         isSubmitting = true
         defer { isSubmitting = false }
 
-        // Mock-first behavior while backend stabilizes.
-        try? await Task.sleep(nanoseconds: 900_000_000)
+        do {
+            let client = CentralAPIClient()
+            let authResp = try await client.register(
+                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password,
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
 
-        let key = "au_claim_\(String(UUID().uuidString.prefix(8)))"
-        return Result(claimKey: key, centralJWT: "central_mock_jwt")
+            let keychain = KeychainHelper()
+            try? keychain.storeJWT(authResp.token, for: "au.central.jwt")
+
+            let claimClient = CentralAPIClient(authToken: authResp.token)
+            let claimResp = try await claimClient.generateClaimKey()
+
+            return Result(claimKey: claimResp.claimKey, centralJWT: authResp.token)
+        } catch let e as CentralAPIError {
+            errorMessage = e.localizedDescription
+            return nil
+        } catch {
+            errorMessage = "Registration failed. Please try again."
+            return nil
+        }
     }
 }

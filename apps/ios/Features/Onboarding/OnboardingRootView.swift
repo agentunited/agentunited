@@ -66,11 +66,16 @@ struct OnboardingRootView: View {
                     claimKey: claimKey,
                     centralJWT: centralJWT,
                     onConnected: { relayURL, jwt in
+                        let payload = jwt.decodedJWTPayload()
+                        let userID = payload?["sub"] as? String ?? "central-user"
+                        let email = payload?["email"] as? String ?? "user@agentunited.ai"
+                        let displayName = payload?["display_name"] as? String ?? "User"
+
                         try? sessionStore.persistInviteSession(
                             instanceURL: relayURL,
-                            userID: "central-user",
-                            email: "user@agentunited.ai",
-                            displayName: "User",
+                            userID: userID,
+                            email: email,
+                            displayName: displayName,
                             token: jwt,
                             expiresAt: nil,
                             userType: "human"
@@ -97,7 +102,7 @@ struct OnboardingRootView: View {
             }
             if case let .claim(key) = coordinator.pendingRoute {
                 claimKey = key
-                centralJWT = "central_mock_jwt"
+                centralJWT = (try? KeychainHelper().readJWT(for: "au.central.jwt")) ?? ""
                 isPresentingClaimKey = true
             }
         }
@@ -107,7 +112,7 @@ struct OnboardingRootView: View {
             }
             if case let .claim(key) = newValue {
                 claimKey = key
-                centralJWT = "central_mock_jwt"
+                centralJWT = (try? KeychainHelper().readJWT(for: "au.central.jwt")) ?? ""
                 isPresentingClaimKey = true
             }
         }
@@ -371,9 +376,26 @@ private final class SignInViewModel: ObservableObject {
         defer { isSubmitting = false }
 
         if mode == .central {
-            // Mock central auth for now until backend endpoint is finalized.
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            return Result(centralJWT: "central_mock_jwt")
+            do {
+                let client = CentralAPIClient()
+                let authResp = try await client.login(
+                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    password: password
+                )
+                let keychain = KeychainHelper()
+                try? keychain.storeJWT(authResp.token, for: "au.central.jwt")
+                return Result(centralJWT: authResp.token)
+            } catch let e as CentralAPIError {
+                if case .invalidCredentials = e {
+                    errorMessage = "Incorrect email or password."
+                } else {
+                    errorMessage = "Sign in failed. Please try again."
+                }
+                return nil
+            } catch {
+                errorMessage = "Sign in failed. Please try again."
+                return nil
+            }
         }
 
         guard let url = URL(string: workspaceURL.trimmingCharacters(in: .whitespacesAndNewlines)) else {
