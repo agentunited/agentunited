@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -40,12 +41,25 @@ type Server struct {
 	domain   string
 	redis    *redis.Client
 	upgrader websocket.Upgrader
+	jwks     *JWKSVerifier
 
 	mu      sync.RWMutex
 	clients map[string]*clientConn // conn_id -> conn
 }
 
+// defaultJWKSURL returns the JWKS URL from env or falls back to the central service default.
+func defaultJWKSURL() string {
+	if u := os.Getenv("CENTRAL_JWKS_URL"); u != "" {
+		return u
+	}
+	return "https://agent-united-central-961985674922.us-central1.run.app/.well-known/jwks.json"
+}
+
 func NewServer(redisClient *redis.Client, domain string) *Server {
+	issuer := os.Getenv("CENTRAL_JWT_ISSUER")
+	if issuer == "" {
+		issuer = "https://agentunited.ai"
+	}
 	return &Server{
 		domain: domain,
 		redis:  redisClient,
@@ -53,7 +67,15 @@ func NewServer(redisClient *redis.Client, domain string) *Server {
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 		clients: make(map[string]*clientConn),
+		jwks:    NewJWKSVerifier(defaultJWKSURL(), issuer),
 	}
+}
+
+// Start fetches JWKS and begins the background refresh loop.
+// Call this after NewServer, before serving traffic.
+func (s *Server) Start(ctx context.Context) {
+	_ = s.jwks.FetchOnce(ctx) // errors are logged + degrade-graceful; non-fatal
+	s.jwks.StartRefreshLoop(ctx)
 }
 
 func (s *Server) Routes(mux *http.ServeMux) {
@@ -84,6 +106,24 @@ func (s *Server) handleTunnel(w http.ResponseWriter, r *http.Request) {
 		_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "invalid token"})
 		_ = ws.Close()
 		return
+	}
+
+	// Central JWT verification (optional — degrade gracefully when JWKS unavailable)
+	if s.jwks.Enabled {
+		authHeader := r.Header.Get("Authorization")
+		bearerToken, hasBearerToken := ExtractBearerToken(authHeader)
+		if !hasBearerToken {
+			_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "authorization required"})
+			_ = ws.Close()
+			return
+		}
+		if _, ok := s.jwks.VerifyJWT(bearerToken); !ok {
+			_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "invalid or expired JWT"})
+			_ = ws.Close()
+			return
+		}
+	} else {
+		log.Warn().Str("token_prefix", reg.Token[:min(len(reg.Token), 8)]).Msg("JWKS unavailable — allowing relay connection without central JWT verification")
 	}
 
 	sub := deterministicSubdomain(reg.Token)
