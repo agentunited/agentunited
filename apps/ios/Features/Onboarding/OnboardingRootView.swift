@@ -21,8 +21,7 @@ struct OnboardingRootView: View {
     @State private var isPresentingClaimKey = false
     @State private var claimKey = ""
 
-    // Forgot / reset password
-    @State private var isPresentingForgotPassword = false
+    // Reset password deep link
     @State private var isPresentingResetPassword = false
     @State private var resetPasswordToken = ""
 
@@ -61,9 +60,6 @@ struct OnboardingRootView: View {
                             try? await Task.sleep(nanoseconds: 200_000_000)
                             isPresentingSelfHostedSignIn = true
                         }
-                    },
-                    onForgotPassword: {
-                        isPresentingForgotPassword = true
                     }
                 )
             }
@@ -143,9 +139,6 @@ struct OnboardingRootView: View {
                 )
             }
             .tint(.auEmerald)
-        }
-        .fullScreenCover(isPresented: $isPresentingForgotPassword) {
-            ForgotPasswordScene()
         }
         .fullScreenCover(isPresented: $isPresentingResetPassword) {
             ResetPasswordScene(token: resetPasswordToken) {
@@ -344,15 +337,14 @@ private struct RelaySignInScene: View {
     @StateObject private var viewModel: RelaySignInViewModel
     let onAuthenticated: (String) -> Void
     let onSelfHosted: () -> Void
-    let onForgotPassword: () -> Void
+
+    @State private var isPresentingForgotPassword = false
 
     init(sessionStore: AppSessionStore,
          onAuthenticated: @escaping (String) -> Void,
-         onSelfHosted: @escaping () -> Void,
-         onForgotPassword: @escaping () -> Void) {
+         onSelfHosted: @escaping () -> Void) {
         self.onAuthenticated = onAuthenticated
         self.onSelfHosted = onSelfHosted
-        self.onForgotPassword = onForgotPassword
         _viewModel = StateObject(wrappedValue: RelaySignInViewModel(sessionStore: sessionStore))
     }
 
@@ -402,7 +394,7 @@ private struct RelaySignInScene: View {
                 .accessibilityIdentifier("relay-sign-in-button")
 
                 Button {
-                    onForgotPassword()
+                    isPresentingForgotPassword = true
                 } label: {
                     Text("Forgot password?")
                         .font(.footnote)
@@ -437,6 +429,9 @@ private struct RelaySignInScene: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Close") { dismiss() }
             }
+        }
+        .fullScreenCover(isPresented: $isPresentingForgotPassword) {
+            ForgotPasswordScene()
         }
     }
 }
