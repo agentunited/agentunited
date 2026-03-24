@@ -36,7 +36,7 @@ struct SignUpScene: View {
 
                     // MARK: Email
                     fieldLabel("Email")
-                    TextField("you@example.com", text: $viewModel.email)
+                    TextField("Email", text: $viewModel.email)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)

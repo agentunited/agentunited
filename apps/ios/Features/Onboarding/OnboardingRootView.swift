@@ -335,7 +335,7 @@ private struct RelaySignInScene: View {
                 }
                 VStack(alignment: .leading, spacing: 20) {
                     SignInFieldSection(title: "Email") {
-                        TextField("you@example.com", text: $viewModel.email)
+                        TextField("Email", text: $viewModel.email)
                             .keyboardType(.emailAddress)
                             .textContentType(.emailAddress)
                             .textInputAutocapitalization(.never)
@@ -484,7 +484,7 @@ private struct SignInScene: View {
                     }
 
                     SignInFieldSection(title: "Email") {
-                        TextField("name@workspace.com", text: $viewModel.email)
+                        TextField("Email", text: $viewModel.email)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
