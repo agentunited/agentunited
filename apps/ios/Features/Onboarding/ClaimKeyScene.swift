@@ -1,15 +1,33 @@
 import SwiftUI
 import UIKit
 
+extension String {
+    func decodedJWTPayload() -> [String: Any]? {
+        let parts = self.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var base64 = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 { base64 += "=" }
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+}
+
 struct ClaimKeyScene: View {
     @Environment(\.dismiss) private var dismiss
     let claimKey: String
-    let centralJWT: String
     let onConnected: (URL, String) -> Void
 
     @State private var copied = false
     @State private var isSharePresented = false
     @StateObject private var viewModel = ClaimKeyViewModel()
+
+    init(claimKey: String, centralJWT: String, onConnected: @escaping (URL, String) -> Void) {
+        self.claimKey = claimKey
+        self.onConnected = onConnected
+        viewModel.setCentralJWT(centralJWT)
+    }
 
     var body: some View {
         ScrollView {
@@ -53,7 +71,7 @@ struct ClaimKeyScene: View {
                             .font(.body)
                         Button("Connect workspace") {
                             if let relayURL = viewModel.relayURL {
-                                onConnected(relayURL, centralJWT)
+                                onConnected(relayURL, viewModel.centralJWT)
                             }
                         }
                         .buttonStyle(AUPrimaryButtonStyle())
@@ -80,7 +98,7 @@ struct ClaimKeyScene: View {
             }
         }
         .task {
-            await viewModel.startMockPolling()
+            await viewModel.startPolling()
         }
         .sheet(isPresented: $isSharePresented) {
             ShareSheet(items: [claimKey])
@@ -92,14 +110,36 @@ struct ClaimKeyScene: View {
 final class ClaimKeyViewModel: ObservableObject {
     @Published var workspaceReady = false
     @Published var relayURL: URL?
+    @Published var centralJWT: String = ""
+    private var isPolling = false
 
-    func startMockPolling() async {
-        if workspaceReady { return }
-        for _ in 0..<3 {
-            try? await Task.sleep(nanoseconds: 10_000_000_000) // 10s x3
+    func setCentralJWT(_ jwt: String) {
+        self.centralJWT = jwt
+    }
+
+    func startPolling() async {
+        if workspaceReady || isPolling { return }
+        isPolling = true
+
+        let client = CentralAPIClient(authToken: centralJWT)
+
+        while !Task.isCancelled && !workspaceReady {
+            do {
+                let workspaces = try await client.listWorkspaces()
+                if let workspace = workspaces.first,
+                   let url = URL(string: workspace.relayURL) {
+                    relayURL = url
+                    workspaceReady = true
+                    return
+                }
+            } catch {
+                // Continue polling on error
+            }
+
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
         }
-        relayURL = URL(string: "https://example.tunnel.agentunited.ai")
-        workspaceReady = true
+
+        isPolling = false
     }
 }
 

@@ -28,6 +28,7 @@
 		AA0000000000000000000091 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000092 /* Assets.xcassets */; };
 		AA0000000000000000000093 /* SignUpScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000094 /* SignUpScene.swift */; };
 		AA0000000000000000000095 /* ClaimKeyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000096 /* ClaimKeyScene.swift */; };
+		AA0000000000000000000097 /* CentralAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000098 /* CentralAPIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +65,7 @@
 		AA0000000000000000000092 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = AgentUnited/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		AA0000000000000000000094 /* SignUpScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpScene.swift; sourceTree = "<group>"; };
 		AA0000000000000000000096 /* ClaimKeyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimKeyScene.swift; sourceTree = "<group>"; };
+		AA0000000000000000000098 /* CentralAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CentralAPIClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -199,6 +201,7 @@
 			children = (
 				AA000000000000000000000A /* AUAPIClient.swift */,
 				AA000000000000000000000B /* LiveAUAPIClient.swift */,
+				AA0000000000000000000098 /* CentralAPIClient.swift */,
 			);
 		};
 		AA000000000000000000003C /* Keychain */ = {
@@ -334,6 +337,7 @@
 				AA0000000000000000000025 /* OnboardingViewModel.swift in Sources */,
 				AA0000000000000000000093 /* SignUpScene.swift in Sources */,
 				AA0000000000000000000095 /* ClaimKeyScene.swift in Sources */,
+				AA0000000000000000000097 /* CentralAPIClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
