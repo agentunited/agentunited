@@ -91,6 +91,13 @@ struct LiveAUAPIClient: AUAPIClient {
         )
     }
 
+    func acceptInvite(token: String, centralJWT: String) async throws -> InviteAcceptResponse {
+        try await post(
+            "invites/accept",
+            body: CentralInviteAcceptRequest(inviteToken: token, centralJWT: centralJWT)
+        )
+    }
+
     func listMessages(channelId: String, before: String? = nil) async throws -> [MessageResponse] {
         var path = "channels/\(channelId)/messages"
         if let before, !before.isEmpty {
@@ -266,6 +273,11 @@ private struct AcceptInviteRequest: Encodable {
     let token: String
     let displayName: String
     let password: String
+}
+
+private struct CentralInviteAcceptRequest: Encodable {
+    let inviteToken: String
+    let centralJWT: String
 }
 
 private struct SendMessageRequest: Encodable {
