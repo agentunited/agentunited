@@ -33,6 +33,8 @@
 		AA000000000000000000009D /* WorkspaceListScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000009E /* WorkspaceListScene.swift */; };
 		AA000000000000000000009B /* SelfHostedSignInScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000009C /* SelfHostedSignInScene.swift */; };
 		AA0000000000000000000099 /* OrientationScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000009A /* OrientationScene.swift */; };
+		C37EC789B05D479ABBF1E092 /* ForgotPasswordScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2097CE826C437CAD4817AD /* ForgotPasswordScene.swift */; };
+		C56570E02D734B748BE56808 /* ResetPasswordScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D44FEF82095472EAC554620 /* ResetPasswordScene.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +76,8 @@
 		AA000000000000000000009E /* WorkspaceListScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceListScene.swift; sourceTree = "<group>"; };
 		AA000000000000000000009C /* SelfHostedSignInScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfHostedSignInScene.swift; sourceTree = "<group>"; };
 		AA000000000000000000009A /* OrientationScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationScene.swift; sourceTree = "<group>"; };
+		ED2097CE826C437CAD4817AD /* ForgotPasswordScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordScene.swift; sourceTree = "<group>"; };
+		9D44FEF82095472EAC554620 /* ResetPasswordScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordScene.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -196,6 +200,8 @@
 				AA000000000000000000009E /* WorkspaceListScene.swift */,
 				AA000000000000000000009C /* SelfHostedSignInScene.swift */,
 				AA000000000000000000009A /* OrientationScene.swift */,
+				ED2097CE826C437CAD4817AD /* ForgotPasswordScene.swift */,
+				9D44FEF82095472EAC554620 /* ResetPasswordScene.swift */,
 			);
 		};
 		AA0000000000000000000043 /* AgentUnitedTests */ = {
@@ -354,6 +360,8 @@
 				AA000000000000000000009D /* WorkspaceListScene.swift in Sources */,
 				AA000000000000000000009B /* SelfHostedSignInScene.swift in Sources */,
 				AA0000000000000000000099 /* OrientationScene.swift in Sources */,
+				C37EC789B05D479ABBF1E092 /* ForgotPasswordScene.swift in Sources */,
+				C56570E02D734B748BE56808 /* ResetPasswordScene.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -385,7 +393,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = AgentUnited;
@@ -419,7 +427,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = AgentUnited;
@@ -492,7 +500,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -521,7 +529,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
