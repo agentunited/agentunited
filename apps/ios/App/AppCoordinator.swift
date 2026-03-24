@@ -17,6 +17,7 @@ final class AppCoordinator: ObservableObject {
 
     enum Route: Equatable {
         case invite(PendingInvite)
+        case claim(String)
         case dm(String)
         case channel(String)
     }
@@ -74,6 +75,14 @@ final class AppCoordinator: ObservableObject {
             )
             isPresentingInvite = authState != .authenticated
 
+        case "claim":
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            guard let key = components?.queryItems?.first(where: { $0.name == "key" })?.value,
+                  !key.isEmpty else {
+                return
+            }
+            pendingRoute = .claim(key)
+
         case "dm":
             guard let id = pathComponents.first, !id.isEmpty else {
                 return
@@ -112,7 +121,7 @@ final class AppCoordinator: ObservableObject {
         }
 
         switch route {
-        case .invite:
+        case .invite, .claim:
             break
         case let .dm(id):
             selectedTab = .messages
