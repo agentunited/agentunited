@@ -19,6 +19,7 @@ final class AppCoordinator: ObservableObject {
         case invite(PendingInvite)
         case claim(String)
         case workspace(url: String)  // agentunited://workspace?url=xxx → pre-fills SelfHostedSignInScene
+        case resetPassword(token: String) // agentunited://reset-password?token=xxx → ResetPasswordScene
         case dm(String)
         case channel(String)
     }
@@ -90,6 +91,12 @@ final class AppCoordinator: ObservableObject {
                   !wsURL.isEmpty else { return }
             pendingRoute = .workspace(url: wsURL)
 
+        case "reset-password":
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            guard let token = components?.queryItems?.first(where: { $0.name == "token" })?.value,
+                  !token.isEmpty else { return }
+            pendingRoute = .resetPassword(token: token)
+
         case "dm":
             guard let id = pathComponents.first, !id.isEmpty else {
                 return
@@ -128,7 +135,7 @@ final class AppCoordinator: ObservableObject {
         }
 
         switch route {
-        case .invite, .claim, .workspace:
+        case .invite, .claim, .workspace, .resetPassword:
             break
         case let .dm(id):
             selectedTab = .messages

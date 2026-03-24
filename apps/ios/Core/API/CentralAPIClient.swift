@@ -50,6 +50,22 @@ struct CentralAPIClient {
         return response.workspaces
     }
 
+    func forgotPassword(email: String) async throws {
+        struct Body: Encodable { let email: String }
+        struct Resp: Decodable { let message: String }
+        let _: Resp = try await post("/api/v1/users/forgot-password", body: Body(email: email), requiresAuth: false)
+    }
+
+    func resetPassword(token: String, newPassword: String) async throws {
+        struct Body: Encodable {
+            let token: String
+            let newPassword: String
+            enum CodingKeys: String, CodingKey { case token; case newPassword = "new_password" }
+        }
+        struct Resp: Decodable { let message: String }
+        let _: Resp = try await post("/api/v1/users/reset-password", body: Body(token: token, newPassword: newPassword), requiresAuth: false)
+    }
+
     private func get<T: Decodable>(_ path: String, requiresAuth: Bool) async throws -> T {
         let request = try makeRequest(path: path, method: "GET", requiresAuth: requiresAuth)
         return try await perform(request, expecting: T.self)
@@ -115,9 +131,12 @@ struct CentralAPIClient {
                 }
                 throw CentralAPIError.unauthorized
             case 400:
-                if let errorCode = try? decoder.decode(CentralErrorResponse.self, from: data).error,
-                   errorCode == "weak_password" {
-                    throw CentralAPIError.weakPassword
+                if let errorCode = try? decoder.decode(CentralErrorResponse.self, from: data).error {
+                    switch errorCode {
+                    case "weak_password": throw CentralAPIError.weakPassword
+                    case "invalid_or_expired_token": throw CentralAPIError.invalidOrExpiredToken
+                    default: break
+                    }
                 }
                 throw CentralAPIError.serverError(httpResponse.statusCode)
             case 409:
@@ -195,6 +214,7 @@ enum CentralAPIError: Error {
     case emailAlreadyRegistered
     case invalidCredentials
     case weakPassword
+    case invalidOrExpiredToken
     case serverError(Int)
     case networkError(Error)
     case decodingError(Error)
@@ -213,6 +233,8 @@ extension CentralAPIError: LocalizedError {
             return "Incorrect email or password."
         case .weakPassword:
             return "Password is too weak. Use at least 8 characters with a mix of letters and numbers."
+        case .invalidOrExpiredToken:
+            return "That reset link is invalid or has expired. Request a new one."
         case let .serverError(status) where status >= 500:
             return "Our servers are having trouble. Please try again in a moment."
         case .serverError:

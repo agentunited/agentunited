@@ -21,6 +21,11 @@ struct OnboardingRootView: View {
     @State private var isPresentingClaimKey = false
     @State private var claimKey = ""
 
+    // Forgot / reset password
+    @State private var isPresentingForgotPassword = false
+    @State private var isPresentingResetPassword = false
+    @State private var resetPasswordToken = ""
+
     private var pendingInvite: AppCoordinator.PendingInvite? {
         if case let .invite(invite) = coordinator.pendingRoute { return invite }
         return nil
@@ -56,6 +61,9 @@ struct OnboardingRootView: View {
                             try? await Task.sleep(nanoseconds: 200_000_000)
                             isPresentingSelfHostedSignIn = true
                         }
+                    },
+                    onForgotPassword: {
+                        isPresentingForgotPassword = true
                     }
                 )
             }
@@ -136,6 +144,18 @@ struct OnboardingRootView: View {
             }
             .tint(.auEmerald)
         }
+        .fullScreenCover(isPresented: $isPresentingForgotPassword) {
+            ForgotPasswordScene()
+        }
+        .fullScreenCover(isPresented: $isPresentingResetPassword) {
+            ResetPasswordScene(token: resetPasswordToken) {
+                isPresentingResetPassword = false
+                Task {
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                    isPresentingRelaySignIn = true
+                }
+            }
+        }
         .onAppear {
             if pendingInvite != nil {
                 coordinator.isPresentingInvite = true
@@ -148,6 +168,10 @@ struct OnboardingRootView: View {
             if case let .workspace(url) = coordinator.pendingRoute {
                 prefilledWorkspaceURL = url
                 isPresentingSelfHostedSignIn = true
+            }
+            if case let .resetPassword(token) = coordinator.pendingRoute {
+                resetPasswordToken = token
+                isPresentingResetPassword = true
             }
         }
         .onChange(of: coordinator.pendingRoute) { _, newValue in
@@ -162,6 +186,10 @@ struct OnboardingRootView: View {
             if case let .workspace(url) = newValue {
                 prefilledWorkspaceURL = url
                 isPresentingSelfHostedSignIn = true
+            }
+            if case let .resetPassword(token) = newValue {
+                resetPasswordToken = token
+                isPresentingResetPassword = true
             }
         }
     }
@@ -316,10 +344,15 @@ private struct RelaySignInScene: View {
     @StateObject private var viewModel: RelaySignInViewModel
     let onAuthenticated: (String) -> Void
     let onSelfHosted: () -> Void
+    let onForgotPassword: () -> Void
 
-    init(sessionStore: AppSessionStore, onAuthenticated: @escaping (String) -> Void, onSelfHosted: @escaping () -> Void) {
+    init(sessionStore: AppSessionStore,
+         onAuthenticated: @escaping (String) -> Void,
+         onSelfHosted: @escaping () -> Void,
+         onForgotPassword: @escaping () -> Void) {
         self.onAuthenticated = onAuthenticated
         self.onSelfHosted = onSelfHosted
+        self.onForgotPassword = onForgotPassword
         _viewModel = StateObject(wrappedValue: RelaySignInViewModel(sessionStore: sessionStore))
     }
 
@@ -335,7 +368,7 @@ private struct RelaySignInScene: View {
                 }
                 VStack(alignment: .leading, spacing: 20) {
                     SignInFieldSection(title: "Email") {
-                        TextField("you@example.com", text: $viewModel.email)
+                        TextField("Email", text: $viewModel.email)
                             .keyboardType(.emailAddress)
                             .textContentType(.emailAddress)
                             .textInputAutocapitalization(.never)
@@ -367,6 +400,16 @@ private struct RelaySignInScene: View {
                 .buttonStyle(AUPrimaryButtonStyle())
                 .disabled(!viewModel.canSubmit)
                 .accessibilityIdentifier("relay-sign-in-button")
+
+                Button {
+                    onForgotPassword()
+                } label: {
+                    Text("Forgot password?")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityIdentifier("forgot-password-link")
 
                 Divider().padding(.vertical, 8)
 
@@ -484,7 +527,7 @@ private struct SignInScene: View {
                     }
 
                     SignInFieldSection(title: "Email") {
-                        TextField("name@workspace.com", text: $viewModel.email)
+                        TextField("Email", text: $viewModel.email)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
