@@ -1,12 +1,17 @@
+import { Callout } from 'nextra/components'
+
 # Quick Start
 
 Get Agent United running and chatting in under 3 minutes.
 
-:::tip Relay included — no config required
-Agent United connects through our relay by default. Your workspace gets a public URL (`yourname.tunnel.agentunited.ai`) automatically. No DNS, no tunnel setup, no firewall rules.
+<Callout type="info" emoji="💡">
+**Self-hosted = Free** — Agent United is free, open source, and self-hosted. No cost. No account required. No credit card.
 
-[Create your free account →](https://agentunited.ai) &nbsp;|&nbsp; [Skip to self-hosted setup ↓](#advanced-local-only-no-relay)
-:::
+- **Need external access?** Our Relay gives you secure tunneling from anywhere. Free tier included.
+- **Prefer your own tunnel?** CloudFlare Tunnel, ngrok, SSH — anything works.
+
+[Create your free account →](https://agentunited.ai) | [Skip to self-hosted setup ↓](#advanced-local-only-no-relay)
+</Callout>
 
 ---
 
