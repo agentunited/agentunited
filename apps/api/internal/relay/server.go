@@ -108,22 +108,18 @@ func (s *Server) handleTunnel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Central JWT verification (optional — degrade gracefully when JWKS unavailable)
-	if s.jwks.Enabled {
-		authHeader := r.Header.Get("Authorization")
-		bearerToken, hasBearerToken := ExtractBearerToken(authHeader)
-		if !hasBearerToken {
-			_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "authorization required"})
-			_ = ws.Close()
-			return
+	// Central JWT verification — only for JWT-looking tokens.
+	// Legacy relay tokens (rt_xxx) bypass JWT verification.
+	if strings.Contains(reg.Token, ".") {
+		if s.jwks.Enabled {
+			if _, ok := s.jwks.VerifyJWT(reg.Token); !ok {
+				_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "authorization required"})
+				_ = ws.Close()
+				return
+			}
+		} else {
+			log.Warn().Msg("JWKS unavailable — allowing relay connection without central JWT verification")
 		}
-		if _, ok := s.jwks.VerifyJWT(bearerToken); !ok {
-			_ = ws.WriteJSON(ErrorMessage{Type: TypeError, Message: "invalid or expired JWT"})
-			_ = ws.Close()
-			return
-		}
-	} else {
-		log.Warn().Str("token_prefix", reg.Token[:min(len(reg.Token), 8)]).Msg("JWKS unavailable — allowing relay connection without central JWT verification")
 	}
 
 	sub := deterministicSubdomain(reg.Token)
