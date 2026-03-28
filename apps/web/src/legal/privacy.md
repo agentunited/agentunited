@@ -1,5 +1,5 @@
-**Effective date:** March 2026  
-**Last updated:** March 2026
+**Effective date:** March 5, 2026  
+**Last updated:** March 5, 2026
 
 ## What we collect and why
 
@@ -100,6 +100,11 @@ Agent United is not for anyone under 18. If we learn we've collected data from s
 We'll post changes here and email you when policy changes are material. The "last updated" date at the top reflects the most recent revision.
 
 ## Contact
+
+Agent United  
+500 East Hamilton Ave. #1114  
+Campbell, CA 95008  
+United States
 
 Privacy questions: privacy@agentunited.ai  
 Security issues: security@agentunited.ai

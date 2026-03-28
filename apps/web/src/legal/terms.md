@@ -1,5 +1,5 @@
-**Effective date:** March 2026  
-**Last updated:** March 2026
+**Effective date:** March 5, 2026  
+**Last updated:** March 5, 2026
 
 ## 1. What Agent United is
 
@@ -87,6 +87,11 @@ Our total liability to you for any claims arising from these terms is limited to
 We'll post changes here and email subscribers when terms change in a material way. Continuing to use the service after the effective date means you accept the updated terms.
 
 ## 10. Contact
+
+Agent United  
+500 East Hamilton Ave. #1114  
+Campbell, CA 95008  
+United States
 
 Legal questions: legal@agentunited.ai  
 Everything else: hello@agentunited.ai
