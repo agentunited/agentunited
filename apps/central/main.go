@@ -41,6 +41,7 @@ type Config struct {
 	KID                   string
 	PrivKeyPEM            string
 	GmailImpersonateEmail string
+	GmailFromEmail        string
 }
 
 type App struct {
@@ -98,6 +99,7 @@ func main() {
 		KID:                   getenv("JWT_KID", "2026-v1"),
 		PrivKeyPEM:            os.Getenv("RSA_PRIVATE_KEY"),
 		GmailImpersonateEmail: getenv("GMAIL_IMPERSONATE_EMAIL", "noreply@agentunited.ai"),
+		GmailFromEmail:        getenv("GMAIL_FROM_EMAIL", "noreply@agentunited.ai"),
 	}
 	if cfg.Database == "" {
 		log.Fatal().Msg("missing DATABASE_URL")
@@ -545,7 +547,7 @@ func generateResetToken() (string, error) {
 }
 
 // sendResetEmail sends a password-reset email via SendGrid, or logs if key is absent.
-func sendResetEmail(ctx context.Context, toEmail, token, impersonateEmail string) {
+func sendResetEmail(ctx context.Context, toEmail, token, impersonateEmail, fromEmail string) {
 	resetLink := "agentunited://reset-password?token=" + token
 	subject := "Reset your Agent United password"
 	body := fmt.Sprintf(
@@ -583,7 +585,7 @@ func sendResetEmail(ctx context.Context, toEmail, token, impersonateEmail string
 	}
 
 	// Default path: Gmail API via service account creds + domain-wide delegation.
-	if err := sendViaGmailAPI(ctx, toEmail, impersonateEmail, subject, body); err != nil {
+	if err := sendViaGmailAPI(ctx, toEmail, impersonateEmail, fromEmail, subject, body); err != nil {
 		log.Error().Err(err).Str("to", toEmail).Msg("gmail send failed; logging reset link fallback")
 		log.Info().Str("to", toEmail).Str("reset_link", resetLink).Msg("password reset email fallback")
 		return
@@ -591,7 +593,7 @@ func sendResetEmail(ctx context.Context, toEmail, token, impersonateEmail string
 	log.Info().Str("to", toEmail).Str("from", impersonateEmail).Msg("password reset email sent via gmail api")
 }
 
-func sendViaGmailAPI(ctx context.Context, toEmail, impersonateEmail, subject, body string) error {
+func sendViaGmailAPI(ctx context.Context, toEmail, impersonateEmail, fromEmail, subject, body string) error {
 	if strings.TrimSpace(impersonateEmail) == "" {
 		impersonateEmail = "noreply@agentunited.ai"
 	}
@@ -605,8 +607,12 @@ func sendViaGmailAPI(ctx context.Context, toEmail, impersonateEmail, subject, bo
 		return fmt.Errorf("create gmail service: %w", err)
 	}
 
+	if strings.TrimSpace(fromEmail) == "" {
+		fromEmail = "noreply@agentunited.ai"
+	}
+
 	rfc2822 := strings.Join([]string{
-		"From: " + impersonateEmail,
+		"From: " + fromEmail,
 		"To: " + toEmail,
 		"Subject: " + subject,
 		"MIME-Version: 1.0",
@@ -689,7 +695,7 @@ func (a *App) forgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendResetEmail(r.Context(), userEmail, token, a.cfg.GmailImpersonateEmail)
+	sendResetEmail(r.Context(), userEmail, token, a.cfg.GmailImpersonateEmail, a.cfg.GmailFromEmail)
 
 	writeJSON(w, http.StatusOK, okMsg)
 }
