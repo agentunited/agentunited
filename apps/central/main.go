@@ -26,15 +26,20 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/gmail/v1"
+	"google.golang.org/api/option"
 )
 
 type Config struct {
-	Port      string
-	Database  string
-	Issuer    string
-	JWTTTL    time.Duration
-	KID       string
-	PrivKeyPEM string
+	Port                  string
+	Database              string
+	Issuer                string
+	JWTTTL                time.Duration
+	KID                   string
+	PrivKeyPEM            string
+	GmailImpersonateEmail string
 }
 
 type App struct {
@@ -73,10 +78,10 @@ type resetPasswordReq struct {
 }
 
 type centralUser struct {
-	ID          string
-	Email       string
-	DisplayName string
-	Plan        string
+	ID           string
+	Email        string
+	DisplayName  string
+	Plan         string
 	PasswordHash string
 }
 
@@ -85,12 +90,13 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	cfg := Config{
-		Port:      getenv("PORT", "8080"),
-		Database:  os.Getenv("DATABASE_URL"),
-		Issuer:    getenv("JWT_ISSUER", "https://agentunited.ai"),
-		JWTTTL:    durationFromHours(getenv("JWT_TTL_HOURS", "24")),
-		KID:       getenv("JWT_KID", "2026-v1"),
-		PrivKeyPEM: os.Getenv("RSA_PRIVATE_KEY"),
+		Port:                  getenv("PORT", "8080"),
+		Database:              os.Getenv("DATABASE_URL"),
+		Issuer:                getenv("JWT_ISSUER", "https://agentunited.ai"),
+		JWTTTL:                durationFromHours(getenv("JWT_TTL_HOURS", "24")),
+		KID:                   getenv("JWT_KID", "2026-v1"),
+		PrivKeyPEM:            os.Getenv("RSA_PRIVATE_KEY"),
+		GmailImpersonateEmail: getenv("GMAIL_IMPERSONATE_EMAIL", "noreply@agentunited.ai"),
 	}
 	if cfg.Database == "" {
 		log.Fatal().Msg("missing DATABASE_URL")
@@ -153,21 +159,31 @@ func newApp(cfg Config) (*App, error) {
 	return &App{cfg: cfg, db: pool, privKey: priv, pubKey: &priv.PublicKey}, nil
 }
 
-func (a *App) health(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, map[string]string{"status": "ok"}) }
+func (a *App) health(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
 
 func (a *App) register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_json"}); return }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
 	if req.Email == "" || req.DisplayName == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_input"}); return
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_input"})
+		return
 	}
 	if err := validatePassword(req.Password); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()}); return
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
-	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"hash_failed"}); return }
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "hash_failed"})
+		return
+	}
 
 	var u centralUser
 	err = a.db.QueryRow(r.Context(), `
@@ -177,33 +193,51 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 	`, req.Email, req.DisplayName, string(hash)).Scan(&u.ID, &u.Email, &u.DisplayName, &u.Plan)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
-			writeJSON(w, http.StatusConflict, map[string]string{"error":"email_already_registered"}); return
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "email_already_registered"})
+			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"register_failed"}); return
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "register_failed"})
+		return
 	}
 	tok, err := a.issueToken(u)
-	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"token_failed"}); return }
-	writeJSON(w, http.StatusCreated, map[string]any{"user_id":u.ID, "email":u.Email, "display_name":u.DisplayName, "plan":u.Plan, "token":tok})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "token_failed"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"user_id": u.ID, "email": u.Email, "display_name": u.DisplayName, "plan": u.Plan, "token": tok})
 }
 
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	var req loginReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_json"}); return }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
-	if req.Email == "" || req.Password == "" { writeJSON(w, http.StatusBadRequest, map[string]string{"error":"invalid_credentials"}); return }
+	if req.Email == "" || req.Password == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_credentials"})
+		return
+	}
 
 	var u centralUser
 	err := a.db.QueryRow(r.Context(), `
 		SELECT id::text, email, display_name, plan, password_hash
 		FROM central_users WHERE email=$1
 	`, req.Email).Scan(&u.ID, &u.Email, &u.DisplayName, &u.Plan, &u.PasswordHash)
-	if err != nil { writeJSON(w, http.StatusUnauthorized, map[string]string{"error":"invalid_credentials"}); return }
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+		return
+	}
 	if bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)) != nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error":"invalid_credentials"}); return
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+		return
 	}
 	tok, err := a.issueToken(u)
-	if err != nil { writeJSON(w, http.StatusInternalServerError, map[string]string{"error":"token_failed"}); return }
-	writeJSON(w, http.StatusOK, map[string]any{"token":tok, "user_id":u.ID, "plan":u.Plan})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "token_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"token": tok, "user_id": u.ID, "plan": u.Plan})
 }
 
 func (a *App) claimGenerate(w http.ResponseWriter, r *http.Request) {
@@ -365,14 +399,14 @@ func (a *App) authUserID(r *http.Request) (string, error) {
 func (a *App) issueToken(u centralUser) (string, error) {
 	now := time.Now().UTC()
 	claims := jwt.MapClaims{
-		"iss": a.cfg.Issuer,
-		"aud": []string{"agentunited:workspace"},
-		"sub": u.ID,
-		"email": u.Email,
-		"plan": u.Plan,
+		"iss":          a.cfg.Issuer,
+		"aud":          []string{"agentunited:workspace"},
+		"sub":          u.ID,
+		"email":        u.Email,
+		"plan":         u.Plan,
 		"display_name": u.DisplayName,
-		"iat": now.Unix(),
-		"exp": now.Add(a.cfg.JWTTTL).Unix(),
+		"iat":          now.Unix(),
+		"exp":          now.Add(a.cfg.JWTTTL).Unix(),
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	t.Header["kid"] = a.cfg.KID
@@ -432,18 +466,28 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '1 hour'
 );
 `)
-	if err != nil { return fmt.Errorf("ensure schema: %w", err) }
+	if err != nil {
+		return fmt.Errorf("ensure schema: %w", err)
+	}
 	return nil
 }
 
 func parseRSAPrivateKey(pemStr string) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode([]byte(pemStr))
-	if block == nil { return nil, errors.New("invalid RSA_PRIVATE_KEY pem") }
-	if k, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil { return k, nil }
+	if block == nil {
+		return nil, errors.New("invalid RSA_PRIVATE_KEY pem")
+	}
+	if k, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		return k, nil
+	}
 	kAny, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	k, ok := kAny.(*rsa.PrivateKey)
-	if !ok { return nil, errors.New("RSA_PRIVATE_KEY is not RSA") }
+	if !ok {
+		return nil, errors.New("RSA_PRIVATE_KEY is not RSA")
+	}
 	return k, nil
 }
 
@@ -453,13 +497,22 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func getenv(k, d string) string { if v := os.Getenv(k); v != "" { return v }; return d }
+func getenv(k, d string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return d
+}
 
 func durationFromHours(h string) time.Duration {
-	if h == "" { return 24 * time.Hour }
+	if h == "" {
+		return 24 * time.Hour
+	}
 	var n int
 	_, err := fmt.Sscanf(h, "%d", &n)
-	if err != nil || n <= 0 { return 24 * time.Hour }
+	if err != nil || n <= 0 {
+		return 24 * time.Hour
+	}
 	return time.Duration(n) * time.Hour
 }
 
@@ -491,7 +544,7 @@ func generateResetToken() (string, error) {
 }
 
 // sendResetEmail sends a password-reset email via SendGrid, or logs if key is absent.
-func sendResetEmail(ctx context.Context, toEmail, token string) {
+func sendResetEmail(ctx context.Context, toEmail, token, impersonateEmail string) {
 	resetLink := "agentunited://reset-password?token=" + token
 	subject := "Reset your Agent United password"
 	body := fmt.Sprintf(
@@ -499,36 +552,93 @@ func sendResetEmail(ctx context.Context, toEmail, token string) {
 		resetLink,
 	)
 
-	apiKey := os.Getenv("SENDGRID_API_KEY")
-	if apiKey == "" {
-		log.Info().Str("to", toEmail).Str("reset_link", resetLink).Msg("password reset email (log fallback; SENDGRID_API_KEY not set)")
+	// Local/dev fallback: if SendGrid is configured, use it.
+	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
+		from := getenv("FROM_EMAIL", "noreply@agentunited.ai")
+		payload := map[string]any{
+			"personalizations": []map[string]any{{"to": []map[string]string{{"email": toEmail}}}},
+			"from":             map[string]string{"email": from},
+			"subject":          subject,
+			"content":          []map[string]string{{"type": "text/plain", "value": body}},
+		}
+		b, _ := json.Marshal(payload)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.sendgrid.com/v3/mail/send", bytes.NewReader(b))
+		if err != nil {
+			log.Error().Err(err).Msg("build sendgrid request failed")
+			return
+		}
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Error().Err(err).Str("to", toEmail).Msg("failed to send reset email via sendgrid")
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			log.Error().Int("status", resp.StatusCode).Str("to", toEmail).Msg("sendgrid rejected reset email")
+		}
 		return
 	}
 
-	from := getenv("FROM_EMAIL", "noreply@agentunited.ai")
-	payload := map[string]any{
-		"personalizations": []map[string]any{{"to": []map[string]string{{"email": toEmail}}}},
-		"from":             map[string]string{"email": from},
-		"subject":          subject,
-		"content":          []map[string]string{{"type": "text/plain", "value": body}},
-	}
-	b, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.sendgrid.com/v3/mail/send", bytes.NewReader(b))
-	if err != nil {
-		log.Error().Err(err).Msg("build sendgrid request failed")
+	// Default path: Gmail API via service account creds + domain-wide delegation.
+	if err := sendViaGmailAPI(ctx, toEmail, impersonateEmail, subject, body); err != nil {
+		log.Error().Err(err).Str("to", toEmail).Msg("gmail send failed; logging reset link fallback")
+		log.Info().Str("to", toEmail).Str("reset_link", resetLink).Msg("password reset email fallback")
 		return
 	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	log.Info().Str("to", toEmail).Str("from", impersonateEmail).Msg("password reset email sent via gmail api")
+}
+
+func sendViaGmailAPI(ctx context.Context, toEmail, impersonateEmail, subject, body string) error {
+	if strings.TrimSpace(impersonateEmail) == "" {
+		impersonateEmail = "noreply@agentunited.ai"
+	}
+
+	ts, err := gmailTokenSource(ctx, impersonateEmail)
 	if err != nil {
-		log.Error().Err(err).Str("to", toEmail).Msg("failed to send reset email")
-		return
+		return err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		log.Error().Int("status", resp.StatusCode).Str("to", toEmail).Msg("sendgrid rejected reset email")
+	svc, err := gmail.NewService(ctx, option.WithTokenSource(ts))
+	if err != nil {
+		return fmt.Errorf("create gmail service: %w", err)
 	}
+
+	rfc2822 := strings.Join([]string{
+		"From: " + impersonateEmail,
+		"To: " + toEmail,
+		"Subject: " + subject,
+		"MIME-Version: 1.0",
+		"Content-Type: text/plain; charset=UTF-8",
+		"",
+		body,
+	}, "\r\n")
+
+	raw := base64.RawURLEncoding.EncodeToString([]byte(rfc2822))
+	_, err = svc.Users.Messages.Send("me", &gmail.Message{Raw: raw}).Do()
+	if err != nil {
+		return fmt.Errorf("gmail users.messages.send: %w", err)
+	}
+	return nil
+}
+
+func gmailTokenSource(ctx context.Context, subject string) (oauth2.TokenSource, error) {
+	// If a service-account key is available locally, use JWTConfigFromJSON with Subject.
+	if credPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"); credPath != "" {
+		if b, err := os.ReadFile(credPath); err == nil {
+			if cfg, err := google.JWTConfigFromJSON(b, gmail.GmailSendScope); err == nil {
+				cfg.Subject = subject
+				return cfg.TokenSource(ctx), nil
+			}
+		}
+	}
+
+	// Cloud Run ambient credentials fallback.
+	ts, err := google.DefaultTokenSource(ctx, gmail.GmailSendScope)
+	if err != nil {
+		return nil, fmt.Errorf("default google token source: %w", err)
+	}
+	return ts, nil
 }
 
 // forgotPassword handles POST /api/v1/users/forgot-password
@@ -574,7 +684,7 @@ func (a *App) forgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go sendResetEmail(context.Background(), userEmail, token)
+	sendResetEmail(r.Context(), userEmail, token, a.cfg.GmailImpersonateEmail)
 
 	writeJSON(w, http.StatusOK, okMsg)
 }
