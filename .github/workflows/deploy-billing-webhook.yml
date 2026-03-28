@@ -1,0 +1,74 @@
+name: Deploy Billing Webhook
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/billing-webhook/**'
+      - '.github/workflows/deploy-billing-webhook.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: agentunited-prod
+  REGION: us-central1
+  GAR_REPO: agent-united
+  IMAGE_NAME: billing-webhook
+  SERVICE_NAME: agent-united-billing-webhook
+  HEALTH_PATH: /health
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/961985674922/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: empire-deploy@agentunited-prod.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+
+      - name: Capture previous revision
+        id: prev
+        run: |
+          PREV_REV=$(gcloud run services describe "${SERVICE_NAME}" \
+            --project "${PROJECT_ID}" --region "${REGION}" \
+            --format='value(status.traffic[0].revisionName)')
+          echo "prev=${PREV_REV}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        run: |
+          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPO}/${IMAGE_NAME}:latest"
+          gcloud builds submit apps/billing-webhook --project "${PROJECT_ID}" --tag "${IMAGE_URI}"
+
+      - name: Deploy
+        run: |
+          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${GAR_REPO}/${IMAGE_NAME}:latest"
+          gcloud run deploy "${SERVICE_NAME}" \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --image "${IMAGE_URI}" \
+            --quiet
+
+      - name: Health check
+        id: health
+        continue-on-error: true
+        run: |
+          URL=$(gcloud run services describe "${SERVICE_NAME}" --project "${PROJECT_ID}" --region "${REGION}" --format='value(status.url)')
+          curl -fsS --retry 6 --retry-delay 5 "${URL}${HEALTH_PATH}"
+
+      - name: Roll back on failed health check
+        if: steps.health.outcome == 'failure' && steps.prev.outputs.prev != ''
+        run: |
+          gcloud run services update-traffic "${SERVICE_NAME}" \
+            --project "${PROJECT_ID}" --region "${REGION}" \
+            --to-revisions "${{ steps.prev.outputs.prev }}=100"
+          exit 1
