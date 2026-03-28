@@ -163,8 +163,7 @@ struct OnboardingRootView: View {
                 isPresentingSelfHostedSignIn = true
             }
             if case let .resetPassword(token) = coordinator.pendingRoute {
-                resetPasswordToken = token
-                isPresentingResetPassword = true
+                presentResetPassword(token)
             }
         }
         .onChange(of: coordinator.pendingRoute) { _, newValue in
@@ -181,9 +180,28 @@ struct OnboardingRootView: View {
                 isPresentingSelfHostedSignIn = true
             }
             if case let .resetPassword(token) = newValue {
-                resetPasswordToken = token
-                isPresentingResetPassword = true
+                presentResetPassword(token)
             }
+        }
+    }
+
+    private func presentResetPassword(_ token: String) {
+        resetPasswordToken = token
+        coordinator.pendingRoute = nil
+
+        // Dismiss any currently presented onboarding modals first.
+        // SwiftUI won't present a parent fullScreenCover while a child cover is active.
+        coordinator.isPresentingInvite = false
+        isPresentingClaimKey = false
+        isPresentingWorkspaceList = false
+        isPresentingSelfHostedSignIn = false
+        isPresentingSignUp = false
+        isPresentingRelaySignIn = false
+        isPresentingResetPassword = false
+
+        Task {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            isPresentingResetPassword = true
         }
     }
 }
