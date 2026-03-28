@@ -83,11 +83,11 @@ func TestValidatePassword(t *testing.T) {
 		pw   string
 		want bool
 	}{
-		{"short1", false},              // 6 chars — too short
-		{"Pass123", false},             // 7 chars — too short
-		{"password", true},             // 8 chars letters-only — valid
-		{"12345678", true},             // 8 digits — valid
-		{"Pass1234", true},             // 8 chars mixed — valid
+		{"short1", false},             // 6 chars — too short
+		{"Pass123", false},            // 7 chars — too short
+		{"password", true},            // 8 chars letters-only — valid
+		{"12345678", true},            // 8 digits — valid
+		{"Pass1234", true},            // 8 chars mixed — valid
 		{"Gm3s-9kPx-vR4t-hWj2", true}, // Apple Keychain format — valid
 	}
 	for _, tc := range cases {
