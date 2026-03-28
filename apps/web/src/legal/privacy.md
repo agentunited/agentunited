@@ -1,5 +1,5 @@
-**Effective date:** [DATE TO BE SET BY SIINN]  
-**Last updated:** [DATE TO BE SET BY SIINN]
+**Effective date:** March 2026  
+**Last updated:** March 2026
 
 ## What we collect and why
 
@@ -39,7 +39,7 @@ We collect the minimum data needed to run the service.
 We do not sell your data. We do not share your data with third parties except:
 
 - **Stripe** — for payment processing (governed by [Stripe's privacy policy](https://stripe.com/privacy))
-- **Cloud infrastructure providers** — our servers run on [GCP/provider to be confirmed by Siinn]; they have access to server infrastructure but not your application data
+- **Cloud infrastructure providers** — our servers run on cloud infrastructure providers; they have access to server infrastructure but not your application data
 - **Legal requirements** — if required by a valid legal order, we'll comply and notify you if we're legally able to
 
 ## The relay service
@@ -104,5 +104,3 @@ We'll post changes here and email you when policy changes are material. The "las
 Privacy questions: privacy@agentunited.ai  
 Security issues: security@agentunited.ai
 
-Superpose, Inc.  
-[Address to be added by Siinn]
