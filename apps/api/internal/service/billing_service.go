@@ -74,6 +74,21 @@ func (s *billingService) GetStatus(ctx context.Context, workspaceID string) (*mo
 		// Default free status if not yet present.
 		sub = &models.Subscription{WorkspaceID: workspaceID, Plan: "free", Status: "free", RelayTier: "free", RelayBandwidthLimitMB: 1024, RelayConnectionsMax: 3}
 	}
+
+	// Prefer live relay subdomain from Redis cache if available.
+	if s.redisClient != nil && workspaceID != "" {
+		if token, err := s.redisClient.Get(ctx, "relay:workspace:"+workspaceID).Result(); err == nil && token != "" {
+			if raw, err := s.redisClient.Get(ctx, "relay:token:"+token).Result(); err == nil && raw != "" {
+				var payload map[string]interface{}
+				if json.Unmarshal([]byte(raw), &payload) == nil {
+					if subdomain, ok := payload["subdomain"].(string); ok && strings.TrimSpace(subdomain) != "" {
+						sub.RelaySubdomain = subdomain
+					}
+				}
+			}
+		}
+	}
+
 	users, err := s.userRepo.Count(ctx)
 	if err != nil {
 		return nil, 0, err

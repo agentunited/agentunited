@@ -32,7 +32,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	r.Use(func(next http.Handler) http.Handler {
 		timeoutHandler := middleware.Timeout(60 * time.Second)(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/ws" {
+			if r.URL.Path == "/ws" || r.URL.Path == "/api/v1/events/stream" || r.URL.Path == "/v1/events/stream" {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -115,6 +115,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	pairingHandler := handlers.NewPairingHandler()
 	centrifugoHandler := handlers.NewCentrifugoHandler(realtimeEngine, channelService)
 	wsHandler := handlers.NewWebSocketHandlerV2(messageService, channelService, cfg.JWT.Secret, hub)
+	eventsHandler := handlers.NewEventsHandler(channelRepo, hub)
 
 	// WebSocket endpoint — no timeout middleware (long-lived connection)
 	r.Handle("/ws", wsHandler)
@@ -145,7 +146,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	for _, basePath := range []string{"/api/v1", "/v1"} {
 		r.Route(basePath, func(r chi.Router) {
 			r.Use(mw.Auth(cfg.JWT.Secret, apiKeyRepo, agentRepo, userRepo))
-			registerProtectedRoutes(r, meHandler, usersHandler, inviteHandler, integrationHandler, billingHandler, relayHandler, pairingHandler, centrifugoHandler, agentHandler, apiKeyHandler, webhookHandler, channelHandler, messageHandler)
+			registerProtectedRoutes(r, meHandler, usersHandler, inviteHandler, integrationHandler, billingHandler, relayHandler, pairingHandler, centrifugoHandler, agentHandler, apiKeyHandler, webhookHandler, channelHandler, messageHandler, eventsHandler)
 		})
 	}
 
@@ -167,6 +168,7 @@ func registerProtectedRoutes(
 	webhookHandler *handlers.WebhookHandler,
 	channelHandler *handlers.ChannelHandler,
 	messageHandler *handlers.MessageHandler,
+	eventsHandler *handlers.EventsHandler,
 ) {
 	// Current user profile routes
 	r.Get("/me", meHandler.GetMe)
@@ -256,6 +258,9 @@ func registerProtectedRoutes(
 
 	// Message search route
 	r.Get("/messages/search", messageHandler.SearchMessages)
+
+	// SSE events stream (message.created)
+	r.Get("/events/stream", eventsHandler.Stream)
 
 	// DM routes
 	r.Post("/dm", channelHandler.CreateDM)
