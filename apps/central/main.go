@@ -29,6 +29,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
+	"google.golang.org/api/impersonate"
 	"google.golang.org/api/option"
 )
 
@@ -633,10 +634,14 @@ func gmailTokenSource(ctx context.Context, subject string) (oauth2.TokenSource, 
 		}
 	}
 
-	// Cloud Run ambient credentials fallback.
-	ts, err := google.DefaultTokenSource(ctx, gmail.GmailSendScope)
+	// Cloud Run ambient credentials — use impersonate package for DWD.
+	ts, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+		TargetPrincipal: "empire-deploy@agentunited-prod.iam.gserviceaccount.com",
+		Scopes:          []string{gmail.GmailSendScope},
+		Subject:         subject,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("default google token source: %w", err)
+		return nil, fmt.Errorf("impersonate token source: %w", err)
 	}
 	return ts, nil
 }
