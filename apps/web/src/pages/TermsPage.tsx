@@ -11,9 +11,6 @@ export function TermsPage() {
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
         </div>
 
-        <div className="mb-6 rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          Draft policy — pending Siinn approval before publishing.
-        </div>
 
         <article className="prose prose-slate max-w-none dark:prose-invert">
           <ReactMarkdown>{termsMarkdown}</ReactMarkdown>

@@ -1,5 +1,5 @@
-**Effective date:** [DATE TO BE SET BY SIINN]  
-**Last updated:** [DATE TO BE SET BY SIINN]
+**Effective date:** March 2026  
+**Last updated:** March 2026
 
 ## 1. What Agent United is
 
@@ -91,5 +91,3 @@ We'll post changes here and email subscribers when terms change in a material wa
 Legal questions: legal@agentunited.ai  
 Everything else: hello@agentunited.ai
 
-Superpose, Inc.  
-[Address to be added by Siinn]
