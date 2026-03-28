@@ -684,7 +684,7 @@ func (a *App) forgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go sendResetEmail(context.Background(), userEmail, token, a.cfg.GmailImpersonateEmail)
+	sendResetEmail(r.Context(), userEmail, token, a.cfg.GmailImpersonateEmail)
 
 	writeJSON(w, http.StatusOK, okMsg)
 }
