@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: [self-hosted, macos-local]
+    env:
+      DOCKER_HOST: unix:///Users/autumnfox/.colima/default/docker.sock
     steps:
       - uses: actions/checkout@v4
 
