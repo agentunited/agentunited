@@ -60,6 +60,7 @@ func main() {
 
 	// Initialize embedded relay manager (runtime-updatable)
 	relayManager := relay.NewManager(cfg.Relay.DeploymentMode, cfg.Relay.ServerURL, cfg.Relay.LocalAPIURL, cfg.Relay.Token)
+	relayManager.SetRedisClient(cache.Client)
 	relay.SetGlobalManager(relayManager)
 	relayCtx, relayCancel := context.WithCancel(context.Background())
 	defer relayCancel()

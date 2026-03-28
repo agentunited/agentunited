@@ -3,6 +3,8 @@ package relay
 import (
 	"context"
 	"sync"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Manager controls the lifecycle of the embedded tunnel client.
@@ -16,6 +18,7 @@ type Manager struct {
 	serverURL      string
 	localAPI       string
 	token          string
+	redisClient    *redis.Client
 }
 
 func NewManager(deploymentMode, serverURL, localAPI, token string) *Manager {
@@ -32,6 +35,12 @@ func (m *Manager) Start(ctx context.Context) {
 	defer m.mu.Unlock()
 	m.parentCtx = ctx
 	m.startLocked()
+}
+
+func (m *Manager) SetRedisClient(client *redis.Client) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.redisClient = client
 }
 
 func (m *Manager) UpdateToken(token string) {
@@ -55,7 +64,7 @@ func (m *Manager) startLocked() {
 	}
 	runCtx, cancel := context.WithCancel(m.parentCtx)
 	m.cancel = cancel
-	c := NewClient(m.serverURL, m.token, m.localAPI)
+	c := NewClientWithRedis(m.serverURL, m.token, m.localAPI, m.redisClient)
 	go c.Start(runCtx)
 }
 

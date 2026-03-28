@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,6 +22,7 @@ type Client struct {
 	token      string
 	localAPI   string
 	httpClient *http.Client
+	redis      *redis.Client
 
 	writeMu sync.Mutex
 	wsMu    sync.Mutex
@@ -28,10 +30,15 @@ type Client struct {
 }
 
 func NewClient(relayURL, token, localAPI string) *Client {
+	return NewClientWithRedis(relayURL, token, localAPI, nil)
+}
+
+func NewClientWithRedis(relayURL, token, localAPI string, redisClient *redis.Client) *Client {
 	return &Client{
 		relayURL: relayURL,
 		token:    token,
 		localAPI: localAPI,
+		redis:    redisClient,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -99,6 +106,7 @@ func (c *Client) runSession(ctx context.Context) error {
 			var m RegisteredMessage
 			_ = json.Unmarshal(data, &m)
 			log.Info().Str("public_url", m.URL).Str("subdomain", m.Subdomain).Msg("relay connected")
+			c.updateRelayCache(ctx, m)
 		case TypePing:
 			if err := c.writeJSON(conn, Envelope{Type: TypePong}); err != nil {
 				return err
@@ -227,4 +235,22 @@ func (c *Client) writeJSON(ws *websocket.Conn, v any) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	return ws.WriteJSON(v)
+}
+
+func (c *Client) updateRelayCache(ctx context.Context, m RegisteredMessage) {
+	if c.redis == nil || c.token == "" {
+		return
+	}
+	key := "relay:token:" + c.token
+	payload := map[string]interface{}{}
+	if existing, err := c.redis.Get(ctx, key).Result(); err == nil && existing != "" {
+		_ = json.Unmarshal([]byte(existing), &payload)
+	}
+	payload["token"] = c.token
+	payload["subdomain"] = m.Subdomain
+	payload["public_url"] = m.URL
+	payload["updated_at"] = time.Now().UTC().Format(time.RFC3339)
+	if b, err := json.Marshal(payload); err == nil {
+		_ = c.redis.Set(ctx, key, string(b), 0).Err()
+	}
 }
