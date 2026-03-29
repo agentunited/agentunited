@@ -215,7 +215,7 @@ private struct WelcomeScreen: View {
     @Binding var isSignInPresented: Bool
     @Binding var isGetStartedPresented: Bool
 
-    @State private var clipboardInviteURL: String?
+    @State private var hasProbableClipboardURL = false
     @State private var isBannerVisible = false
 
     var body: some View {
@@ -248,13 +248,15 @@ private struct WelcomeScreen: View {
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
-                if isBannerVisible, clipboardInviteURL != nil {
+                if isBannerVisible, hasProbableClipboardURL {
                     ClipboardInviteBanner(
                         onTap: {
-                            if let str = clipboardInviteURL, let url = URL(string: str) {
-                                withAnimation { isBannerVisible = false }
-                                UIApplication.shared.open(url)
-                            }
+                            withAnimation { isBannerVisible = false }
+                            guard let text = UIPasteboard.general.string,
+                                  text.range(of: #"agentunited://|agentunited\.ai/invite\?token="#, options: .regularExpression) != nil,
+                                  let url = URL(string: text)
+                            else { return }
+                            UIApplication.shared.open(url)
                         },
                         onDismiss: { withAnimation { isBannerVisible = false } }
                     )
@@ -307,14 +309,21 @@ private struct WelcomeScreen: View {
     }
 
     private func checkClipboard() {
-        guard let text = UIPasteboard.general.string,
-              text.range(of: #"agentunited://|agentunited\.ai/invite\?token="#, options: .regularExpression) != nil
-        else { return }
-        clipboardInviteURL = text
-        withAnimation { isBannerVisible = true }
-        Task {
-            try? await Task.sleep(nanoseconds: 10_000_000_000)
-            withAnimation { isBannerVisible = false }
+        // iOS 16+: detect URL-like content without reading pasteboard payload (avoids paste permission prompt).
+        UIPasteboard.general.detectPatterns(for: [.probableWebURL]) { result in
+            guard case let .success(patterns) = result,
+                  patterns.contains(.probableWebURL)
+            else { return }
+
+            DispatchQueue.main.async {
+                hasProbableClipboardURL = true
+                withAnimation { isBannerVisible = true }
+
+                Task {
+                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                    withAnimation { isBannerVisible = false }
+                }
+            }
         }
     }
 }
