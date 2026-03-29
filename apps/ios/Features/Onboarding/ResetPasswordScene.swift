@@ -37,6 +37,8 @@ struct ResetPasswordScene: View {
                         darkField(title: "New password") {
                             SecureField("Minimum 8 characters", text: $viewModel.password)
                                 .textContentType(.newPassword)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
                                 .accessibilityIdentifier("reset-password-field")
                         }
 
@@ -44,6 +46,8 @@ struct ResetPasswordScene: View {
                             darkField(title: "Confirm password") {
                                 SecureField("Confirm password", text: $viewModel.confirmPassword)
                                     .textContentType(.newPassword)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
                                     .accessibilityIdentifier("reset-confirm-password-field")
                             }
                             if viewModel.showMismatch {

@@ -136,6 +136,7 @@ struct SelfHostedSignInScene: View {
                     SignInFieldGroup(title: "Password") {
                         SecureField("Enter your password", text: $viewModel.password)
                             .textContentType(.password)
+                            .autocorrectionDisabled(true)
                             .accessibilityIdentifier("password-field")
                     }
                 }

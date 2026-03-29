@@ -542,6 +542,7 @@ private struct SignInScene: View {
                     SignInFieldSection(title: "Email") {
                         TextField("Email", text: $viewModel.email)
                             .keyboardType(.emailAddress)
+                            .textContentType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
                             .accessibilityIdentifier("email-field")
@@ -549,6 +550,7 @@ private struct SignInScene: View {
 
                     SignInFieldSection(title: "Password") {
                         SecureField("Enter your password", text: $viewModel.password)
+                            .textContentType(.password)
                             .accessibilityIdentifier("password-field")
                     }
                 }
