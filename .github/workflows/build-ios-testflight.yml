@@ -94,12 +94,14 @@ jobs:
           KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          echo "$KEY_B64" | base64 --decode > /tmp/AuthKey_${KEY_ID}.p8
+          # altool requires key in ~/.appstoreconnect/private_keys/ — --apiKeyFilePath is ignored
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$KEY_B64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
           IPA=$(ls /tmp/AgentUnited-export/*.ipa | head -1)
+          echo "Uploading: $IPA"
           xcrun altool --upload-app \
             --type ios \
             --file "$IPA" \
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID" \
-            --apiKeyFilePath "/tmp/AuthKey_${KEY_ID}.p8" \
             --show-progress
