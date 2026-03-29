@@ -56,7 +56,8 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="AgentUnited iOS Distribution" \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            | xcpretty || true
+            DEVELOPMENT_TEAM=G8QPW9SH2T \
+            
           ls /tmp/AgentUnited.xcarchive
 
       - name: Export IPA
