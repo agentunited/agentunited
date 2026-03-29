@@ -6,9 +6,9 @@ struct ResetPasswordScene: View {
 
     let onSuccess: () -> Void
 
-    init(token: String, onSuccess: @escaping () -> Void) {
+    init(token: String, email: String, onSuccess: @escaping () -> Void) {
         self.onSuccess = onSuccess
-        _viewModel = StateObject(wrappedValue: ResetPasswordViewModel(token: token))
+        _viewModel = StateObject(wrappedValue: ResetPasswordViewModel(token: token, email: email))
     }
 
     var body: some View {
@@ -34,6 +34,15 @@ struct ResetPasswordScene: View {
                     }
 
                     VStack(alignment: .leading, spacing: 20) {
+                        // Hidden username field for iOS password manager account association
+                        TextField("", text: .constant(viewModel.email))
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
+                            .frame(width: 0, height: 0)
+                            .opacity(0)
+                            .accessibilityHidden(true)
+
                         darkField(title: "New password") {
                             SecureField("Minimum 8 characters", text: $viewModel.password)
                                 .textContentType(.newPassword)
@@ -141,10 +150,12 @@ private final class ResetPasswordViewModel: ObservableObject {
     @Published var isSubmitting = false
     @Published var errorMessage: String?
 
+    let email: String
     private let token: String
 
-    init(token: String) {
+    init(token: String, email: String) {
         self.token = token
+        self.email = email
     }
 
     var showMismatch: Bool {
