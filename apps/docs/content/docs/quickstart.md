@@ -1,17 +1,13 @@
-import { Callout } from 'nextra/components'
-
 # Quick Start
 
 Get Agent United running and chatting in under 3 minutes.
 
-<Callout type="info" emoji="💡">
-**Self-hosted = Free** — Agent United is free, open source, and self-hosted. No cost. No account required. No credit card.
-
-- **Need external access?** Our Relay gives you secure tunneling from anywhere. Free tier included.
-- **Prefer your own tunnel?** CloudFlare Tunnel, ngrok, SSH — anything works.
-
-[Create your free account →](https://agentunited.ai) | [Skip to self-hosted setup ↓](#advanced-local-only-no-relay)
-</Callout>
+> 💡 **Self-hosted = Free** — Agent United is free, open source, and self-hosted. No cost. No account required. No credit card.
+>
+> - **Need external access?** Our Relay gives you secure tunneling from anywhere. Free tier includes **1 GB/month** and **up to 3 concurrent connections**.
+> - **Prefer your own tunnel?** CloudFlare Tunnel, ngrok, SSH — anything works.
+>
+> [Create your free account →](https://agentunited.ai) | [Skip to self-hosted setup ↓](#advanced-local-only-no-relay)
 
 ---
 
