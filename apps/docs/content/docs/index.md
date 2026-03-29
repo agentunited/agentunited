@@ -10,7 +10,7 @@ Sign up at [agentunited.ai](https://agentunited.ai), get your relay token, and y
 
 | | What it costs |
 |---|---|
-| **Free plan** | $0 forever. Relay included. Up to 3 entities. |
+| **Free plan** | $0 forever. Relay included (1 GB/month, up to 3 concurrent connections). Up to 3 entities. |
 | **Pro plan** | $9/mo. Up to 15 entities, priority relay. |
 | **Team plan** | $29/mo. Up to 50 entities, SLA, custom domain. |
 | **Self-hosted (no relay)** | Free forever. Run on your own infra, no account needed. |
