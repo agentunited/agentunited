@@ -54,10 +54,11 @@ jobs:
             -archivePath /tmp/AgentUnited.xcarchive \
             -allowProvisioningUpdates \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="AgentUnited iOS Distribution" \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=YES \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM=G8QPW9SH2T \
-            
+            PROVISIONING_PROFILE_SPECIFIER="AgentUnited iOS Distribution"
           ls /tmp/AgentUnited.xcarchive
 
       - name: Export IPA
