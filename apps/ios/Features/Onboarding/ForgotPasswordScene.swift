@@ -4,6 +4,12 @@ struct ForgotPasswordScene: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = ForgotPasswordViewModel()
 
+    let onSuccessEmailCaptured: (String) -> Void
+
+    init(onSuccessEmailCaptured: ((String) -> Void)? = nil) {
+        self.onSuccessEmailCaptured = onSuccessEmailCaptured ?? { _ in }
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -89,7 +95,12 @@ struct ForgotPasswordScene: View {
             }
 
             Button {
-                Task { await viewModel.send() }
+                Task {
+                    await viewModel.send()
+                    if viewModel.didSend {
+                        onSuccessEmailCaptured(viewModel.normalizedEmail)
+                    }
+                }
             } label: {
                 if viewModel.isSubmitting {
                     ProgressView()
@@ -156,8 +167,12 @@ private final class ForgotPasswordViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var didSend = false
 
+    var normalizedEmail: String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var canSubmit: Bool {
-        email.trimmingCharacters(in: .whitespacesAndNewlines).contains("@") && !isSubmitting
+        normalizedEmail.contains("@") && !isSubmitting
     }
 
     func send() async {
@@ -165,9 +180,7 @@ private final class ForgotPasswordViewModel: ObservableObject {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            try await CentralAPIClient().forgotPassword(
-                email: email.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
+            try await CentralAPIClient().forgotPassword(email: normalizedEmail)
             didSend = true
         } catch {
             // Server is always silent on unknown email — surface only network/server errors

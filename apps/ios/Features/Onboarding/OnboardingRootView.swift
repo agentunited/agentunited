@@ -24,6 +24,7 @@ struct OnboardingRootView: View {
     // Reset password deep link
     @State private var isPresentingResetPassword = false
     @State private var resetPasswordToken = ""
+    @State private var resetPasswordEmail = ""
 
     private var pendingInvite: AppCoordinator.PendingInvite? {
         if case let .invite(invite) = coordinator.pendingRoute { return invite }
@@ -60,6 +61,9 @@ struct OnboardingRootView: View {
                             try? await Task.sleep(nanoseconds: 200_000_000)
                             isPresentingSelfHostedSignIn = true
                         }
+                    },
+                    onForgotPasswordEmailCaptured: { email in
+                        resetPasswordEmail = email
                     }
                 )
             }
@@ -141,7 +145,7 @@ struct OnboardingRootView: View {
             .tint(.auEmerald)
         }
         .fullScreenCover(isPresented: $isPresentingResetPassword) {
-            ResetPasswordScene(token: resetPasswordToken) {
+            ResetPasswordScene(token: resetPasswordToken, email: resetPasswordEmail) {
                 isPresentingResetPassword = false
                 Task {
                     try? await Task.sleep(nanoseconds: 200_000_000)
@@ -163,7 +167,7 @@ struct OnboardingRootView: View {
                 isPresentingSelfHostedSignIn = true
             }
             if case let .resetPassword(token) = coordinator.pendingRoute {
-                presentResetPassword(token)
+                presentResetPassword(token: token, email: resetPasswordEmail)
             }
         }
         .onChange(of: coordinator.pendingRoute) { _, newValue in
@@ -180,13 +184,14 @@ struct OnboardingRootView: View {
                 isPresentingSelfHostedSignIn = true
             }
             if case let .resetPassword(token) = newValue {
-                presentResetPassword(token)
+                presentResetPassword(token: token, email: resetPasswordEmail)
             }
         }
     }
 
-    private func presentResetPassword(_ token: String) {
+    private func presentResetPassword(token: String, email: String) {
         resetPasswordToken = token
+        resetPasswordEmail = email
         coordinator.pendingRoute = nil
 
         // Dismiss any currently presented onboarding modals first.
@@ -355,14 +360,17 @@ private struct RelaySignInScene: View {
     @StateObject private var viewModel: RelaySignInViewModel
     let onAuthenticated: (String) -> Void
     let onSelfHosted: () -> Void
+    let onForgotPasswordEmailCaptured: (String) -> Void
 
     @State private var isPresentingForgotPassword = false
 
     init(sessionStore: AppSessionStore,
          onAuthenticated: @escaping (String) -> Void,
-         onSelfHosted: @escaping () -> Void) {
+         onSelfHosted: @escaping () -> Void,
+         onForgotPasswordEmailCaptured: @escaping (String) -> Void) {
         self.onAuthenticated = onAuthenticated
         self.onSelfHosted = onSelfHosted
+        self.onForgotPasswordEmailCaptured = onForgotPasswordEmailCaptured
         _viewModel = StateObject(wrappedValue: RelaySignInViewModel(sessionStore: sessionStore))
     }
 
@@ -449,7 +457,7 @@ private struct RelaySignInScene: View {
             }
         }
         .fullScreenCover(isPresented: $isPresentingForgotPassword) {
-            ForgotPasswordScene()
+            ForgotPasswordScene(onSuccessEmailCaptured: onForgotPasswordEmailCaptured)
         }
     }
 }
