@@ -26,6 +26,7 @@
 		AA0000000000000000000025 /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000026 /* OnboardingViewModel.swift */; };
 		AA0000000000000000000029 /* OnboardingViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000027 /* OnboardingViewModelTests.swift */; };
 		AA0000000000000000000091 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000092 /* Assets.xcassets */; };
+		D2F3A8B41C314A8EA7E6F201 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D2F3A8B31C314A8EA7E6F201 /* PrivacyInfo.xcprivacy */; };
 		AA0000000000000000000093 /* SignUpScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000094 /* SignUpScene.swift */; };
 		AA0000000000000000000095 /* ClaimKeyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000096 /* ClaimKeyScene.swift */; };
 		AA0000000000000000000097 /* CentralAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000098 /* CentralAPIClient.swift */; };
@@ -69,6 +70,7 @@
 		AA0000000000000000000027 /* OnboardingViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModelTests.swift; sourceTree = "<group>"; };
 		AA0000000000000000000028 /* AgentUnitedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AgentUnitedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000092 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = AgentUnited/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		D2F3A8B31C314A8EA7E6F201 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AgentUnited/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
 		AA0000000000000000000094 /* SignUpScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpScene.swift; sourceTree = "<group>"; };
 		AA0000000000000000000096 /* ClaimKeyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaimKeyScene.swift; sourceTree = "<group>"; };
 		AA0000000000000000000098 /* CentralAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CentralAPIClient.swift; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 				AA0000000000000000000005 /* Models.swift */,
 				AA0000000000000000000010 /* AppSessionStore.swift */,
 				AA0000000000000000000092 /* Assets.xcassets */,
+				D2F3A8B31C314A8EA7E6F201 /* PrivacyInfo.xcprivacy */,
 			);
 		};
 		AA0000000000000000000033 /* Features */ = {
@@ -319,6 +322,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA0000000000000000000091 /* Assets.xcassets in Resources */,
+				D2F3A8B41C314A8EA7E6F201 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

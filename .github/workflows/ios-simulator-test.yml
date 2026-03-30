@@ -56,35 +56,26 @@ jobs:
           sleep 3
 
           # Install app
-          # Use known -derivedDataPath from build step
           APP=$(find /tmp/derived-data/Build/Products -name "AgentUnited.app" -path "*/Debug-iphonesimulator/*" | head -1)
           echo "App path: $APP"
           xcrun simctl install "$UDID" "$APP"
 
-          # Capture ALL simulator logs in background (broad filter to catch any crash)
-          xcrun simctl spawn "$UDID" log stream \
-            --level debug > /tmp/sim-log-all.txt 2>&1 &
-          LOG_PID=$!
+          # Launch app
+          xcrun simctl launch "$UDID" ai.agentunited.app && echo "LAUNCH_OK" || echo "LAUNCH_FAILED"
+          sleep 5
 
-          # Launch app with console output captured directly (catches stdout/stderr + crash reason)
-          echo "=== LAUNCH WITH CONSOLE ==="
-          xcrun simctl launch --console-pty "$UDID" ai.agentunited.app > /tmp/app-console.txt 2>&1 &
-          APP_PID=$!
-          sleep 10
-          kill $APP_PID 2>/dev/null || true
-          kill $LOG_PID 2>/dev/null || true
+          # Read from persistent log store (catches crashes even if instant)
+          echo "=== OS LOG (post-launch) ==="
+          xcrun simctl spawn "$UDID" log show \
+            --predicate 'process == "AgentUnited" OR subsystem CONTAINS "agentunited" OR category == "DYLD"' \
+            --last 30s \
+            --style compact 2>/dev/null | tail -100
 
-          echo "=== APP CONSOLE OUTPUT ==="
-          cat /tmp/app-console.txt
-
-          echo "=== ALL SIM LOGS (last 100 lines) ==="
-          tail -100 /tmp/sim-log-all.txt
-
-          echo "=== CRASH REPORTS (all) ==="
-          find ~/Library/Logs/DiagnosticReports -name "*.crash" -newer /tmp/sim-log-all.txt 2>/dev/null | while read f; do
-            echo "--- $f ---"
-            head -80 "$f"
-          done
+          # Also show dyld/crash from system
+          xcrun simctl spawn "$UDID" log show \
+            --predicate 'eventMessage CONTAINS "crash" OR eventMessage CONTAINS "killed" OR eventMessage CONTAINS "dyld" OR process == "AgentUnited"' \
+            --last 30s \
+            --style compact 2>/dev/null | tail -50
 
           echo "=== RUNNING PROCESSES (is app still alive?) ==="
           xcrun simctl spawn "$UDID" ps aux 2>/dev/null | grep -i agent || echo "AgentUnited NOT running (crashed)"
