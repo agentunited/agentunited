@@ -54,9 +54,11 @@ jobs:
             -archivePath /tmp/AgentUnited.xcarchive \
             -allowProvisioningUpdates \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="AgentUnited iOS Distribution" \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=YES \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            | xcpretty || true
+            DEVELOPMENT_TEAM=G8QPW9SH2T \
+            PROVISIONING_PROFILE_SPECIFIER="AgentUnited iOS Distribution"
           ls /tmp/AgentUnited.xcarchive
 
       - name: Export IPA
@@ -69,7 +71,7 @@ jobs:
               <key>method</key>
               <string>app-store-connect</string>
               <key>destination</key>
-              <string>upload</string>
+              <string>export</string>
               <key>signingStyle</key>
               <string>manual</string>
               <key>provisioningProfiles</key>
@@ -92,12 +94,14 @@ jobs:
           KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          echo "$KEY_B64" | base64 --decode > /tmp/AuthKey_${KEY_ID}.p8
+          # altool requires key in ~/.appstoreconnect/private_keys/ — --apiKeyFilePath is ignored
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$KEY_B64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
           IPA=$(ls /tmp/AgentUnited-export/*.ipa | head -1)
+          echo "Uploading: $IPA"
           xcrun altool --upload-app \
             --type ios \
             --file "$IPA" \
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID" \
-            --apiKeyFilePath "/tmp/AuthKey_${KEY_ID}.p8" \
             --show-progress
