@@ -24,6 +24,7 @@ jobs:
       - name: Build for simulator
         run: |
           xcodebuild build \
+            -derivedDataPath /tmp/derived-data \
             -project apps/ios/AgentUnited.xcodeproj \
             -scheme AgentUnited \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
@@ -52,7 +53,8 @@ jobs:
           sleep 3
 
           # Install app
-          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "AgentUnited.app" -path "*/Debug-iphonesimulator/*" | head -1)
+          # Use known -derivedDataPath from build step
+          APP=$(find /tmp/derived-data/Build/Products -name "AgentUnited.app" -path "*/Debug-iphonesimulator/*" | head -1)
           echo "App path: $APP"
           xcrun simctl install "$UDID" "$APP"
 
