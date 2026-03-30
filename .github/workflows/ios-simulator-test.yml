@@ -1,0 +1,81 @@
+name: iOS Simulator Smoke Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  simulator-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Show Xcode + available simulators
+        run: |
+          xcodebuild -version
+          xcrun simctl list devicetypes | grep iPhone | tail -5
+          xcrun simctl list runtimes | grep iOS
+
+      - name: Build for simulator
+        run: |
+          xcodebuild build \
+            -project apps/ios/AgentUnited.xcodeproj \
+            -scheme AgentUnited \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -20
+
+      - name: Boot simulator + launch app + capture logs
+        run: |
+          # Get a booted or available simulator
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          for rt, devs in d['devices'].items():
+              if 'iOS-26' in rt or 'iOS 26' in rt:
+                  for dev in devs:
+                      if 'iPhone 16' in dev['name'] and dev['isAvailable']:
+                          print(dev['udid']); exit()
+          # fallback: any available iPhone
+          for rt, devs in d['devices'].items():
+              for dev in devs:
+                  if 'iPhone' in dev['name'] and dev['isAvailable']:
+                      print(dev['udid']); exit()
+          ")
+          echo "Using simulator: $UDID"
+          xcrun simctl boot "$UDID" 2>/dev/null || true
+          sleep 3
+
+          # Install app
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "AgentUnited.app" -path "*/Debug-iphonesimulator/*" | head -1)
+          echo "App path: $APP"
+          xcrun simctl install "$UDID" "$APP"
+
+          # Stream logs in background
+          xcrun simctl spawn "$UDID" log stream \
+            --predicate 'process == "AgentUnited" OR processImagePath ENDSWITH "AgentUnited"' \
+            --level debug > /tmp/sim-log.txt 2>&1 &
+          LOG_PID=$!
+
+          # Launch app
+          xcrun simctl launch "$UDID" ai.agentunited.app && echo "LAUNCH_OK" || echo "LAUNCH_FAILED"
+          sleep 8
+
+          kill $LOG_PID 2>/dev/null || true
+
+          echo "=== SIMULATOR LOG ==="
+          cat /tmp/sim-log.txt
+
+          echo "=== CRASH REPORTS ==="
+          find ~/Library/Logs/DiagnosticReports -name "AgentUnited*" 2>/dev/null | while read f; do
+            echo "--- $f ---"
+            head -60 "$f"
+          done
+
+          echo "=== RUNNING PROCESSES (is app still alive?) ==="
+          xcrun simctl spawn "$UDID" ps aux | grep AgentUnited || echo "AgentUnited NOT running (crashed)"
