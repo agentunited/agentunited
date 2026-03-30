@@ -45,6 +45,40 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.event.inputs.build_number }}" apps/ios/AgentUnited/Info.plist || \
           agvtool new-version -all ${{ github.event.inputs.build_number }}
 
+      - name: Build for simulator + smoke test
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project apps/ios/AgentUnited.xcodeproj \
+            -scheme AgentUnited \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO
+
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import sys,json; d=json.load(sys.stdin); \
+for _,devs in d['devices'].items(): \
+  for dev in devs: \
+    if dev.get('isAvailable') and dev.get('name') == 'iPhone 16 Pro': print(dev['udid']); raise SystemExit")
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "AgentUnited.app" -path "*/Debug-iphonesimulator/*" | head -1)
+          test -n "$APP"
+
+          xcrun simctl uninstall "$UDID" ai.agentunited.app || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" ai.agentunited.app || true
+          sleep 5
+
+          xcrun simctl spawn "$UDID" log show --style compact --last 3m --predicate 'process == "AgentUnited" OR eventMessage CONTAINS[c] "AgentUnited"' > /tmp/sim-agentunited.log || true
+          echo "--- Simulator app logs (tail) ---"
+          tail -n 200 /tmp/sim-agentunited.log || true
+
+          if grep -Eiq 'fatal error|terminating app due to uncaught exception|EXC_BAD_ACCESS|SIGABRT|crash|assertion failed' /tmp/sim-agentunited.log; then
+            echo "Smoke test detected crash signature in simulator logs"
+            exit 1
+          fi
+
       - name: Build archive
         run: |
           xcodebuild archive \
