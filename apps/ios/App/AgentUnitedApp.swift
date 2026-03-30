@@ -1,3 +1,4 @@
+import Foundation
 import SwiftData
 import SwiftUI
 
@@ -25,10 +26,21 @@ struct AgentUnitedApp: App {
     }
 
     private static func makeModelContainer() -> ModelContainer {
+        let schema = Schema([WorkspaceCredential.self, Conversation.self, Message.self, User.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
         do {
-            return try ModelContainer(for: WorkspaceCredential.self, Conversation.self, Message.self, User.self)
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Failed to create model container: \(error.localizedDescription)")
+            // Schema migration failed (e.g. iOS 26 SDK incompatibility) — wipe and recreate.
+            print("ModelContainer failed, wiping store: \(error)")
+            try? FileManager.default.removeItem(at: config.url)
+
+            do {
+                return try ModelContainer(for: schema, configurations: [config])
+            } catch {
+                fatalError("ModelContainer unrecoverable: \(error)")
+            }
         }
     }
 }
