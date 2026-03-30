@@ -61,26 +61,30 @@ jobs:
           echo "App path: $APP"
           xcrun simctl install "$UDID" "$APP"
 
-          # Stream logs in background
+          # Capture ALL simulator logs in background (broad filter to catch any crash)
           xcrun simctl spawn "$UDID" log stream \
-            --predicate 'process == "AgentUnited" OR processImagePath ENDSWITH "AgentUnited"' \
-            --level debug > /tmp/sim-log.txt 2>&1 &
+            --level debug > /tmp/sim-log-all.txt 2>&1 &
           LOG_PID=$!
 
-          # Launch app
-          xcrun simctl launch "$UDID" ai.agentunited.app && echo "LAUNCH_OK" || echo "LAUNCH_FAILED"
-          sleep 8
-
+          # Launch app with console output captured directly (catches stdout/stderr + crash reason)
+          echo "=== LAUNCH WITH CONSOLE ==="
+          xcrun simctl launch --console-pty "$UDID" ai.agentunited.app > /tmp/app-console.txt 2>&1 &
+          APP_PID=$!
+          sleep 10
+          kill $APP_PID 2>/dev/null || true
           kill $LOG_PID 2>/dev/null || true
 
-          echo "=== SIMULATOR LOG ==="
-          cat /tmp/sim-log.txt
+          echo "=== APP CONSOLE OUTPUT ==="
+          cat /tmp/app-console.txt
 
-          echo "=== CRASH REPORTS ==="
-          find ~/Library/Logs/DiagnosticReports -name "AgentUnited*" 2>/dev/null | while read f; do
+          echo "=== ALL SIM LOGS (last 100 lines) ==="
+          tail -100 /tmp/sim-log-all.txt
+
+          echo "=== CRASH REPORTS (all) ==="
+          find ~/Library/Logs/DiagnosticReports -name "*.crash" -newer /tmp/sim-log-all.txt 2>/dev/null | while read f; do
             echo "--- $f ---"
-            head -60 "$f"
+            head -80 "$f"
           done
 
           echo "=== RUNNING PROCESSES (is app still alive?) ==="
-          xcrun simctl spawn "$UDID" ps aux | grep AgentUnited || echo "AgentUnited NOT running (crashed)"
+          xcrun simctl spawn "$UDID" ps aux 2>/dev/null | grep -i agent || echo "AgentUnited NOT running (crashed)"
