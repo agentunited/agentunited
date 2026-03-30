@@ -48,23 +48,34 @@ jobs:
       - name: Build for simulator + smoke test
         run: |
           set -euo pipefail
-          xcodebuild build \
-            -project apps/ios/AgentUnited.xcodeproj \
-            -scheme AgentUnited \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
-            CODE_SIGNING_ALLOWED=NO
-
           UDID=$(xcrun simctl list devices available -j | python3 - <<'PY'
           import sys, json
           data = json.load(sys.stdin)
-          for _, devs in data['devices'].items():
+          preferred = ['iPhone 17 Pro', 'iPhone 17', 'iPhone 16 Pro']
+          candidates = []
+          for runtime, devs in data['devices'].items():
+              if 'iOS' not in runtime:
+                  continue
               for dev in devs:
-                  if dev.get('isAvailable') and dev.get('name') == 'iPhone 16 Pro':
-                      print(dev['udid'])
+                  if dev.get('isAvailable'):
+                      candidates.append((dev.get('name'), dev.get('udid')))
+          for name in preferred:
+              for dname, udid in candidates:
+                  if dname == name:
+                      print(udid)
                       raise SystemExit
-          raise SystemExit('No available iPhone 16 Pro simulator found')
+          if candidates:
+              print(candidates[0][1])
+              raise SystemExit
+          raise SystemExit('No available iOS simulator found')
           PY
           )
+
+          xcodebuild build \
+            -project apps/ios/AgentUnited.xcodeproj \
+            -scheme AgentUnited \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO
 
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
