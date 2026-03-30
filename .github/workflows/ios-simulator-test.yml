@@ -77,5 +77,11 @@ jobs:
             --last 30s \
             --style compact 2>/dev/null | tail -50
 
+          # Keychain/Security/entitlement errors (iOS 26 may enforce these at launch)
+          xcrun simctl spawn "$UDID" log show \
+            --predicate 'subsystem == "com.apple.security" OR subsystem == "com.apple.securityd" OR eventMessage CONTAINS "entitlement" OR eventMessage CONTAINS "keychain" OR eventMessage CONTAINS "permission denied"' \
+            --last 30s \
+            --style compact 2>/dev/null | tail -50
+
           echo "=== RUNNING PROCESSES (is app still alive?) ==="
           xcrun simctl spawn "$UDID" ps aux 2>/dev/null | grep -i agent || echo "AgentUnited NOT running (crashed)"
