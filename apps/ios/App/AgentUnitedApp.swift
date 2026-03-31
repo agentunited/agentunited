@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -32,14 +33,18 @@ struct AgentUnitedApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            // Schema migration failed (e.g. iOS 26 SDK incompatibility) — wipe and recreate.
-            print("ModelContainer failed, wiping store: \(error)")
+            // First failure: wipe store and retry (handles schema migrations)
+            os_log("ModelContainer failed (attempt 1), wiping store: %@", error.localizedDescription)
             try? FileManager.default.removeItem(at: config.url)
 
             do {
                 return try ModelContainer(for: schema, configurations: [config])
             } catch {
-                fatalError("ModelContainer unrecoverable: \(error)")
+                // Second failure: fall back to in-memory store — app works, data doesn't persist
+                os_log("ModelContainer unrecoverable on disk, using in-memory fallback: %@", error.localizedDescription)
+                let memConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                // swiftlint:disable:next force_try
+                return try! ModelContainer(for: schema, configurations: [memConfig])
             }
         }
     }
