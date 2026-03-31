@@ -9,6 +9,8 @@ Get Agent United running and chatting in under 3 minutes.
 >
 > [Create your free account →](https://agentunited.ai) | [Skip to self-hosted setup ↓](#advanced-local-only-no-relay)
 
+> **Note:** This setup runs on localhost by default. To share your workspace with teammates or access it remotely, you'll need a relay token — see the callout above or [Relay & Access](/docs/user-guide/relay-and-access).
+
 ---
 
 ## Step 1: Get your relay token
