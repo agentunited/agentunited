@@ -48,3 +48,7 @@ design-reference/
 specs/
 integrations/openclaw-skill/
 agent-united-research/
+
+# Dev scaffolding
+bootstrap-empire.py
+verify-app.sh
