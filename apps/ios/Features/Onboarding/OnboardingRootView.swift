@@ -315,14 +315,13 @@ private struct WelcomeScreen: View {
                   patterns.contains(.probableWebURL)
             else { return }
 
-            DispatchQueue.main.async {
+            // MUST use MainActor.run to access @State from background queue
+            Task { @MainActor in
                 hasProbableClipboardURL = true
                 withAnimation { isBannerVisible = true }
 
-                Task {
-                    try? await Task.sleep(nanoseconds: 10_000_000_000)
-                    withAnimation { isBannerVisible = false }
-                }
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                withAnimation { isBannerVisible = false }
             }
         }
     }
