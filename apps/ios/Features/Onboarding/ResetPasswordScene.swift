@@ -1,10 +1,14 @@
+import UIKit
 import SwiftUI
 
 struct ResetPasswordScene: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: ResetPasswordViewModel
+    @FocusState private var focus: Field?
 
     let onSuccess: () -> Void
+
+    private enum Field { case newPassword, confirmPassword }
 
     init(token: String, email: String, onSuccess: @escaping () -> Void) {
         self.onSuccess = onSuccess
@@ -34,21 +38,27 @@ struct ResetPasswordScene: View {
                     }
 
                     VStack(alignment: .leading, spacing: 20) {
-                        // Hidden username field for iOS password manager account association
+                        // Hidden username field for iOS password manager account association.
+                        // Must NOT use accessibilityHidden(true) — that opts it out of UIKit's
+                        // credential system. Use 1×1 + near-zero opacity: invisible visually but
+                        // visible to the password manager.
                         TextField("", text: .constant(viewModel.email))
                             .textContentType(.username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
-                            .frame(width: 0, height: 0)
-                            .opacity(0)
-                            .accessibilityHidden(true)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.001)
 
                         darkField(title: "New password") {
                             SecureField("Minimum 8 characters", text: $viewModel.password)
                                 .textContentType(.newPassword)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
+                                .focused($focus, equals: .newPassword)
+                                .submitLabel(.next)
+                                .onSubmit { focus = .confirmPassword }
                                 .accessibilityIdentifier("reset-password-field")
+                                .background(PasswordRulesView())
                         }
 
                         VStack(alignment: .leading, spacing: 6) {
@@ -57,6 +67,18 @@ struct ResetPasswordScene: View {
                                     .textContentType(.newPassword)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled(true)
+                                    .focused($focus, equals: .confirmPassword)
+                                    .submitLabel(.done)
+                                    .onSubmit {
+                                        if viewModel.canSubmit {
+                                            Task {
+                                                if await viewModel.submit() {
+                                                    dismiss()
+                                                    onSuccess()
+                                                }
+                                            }
+                                        }
+                                    }
                                     .accessibilityIdentifier("reset-confirm-password-field")
                             }
                             if viewModel.showMismatch {
@@ -139,6 +161,23 @@ struct ResetPasswordScene: View {
                 .tint(.auEmerald)
         }
     }
+}
+
+// MARK: - Password rules bridge
+
+/// Zero-size UITextField used solely to inject UITextInputPasswordRules into the
+/// SwiftUI responder chain. SwiftUI's SecureField doesn't expose `.passwordRules`
+/// directly; inserting a hidden UITextField in the same container propagates the
+/// password-rules attribute to iOS's strong-password suggestion system.
+private struct PasswordRulesView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.isHidden = true
+        field.passwordRules = UITextInputPasswordRules(descriptor: "minlength: 8;")
+        field.textContentType = .newPassword
+        return field
+    }
+    func updateUIView(_ uiView: UITextField, context: Context) {}
 }
 
 // MARK: - ViewModel
