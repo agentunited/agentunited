@@ -47,6 +47,7 @@ struct OnboardingRootView: View {
             NavigationStack {
                 RelaySignInScene(
                     sessionStore: sessionStore,
+                    prefilledEmail: resetPasswordEmail,
                     onAuthenticated: { jwt in
                         centralJWT = jwt
                         isPresentingRelaySignIn = false
@@ -359,13 +360,14 @@ private struct RelaySignInScene: View {
     @State private var isPresentingForgotPassword = false
 
     init(sessionStore: AppSessionStore,
+         prefilledEmail: String = "",
          onAuthenticated: @escaping (String) -> Void,
          onSelfHosted: @escaping () -> Void,
          onForgotPasswordEmailCaptured: @escaping (String) -> Void) {
         self.onAuthenticated = onAuthenticated
         self.onSelfHosted = onSelfHosted
         self.onForgotPasswordEmailCaptured = onForgotPasswordEmailCaptured
-        _viewModel = StateObject(wrappedValue: RelaySignInViewModel(sessionStore: sessionStore))
+        _viewModel = StateObject(wrappedValue: RelaySignInViewModel(sessionStore: sessionStore, prefilledEmail: prefilledEmail))
     }
 
     var body: some View {
@@ -465,8 +467,9 @@ private final class RelaySignInViewModel: ObservableObject {
 
     private let sessionStore: AppSessionStore
 
-    init(sessionStore: AppSessionStore) {
+    init(sessionStore: AppSessionStore, prefilledEmail: String = "") {
         self.sessionStore = sessionStore
+        self.email = prefilledEmail
     }
 
     var canSubmit: Bool {
