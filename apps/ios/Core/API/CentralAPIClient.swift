@@ -13,7 +13,6 @@ struct CentralAPIClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 30
-        config.assumesHTTP3Capable = false // Disable QUIC — relay doesn't support HTTP/3 (matches AUAPIClient fix)
         self.session = URLSession(configuration: config)
 
         let encoder = JSONEncoder()
@@ -89,6 +88,7 @@ struct CentralAPIClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.assumesHTTP3Capable = false  // disable QUIC — prevents silent connection failures on some networks
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         if requiresAuth {
