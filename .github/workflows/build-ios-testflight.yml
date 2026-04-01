@@ -181,18 +181,18 @@ jobs:
 
           headers = {'Authorization': f'Bearer {token}'}
 
-          # Wait for build to appear (Apple processing takes 30-120s after altool upload)
+          # Wait for build to appear (Apple processing takes 1-10min after altool upload)
           build = None
-          for attempt in range(12):
+          for attempt in range(24):
               r = requests.get(f"https://api.appstoreconnect.apple.com/v1/builds?filter[app.id]={os.environ['APP_ID']}&sort=-uploadedDate&limit=1", headers=headers)
               data = r.json().get('data', [])
               if data:
                   build = data[0]
                   break
-              print(f"Build not yet in ASC (attempt {attempt+1}/12), waiting 15s...")
-              time.sleep(15)
+              print(f"Build not yet in ASC (attempt {attempt+1}/24), waiting 30s...")
+              time.sleep(30)
           if not build:
-              print("Build never appeared in ASC after 3 minutes — skipping compliance step")
+              print("Build never appeared in ASC after 12 minutes — skipping compliance step")
               exit(0)
           build_id = build['id']
           print(f"Latest build: {build['attributes']['version']} (ID: {build_id})")
