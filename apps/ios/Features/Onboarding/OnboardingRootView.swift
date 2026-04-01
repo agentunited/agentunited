@@ -392,6 +392,8 @@ private struct RelaySignInScene: View {
                     SignInFieldSection(title: "Password") {
                         SecureField("Enter your password", text: $viewModel.password)
                             .textContentType(.password)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
                             .accessibilityIdentifier("relay-password-field")
                     }
                 }
@@ -556,6 +558,8 @@ private struct SignInScene: View {
                     SignInFieldSection(title: "Password") {
                         SecureField("Enter your password", text: $viewModel.password)
                             .textContentType(.password)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled(true)
                             .accessibilityIdentifier("password-field")
                     }
                 }
