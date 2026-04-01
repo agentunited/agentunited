@@ -184,7 +184,7 @@ jobs:
           # Wait for build to appear (Apple processing takes 1-10min after altool upload)
           build = None
           for attempt in range(24):
-              r = requests.get(f"https://api.appstoreconnect.apple.com/v1/builds?filter[app.id]={os.environ['APP_ID']}&sort=-uploadedDate&limit=1", headers=headers)
+              r = requests.get(f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={os.environ['APP_ID']}&sort=-uploadedDate&limit=1", headers=headers)
               data = r.json().get('data', [])
               if data:
                   build = data[0]
