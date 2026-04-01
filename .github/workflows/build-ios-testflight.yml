@@ -167,7 +167,7 @@ jobs:
           APP_ID: "6760973893"
           BETA_GROUP_ID: "d1d10e26-9293-4fa0-8dec-58e9b2309580"
         run: |
-          pip3 install PyJWT requests --quiet
+          pip3 install PyJWT requests --quiet --break-system-packages
           python3 << 'PY'
           import jwt, time, requests, json, os
 
