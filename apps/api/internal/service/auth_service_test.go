@@ -61,6 +61,21 @@ func (m *MockUserRepository) List(ctx context.Context) ([]*models.User, error) {
 	return args.Get(0).([]*models.User), args.Error(1)
 }
 
+func (m *MockUserRepository) CreatePasswordResetToken(ctx context.Context, token, userID string) error {
+	args := m.Called(ctx, token, userID)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetUserIDByResetToken(ctx context.Context, token string) (string, error) {
+	args := m.Called(ctx, token)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockUserRepository) DeletePasswordResetToken(ctx context.Context, token string) error {
+	args := m.Called(ctx, token)
+	return args.Error(0)
+}
+
 // Test: Register with valid input should create user
 func TestAuthService_Register_ValidInput(t *testing.T) {
 	mockRepo := new(MockUserRepository)

@@ -19,6 +19,10 @@ type UserRepository interface {
 	UpdateProfile(ctx context.Context, id, displayName, avatarURL string) error
 	Count(ctx context.Context) (int64, error)
 	List(ctx context.Context) ([]*models.User, error)
+	// Password-reset token operations.
+	CreatePasswordResetToken(ctx context.Context, token, userID string) error
+	GetUserIDByResetToken(ctx context.Context, token string) (string, error)
+	DeletePasswordResetToken(ctx context.Context, token string) error
 }
 
 // PostgresUserRepository implements UserRepository with PostgreSQL
@@ -244,4 +248,43 @@ func defaultUserType(v string) string {
 		return "agent"
 	}
 	return "human"
+}
+
+// CreatePasswordResetToken inserts a reset token with 1-hour expiry.
+func (r *PostgresUserRepository) CreatePasswordResetToken(ctx context.Context, token, userID string) error {
+	_, err := r.db.Pool.Exec(ctx, `
+		INSERT INTO password_reset_tokens (token, user_id)
+		VALUES ($1, $2::uuid)
+		ON CONFLICT (token) DO NOTHING
+	`, token, userID)
+	if err != nil {
+		return fmt.Errorf("create password reset token: %w", err)
+	}
+	return nil
+}
+
+// GetUserIDByResetToken returns the user_id for a valid (non-expired) token.
+// Returns empty string and nil error when the token is not found or expired.
+func (r *PostgresUserRepository) GetUserIDByResetToken(ctx context.Context, token string) (string, error) {
+	var userID string
+	err := r.db.Pool.QueryRow(ctx, `
+		SELECT user_id::text FROM password_reset_tokens
+		WHERE token = $1 AND expires_at > NOW()
+	`, token).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("get user id by reset token: %w", err)
+	}
+	return userID, nil
+}
+
+// DeletePasswordResetToken removes a token (single-use invalidation).
+func (r *PostgresUserRepository) DeletePasswordResetToken(ctx context.Context, token string) error {
+	_, err := r.db.Pool.Exec(ctx, `DELETE FROM password_reset_tokens WHERE token = $1`, token)
+	if err != nil {
+		return fmt.Errorf("delete password reset token: %w", err)
+	}
+	return nil
 }

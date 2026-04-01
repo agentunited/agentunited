@@ -134,6 +134,50 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ForgotPassword handles POST /api/v1/auth/forgot-password
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	// Always 200 — never leak account existence.
+	_ = h.authService.ForgotPassword(r.Context(), req.Email)
+	respondJSON(w, http.StatusOK, map[string]string{
+		"message": "If that email is registered, you'll receive a reset link shortly.",
+	})
+}
+
+// ResetPassword handles POST /api/v1/auth/reset-password
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Invalid request body"})
+		return
+	}
+
+	if err := h.authService.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
+		switch {
+		case errors.Is(err, models.ErrInvalidOrExpiredToken):
+			respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "invalid_or_expired_token"})
+		case errors.Is(err, models.ErrWeakPassword):
+			respondJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Password must be at least 8 characters"})
+		default:
+			log.Error().Err(err).Msg("reset password error")
+			respondJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Internal server error"})
+		}
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Password updated successfully."})
+}
+
 // handleAuthError maps service errors to HTTP status codes
 func (h *AuthHandler) handleAuthError(w http.ResponseWriter, err error, operation string) {
 	log.Error().Err(err).Str("operation", operation).Msg("authentication error")

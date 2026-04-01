@@ -73,4 +73,7 @@ var (
 
 	// ErrUnauthorized indicates authentication/authorization failed (e.g. invalid central JWT)
 	ErrUnauthorized = errors.New("unauthorized")
+
+	// ErrInvalidOrExpiredToken indicates a password-reset token is missing, invalid, or past expiry.
+	ErrInvalidOrExpiredToken = errors.New("invalid or expired token")
 )

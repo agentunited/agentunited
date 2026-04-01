@@ -133,6 +133,8 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
+		r.Post("/forgot-password", authHandler.ForgotPassword)
+		r.Post("/reset-password", authHandler.ResetPassword)
 	})
 
 	// Public billing webhook route

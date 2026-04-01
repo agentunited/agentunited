@@ -2,11 +2,15 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
+	"github.com/agentunited/backend/internal/email"
 	"github.com/agentunited/backend/internal/models"
 	"github.com/agentunited/backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
@@ -28,6 +32,8 @@ type AuthService interface {
 	GetCurrentUser(ctx context.Context, userID string) (*models.User, error)
 	UpdateProfile(ctx context.Context, userID, displayName, avatarURL string) (*models.User, error)
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
+	ForgotPassword(ctx context.Context, emailAddr string) error
+	ResetPassword(ctx context.Context, token, newPassword string) error
 }
 
 // authService implements AuthService
@@ -234,4 +240,84 @@ type JWTClaims struct {
 	UserID string `json:"user_id"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
+}
+
+// ForgotPassword generates a reset token, stores it, and emails the user.
+// Always returns nil (200) — never leaks whether an account exists.
+func (s *authService) ForgotPassword(ctx context.Context, emailAddr string) error {
+	emailAddr = strings.TrimSpace(strings.ToLower(emailAddr))
+	if emailAddr == "" {
+		return nil
+	}
+
+	user, err := s.userRepo.GetByEmail(ctx, emailAddr)
+	if err != nil || user == nil {
+		// No-op — don't reveal account existence.
+		return nil
+	}
+
+	token, err := generateResetToken()
+	if err != nil {
+		return fmt.Errorf("generate reset token: %w", err)
+	}
+
+	if err := s.userRepo.CreatePasswordResetToken(ctx, token, user.ID); err != nil {
+		return fmt.Errorf("store reset token: %w", err)
+	}
+
+	resetLink := "https://app.agentunited.ai/reset-password?token=" + token
+	subject := "Reset your Agent United password"
+	body := fmt.Sprintf(
+		"Click to reset your password: %s\n\nThis link expires in 1 hour. If you didn't request a reset, ignore this email.",
+		resetLink,
+	)
+	email.Send(ctx, user.Email, subject, body)
+	return nil
+}
+
+// ResetPassword validates the token and updates the user's password.
+func (s *authService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return models.ErrInvalidOrExpiredToken
+	}
+	if len(newPassword) < 8 {
+		return models.ErrWeakPassword
+	}
+
+	userID, err := s.userRepo.GetUserIDByResetToken(ctx, token)
+	if err != nil || userID == "" {
+		return models.ErrInvalidOrExpiredToken
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), BcryptCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user: %w", err)
+	}
+	user.PasswordHash = string(hash)
+	user.UpdatedAt = time.Now()
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+
+	// Single-use: invalidate token immediately.
+	if err := s.userRepo.DeletePasswordResetToken(ctx, token); err != nil {
+		// Non-fatal — token will expire naturally.
+		fmt.Printf("warn: delete reset token: %v\n", err)
+	}
+	return nil
+}
+
+// generateResetToken generates a 32-byte cryptographically random hex token.
+func generateResetToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }

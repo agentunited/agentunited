@@ -53,6 +53,16 @@ func (m *MockAuthService) ChangePassword(ctx context.Context, userID, currentPas
 	return args.Error(0)
 }
 
+func (m *MockAuthService) ForgotPassword(ctx context.Context, email string) error {
+	args := m.Called(ctx, email)
+	return args.Error(0)
+}
+
+func (m *MockAuthService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	args := m.Called(ctx, token, newPassword)
+	return args.Error(0)
+}
+
 // Test: Register with valid input returns 201 with user and token
 func TestAuthHandler_Register_Success(t *testing.T) {
 	mockService := new(MockAuthService)

@@ -48,6 +48,14 @@ func (m *mockMeAuthService) ChangePassword(ctx context.Context, userID, currentP
 	return args.Error(0)
 }
 
+func (m *mockMeAuthService) ForgotPassword(ctx context.Context, email string) error {
+	return nil
+}
+
+func (m *mockMeAuthService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	return nil
+}
+
 func withUser(req *http.Request, userID string) *http.Request {
 	ctx := context.WithValue(req.Context(), mw.UserIDKey, userID)
 	return req.WithContext(ctx)
