@@ -158,3 +158,55 @@ jobs:
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID" \
             --show-progress
+
+      - name: Set export compliance + add to beta group
+        env:
+          KEY_B64: ${{ secrets.ASC_API_KEY_BASE64 }}
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APP_ID: "6760973893"
+          BETA_GROUP_ID: "d1d10e26-9293-4fa0-8dec-58e9b2309580"
+        run: |
+          pip3 install PyJWT requests --quiet
+          python3 << 'PY'
+          import jwt, time, requests, json, os
+
+          key = open(os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{os.environ['KEY_ID']}.p8")).read()
+          token = jwt.encode({
+              'iss': os.environ['ISSUER_ID'],
+              'iat': int(time.time()),
+              'exp': int(time.time()) + 1200,
+              'aud': 'appstoreconnect-v1'
+          }, key, algorithm='ES256', headers={'kid': os.environ['KEY_ID']})
+
+          headers = {'Authorization': f'Bearer {token}'}
+
+          # Get latest build
+          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/builds?filter[app.id]={os.environ['APP_ID']}&sort=-uploadedDate&limit=1", headers=headers)
+          build = r.json()['data'][0]
+          build_id = build['id']
+          print(f"Latest build: {build['attributes']['version']} (ID: {build_id})")
+
+          # Set export compliance
+          compliance_data = {
+              'data': {
+                  'type': 'builds',
+                  'id': build_id,
+                  'attributes': {
+                      'usesNonExemptEncryption': False
+                  }
+              }
+          }
+          r = requests.patch(f"https://api.appstoreconnect.apple.com/v1/builds/{build_id}", headers={**headers, 'Content-Type': 'application/json'}, json=compliance_data)
+          print(f"Export compliance: {r.status_code}")
+
+          # Add to beta group
+          group_data = {
+              'data': [{
+                  'type': 'builds',
+                  'id': build_id
+              }]
+          }
+          r = requests.post(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{os.environ['BETA_GROUP_ID']}/relationships/builds", headers={**headers, 'Content-Type': 'application/json'}, json=group_data)
+          print(f"Added to beta group: {r.status_code}")
+          PY
