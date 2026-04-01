@@ -358,6 +358,7 @@ private struct RelaySignInScene: View {
     let onForgotPasswordEmailCaptured: (String) -> Void
 
     @State private var isPresentingForgotPassword = false
+    @State private var showRelayPassword = false
 
     init(sessionStore: AppSessionStore,
          prefilledEmail: String = "",
@@ -390,11 +391,27 @@ private struct RelaySignInScene: View {
                             .accessibilityIdentifier("relay-email-field")
                     }
                     SignInFieldSection(title: "Password") {
-                        SecureField("Enter your password", text: $viewModel.password)
-                            .textContentType(.password)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled(true)
-                            .accessibilityIdentifier("relay-password-field")
+                        HStack {
+                            if showRelayPassword {
+                                TextField("Enter your password", text: $viewModel.password)
+                                    .textContentType(.password)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .accessibilityIdentifier("relay-password-field")
+                            } else {
+                                SecureField("Enter your password", text: $viewModel.password)
+                                    .textContentType(.password)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .accessibilityIdentifier("relay-password-field")
+                            }
+                            Button { showRelayPassword.toggle() } label: {
+                                Image(systemName: showRelayPassword ? "eye.slash" : "eye")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(showRelayPassword ? "Hide password" : "Show password")
+                        }
                     }
                 }
                 if let error = viewModel.errorMessage {
@@ -514,6 +531,7 @@ private struct SignInScene: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: SignInViewModel
     let mode: Mode
+    @State private var showSignInPassword = false
     let onOpenSignUp: () -> Void
     let onAuthenticated: ((String) -> Void)?
 
@@ -556,11 +574,27 @@ private struct SignInScene: View {
                     }
 
                     SignInFieldSection(title: "Password") {
-                        SecureField("Enter your password", text: $viewModel.password)
-                            .textContentType(.password)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled(true)
-                            .accessibilityIdentifier("password-field")
+                        HStack {
+                            if showSignInPassword {
+                                TextField("Enter your password", text: $viewModel.password)
+                                    .textContentType(.password)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .accessibilityIdentifier("password-field")
+                            } else {
+                                SecureField("Enter your password", text: $viewModel.password)
+                                    .textContentType(.password)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .accessibilityIdentifier("password-field")
+                            }
+                            Button { showSignInPassword.toggle() } label: {
+                                Image(systemName: showSignInPassword ? "eye.slash" : "eye")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(showSignInPassword ? "Hide password" : "Show password")
+                        }
                     }
                 }
 
