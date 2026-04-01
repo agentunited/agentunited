@@ -55,6 +55,18 @@ func (m *mockUserRepository) List(ctx context.Context) ([]*models.User, error) {
 	return args.Get(0).([]*models.User), args.Error(1)
 }
 
+func (m *mockUserRepository) CreatePasswordResetToken(ctx context.Context, token, userID string) error {
+	return nil
+}
+
+func (m *mockUserRepository) GetUserIDByResetToken(ctx context.Context, token string) (string, error) {
+	return "", nil
+}
+
+func (m *mockUserRepository) DeletePasswordResetToken(ctx context.Context, token string) error {
+	return nil
+}
+
 type mockAgentRepository struct {
 	mock.Mock
 }
