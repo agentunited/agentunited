@@ -42,7 +42,7 @@ func NewRouter(db *repository.DB, cache *repository.Cache, cfg *config.Config) *
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:3001", "https://agentunited.ai", "https://*.tunnel.agentunited.ai"},
+		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:3001", "https://agentunited.ai", "https://app.agentunited.ai", "https://*.tunnel.agentunited.ai"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Origin", "X-Requested-With", "X-Custom-Header"},
 		ExposedHeaders:   []string{"Link", "Location"},
