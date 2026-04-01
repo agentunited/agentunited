@@ -1,4 +1,3 @@
-import UIKit
 import SwiftUI
 
 struct ResetPasswordScene: View {
@@ -39,15 +38,15 @@ struct ResetPasswordScene: View {
 
                     VStack(alignment: .leading, spacing: 20) {
                         // Hidden username field for iOS password manager account association.
-                        // Must NOT use accessibilityHidden(true) — that opts it out of UIKit's
-                        // credential system. Use 1×1 + near-zero opacity: invisible visually but
-                        // visible to the password manager.
+                        // .frame(1,1) + near-zero opacity: invisible visually but visible to
+                        // UIKit's credential system. Must NOT be accessibilityHidden(true).
                         TextField("", text: .constant(viewModel.email))
                             .textContentType(.username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
                             .frame(width: 1, height: 1)
                             .opacity(0.001)
+                            .accessibilityHidden(false)
 
                         darkField(title: "New password") {
                             SecureField("Minimum 8 characters", text: $viewModel.password)
@@ -58,7 +57,6 @@ struct ResetPasswordScene: View {
                                 .submitLabel(.next)
                                 .onSubmit { focus = .confirmPassword }
                                 .accessibilityIdentifier("reset-password-field")
-                                .background(PasswordRulesView())
                         }
 
                         VStack(alignment: .leading, spacing: 6) {
@@ -73,6 +71,9 @@ struct ResetPasswordScene: View {
                                         if viewModel.canSubmit {
                                             Task {
                                                 if await viewModel.submit() {
+                                                    // Brief pause: lets iOS credential-save sheet
+                                                    // appear before the view leaves the responder chain.
+                                                    try? await Task.sleep(nanoseconds: 150_000_000)
                                                     dismiss()
                                                     onSuccess()
                                                 }
@@ -98,6 +99,9 @@ struct ResetPasswordScene: View {
                         Button {
                             Task {
                                 if await viewModel.submit() {
+                                    // Brief pause: lets iOS credential-save sheet
+                                    // appear before the view leaves the responder chain.
+                                    try? await Task.sleep(nanoseconds: 150_000_000)
                                     dismiss()
                                     onSuccess()
                                 }
@@ -161,23 +165,6 @@ struct ResetPasswordScene: View {
                 .tint(.auEmerald)
         }
     }
-}
-
-// MARK: - Password rules bridge
-
-/// Zero-size UITextField used solely to inject UITextInputPasswordRules into the
-/// SwiftUI responder chain. SwiftUI's SecureField doesn't expose `.passwordRules`
-/// directly; inserting a hidden UITextField in the same container propagates the
-/// password-rules attribute to iOS's strong-password suggestion system.
-private struct PasswordRulesView: UIViewRepresentable {
-    func makeUIView(context: Context) -> UITextField {
-        let field = UITextField()
-        field.isHidden = true
-        field.passwordRules = UITextInputPasswordRules(descriptor: "minlength: 8;")
-        field.textContentType = .newPassword
-        return field
-    }
-    func updateUIView(_ uiView: UITextField, context: Context) {}
 }
 
 // MARK: - ViewModel
