@@ -283,7 +283,6 @@ private struct WelcomeScreen: View {
             }
         }
         .navigationBarHidden(true)
-        .onAppear { checkClipboard() }
         .animation(.easeInOut(duration: 0.25), value: isBannerVisible)
     }
 
