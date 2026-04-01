@@ -15,6 +15,8 @@ import { WelcomePage } from './pages/WelcomePage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { SettingsBillingPage } from './pages/settings/billing';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { initializeFromUrlParams } from './services/apiConfig';
 import { AuthService, autoLogin } from './services/authService';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -93,6 +95,8 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/invite" element={<InviteAcceptPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/terms" element={<TermsPage />} />

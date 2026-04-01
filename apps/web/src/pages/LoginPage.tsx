@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -17,6 +17,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const passwordReset = searchParams.get('reset') === '1';
 
   const {
     register,
@@ -77,9 +79,16 @@ export function LoginPage() {
         <h2 className="mb-1 text-lg font-semibold text-slate-900">Sign in</h2>
         <p className="mb-6 text-sm text-slate-500">Enter your credentials to continue</p>
 
+        {passwordReset && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3" role="status">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+            <p className="text-sm text-emerald-700">Password updated — sign in with your new password.</p>
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3" role="alert">
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
@@ -128,12 +137,21 @@ export function LoginPage() {
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Signing in…
               </span>
             ) : (
               'Sign in'
             )}
           </button>
+
+          <div className="mt-4 text-center">
+            <Link
+              to="/forgot-password"
+              className="text-xs text-slate-400 transition-colors hover:text-emerald-600"
+            >
+              Forgot your password?
+            </Link>
+          </div>
         </form>
       </div>
 
