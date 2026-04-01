@@ -308,10 +308,10 @@ private struct WelcomeScreen: View {
         .accessibilityHidden(true)
     }
 
-    // checkClipboard() removed — detectPatterns completion fires on
-    // com.apple.UIKit.pasteboard.completion-queue and crashes (EXC_BREAKPOINT)
-    // on iOS 26 when the closure is created in @MainActor context (Build 29).
-    // Re-implement via nonisolated intermediate in a future build.
+    // checkClipboard() removed — pasteboard completion fires on background queue
+    // and crashes (EXC_BREAKPOINT) on iOS 26 when closure is created in
+    // @MainActor context (Build 29). Re-implement via nonisolated intermediate
+    // in a future build.
 }
 
 private struct ClipboardInviteBanner: View {
