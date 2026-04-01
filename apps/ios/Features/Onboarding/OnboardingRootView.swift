@@ -307,23 +307,10 @@ private struct WelcomeScreen: View {
         .accessibilityHidden(true)
     }
 
-    private func checkClipboard() {
-        // iOS 16+: detect URL-like content without reading pasteboard payload (avoids paste permission prompt).
-        UIPasteboard.general.detectPatterns(for: [.probableWebURL]) { result in
-            guard case let .success(patterns) = result,
-                  patterns.contains(.probableWebURL)
-            else { return }
-
-            // MUST use MainActor.run to access @State from background queue
-            Task { @MainActor in
-                hasProbableClipboardURL = true
-                withAnimation { isBannerVisible = true }
-
-                try? await Task.sleep(nanoseconds: 10_000_000_000)
-                withAnimation { isBannerVisible = false }
-            }
-        }
-    }
+    // checkClipboard() removed — detectPatterns completion fires on
+    // com.apple.UIKit.pasteboard.completion-queue and crashes (EXC_BREAKPOINT)
+    // on iOS 26 when the closure is created in @MainActor context (Build 29).
+    // Re-implement via nonisolated intermediate in a future build.
 }
 
 private struct ClipboardInviteBanner: View {
