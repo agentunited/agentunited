@@ -4,6 +4,8 @@ struct ResetPasswordScene: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: ResetPasswordViewModel
     @FocusState private var focus: Field?
+    @State private var showNewPassword = false
+    @State private var showConfirmPassword = false
 
     let onSuccess: () -> Void
 
@@ -49,20 +51,45 @@ struct ResetPasswordScene: View {
                             .accessibilityHidden(false)
 
                         darkField(title: "New password") {
-                            SecureField("Minimum 8 characters", text: $viewModel.password)
-                                .textContentType(.newPassword)
+                            HStack {
+                                Group {
+                                    if showNewPassword {
+                                        TextField("Minimum 8 characters", text: $viewModel.password)
+                                            .textContentType(.newPassword)
+                                    } else {
+                                        SecureField("Minimum 8 characters", text: $viewModel.password)
+                                            .textContentType(.newPassword)
+                                    }
+                                }
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
                                 .focused($focus, equals: .newPassword)
                                 .submitLabel(.next)
                                 .onSubmit { focus = .confirmPassword }
                                 .accessibilityIdentifier("reset-password-field")
+
+                                Button {
+                                    showNewPassword.toggle()
+                                } label: {
+                                    Image(systemName: showNewPassword ? "eye.slash" : "eye")
+                                        .foregroundStyle(Color.white.opacity(0.6))
+                                }
+                                .accessibilityLabel(showNewPassword ? "Hide password" : "Show password")
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: 6) {
                             darkField(title: "Confirm password") {
-                                SecureField("Confirm password", text: $viewModel.confirmPassword)
-                                    .textContentType(.newPassword)
+                                HStack {
+                                    Group {
+                                        if showConfirmPassword {
+                                            TextField("Confirm password", text: $viewModel.confirmPassword)
+                                                .textContentType(.newPassword)
+                                        } else {
+                                            SecureField("Confirm password", text: $viewModel.confirmPassword)
+                                                .textContentType(.newPassword)
+                                        }
+                                    }
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled(true)
                                     .focused($focus, equals: .confirmPassword)
@@ -81,6 +108,15 @@ struct ResetPasswordScene: View {
                                         }
                                     }
                                     .accessibilityIdentifier("reset-confirm-password-field")
+
+                                    Button {
+                                        showConfirmPassword.toggle()
+                                    } label: {
+                                        Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
+                                            .foregroundStyle(Color.white.opacity(0.6))
+                                    }
+                                    .accessibilityLabel(showConfirmPassword ? "Hide password" : "Show password")
+                                }
                             }
                             if viewModel.showMismatch {
                                 Text("Passwords don't match.")
