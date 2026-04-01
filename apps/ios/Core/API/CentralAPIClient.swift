@@ -13,6 +13,7 @@ struct CentralAPIClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 30
+        // Note: assumesHTTP3Capable is macOS-only; URLSession on iOS does not use QUIC by default.
         self.session = URLSession(configuration: config)
 
         let encoder = JSONEncoder()
