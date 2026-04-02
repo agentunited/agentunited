@@ -26,6 +26,9 @@ type clientConn struct {
 	conn      *websocket.Conn
 	writeMu   sync.Mutex
 	pending   sync.Map // request_id -> chan ResponseMessage
+	sseStart  sync.Map // request_id -> chan SSEStartMessage
+	sseChunk  sync.Map // request_id -> chan SSEChunkMessage
+	sseEnd    sync.Map // request_id -> chan struct{}
 	wsOpen    sync.Map // ws_id -> chan WSOpenedMessage
 	wsData    sync.Map // ws_id -> chan WSDataMessage
 	wsClosed  sync.Map // ws_id -> chan struct{}
@@ -186,6 +189,42 @@ func (s *Server) readLoop(_ context.Context, cc *clientConn) {
 				default:
 				}
 			}
+		case TypeSSEStart:
+			var msg SSEStartMessage
+			if err := json.Unmarshal(data, &msg); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.sseStart.Load(msg.ID); ok {
+				ch := chRaw.(chan SSEStartMessage)
+				select {
+				case ch <- msg:
+				default:
+				}
+			}
+		case TypeSSEChunk:
+			var msg SSEChunkMessage
+			if err := json.Unmarshal(data, &msg); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.sseChunk.Load(msg.ID); ok {
+				ch := chRaw.(chan SSEChunkMessage)
+				select {
+				case ch <- msg:
+				default:
+				}
+			}
+		case TypeSSEEnd:
+			var msg SSEEndMessage
+			if err := json.Unmarshal(data, &msg); err != nil {
+				continue
+			}
+			if chRaw, ok := cc.sseEnd.Load(msg.ID); ok {
+				ch := chRaw.(chan struct{})
+				select {
+				case ch <- struct{}{}:
+				default:
+				}
+			}
 		case TypeWSOpened:
 			var opened WSOpenedMessage
 			if err := json.Unmarshal(data, &opened); err != nil {
@@ -257,6 +296,12 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Detect SSE — stream chunks rather than buffering.
+	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+		s.handlePublicSSE(w, r, cc)
+		return
+	}
+
 	body, _ := io.ReadAll(r.Body)
 	reqID := "req_" + uuid.NewString()
 	msg := RequestMessage{
@@ -291,6 +336,80 @@ func (s *Server) handlePublicHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case <-time.After(30 * time.Second):
 		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
+	}
+}
+
+// handlePublicSSE proxies a Server-Sent Events stream from the instance to the public client.
+// The relay client sends TypeSSEStart (headers), TypeSSEChunk (data), TypeSSEEnd (done).
+func (s *Server) handlePublicSSE(w http.ResponseWriter, r *http.Request, cc *clientConn) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	body, _ := io.ReadAll(r.Body)
+	reqID := "req_" + uuid.NewString()
+	msg := RequestMessage{
+		Type:    TypeRequest,
+		ID:      reqID,
+		Method:  r.Method,
+		Path:    r.URL.RequestURI(),
+		Headers: r.Header,
+		Body:    base64.StdEncoding.EncodeToString(body),
+	}
+
+	startCh := make(chan SSEStartMessage, 1)
+	chunkCh := make(chan SSEChunkMessage, 256)
+	endCh := make(chan struct{}, 1)
+	cc.sseStart.Store(reqID, startCh)
+	cc.sseChunk.Store(reqID, chunkCh)
+	cc.sseEnd.Store(reqID, endCh)
+	defer cc.sseStart.Delete(reqID)
+	defer cc.sseChunk.Delete(reqID)
+	defer cc.sseEnd.Delete(reqID)
+
+	if err := cc.writeJSON(msg); err != nil {
+		http.Error(w, "failed to route SSE request", http.StatusBadGateway)
+		return
+	}
+
+	// Wait for headers from the instance.
+	select {
+	case start := <-startCh:
+		for k, vals := range start.Headers {
+			for _, v := range vals {
+				w.Header().Add(k, v)
+			}
+		}
+		// Ensure correct SSE headers are set even if instance omits them.
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Accel-Buffering", "no")
+		w.WriteHeader(start.Status)
+		flusher.Flush()
+	case <-time.After(15 * time.Second):
+		http.Error(w, "upstream SSE timeout", http.StatusGatewayTimeout)
+		return
+	case <-r.Context().Done():
+		return
+	}
+
+	// Stream chunks until the instance closes the stream or the client disconnects.
+	for {
+		select {
+		case chunk := <-chunkCh:
+			decoded, err := base64.StdEncoding.DecodeString(chunk.Data)
+			if err != nil {
+				continue
+			}
+			_, _ = w.Write(decoded)
+			flusher.Flush()
+		case <-endCh:
+			return
+		case <-r.Context().Done():
+			return
+		}
 	}
 }
 

@@ -8,6 +8,9 @@ const (
 	TypeRegistered = "registered"
 	TypeRequest    = "request"
 	TypeResponse   = "response"
+	TypeSSEStart   = "sse_start"   // server→client: SSE stream opened, headers ready
+	TypeSSEChunk   = "sse_chunk"   // client→server: streaming SSE data chunk
+	TypeSSEEnd     = "sse_end"     // client→server: SSE stream closed
 	TypePing       = "ping"
 	TypePong       = "pong"
 	TypeError      = "error"
@@ -78,6 +81,25 @@ type WSDataMessage struct {
 }
 
 type WSCloseMessage struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
+// SSE streaming messages (relay client → relay server).
+type SSEStartMessage struct {
+	Type    string      `json:"type"`
+	ID      string      `json:"id"`
+	Status  int         `json:"status"`
+	Headers http.Header `json:"headers"`
+}
+
+type SSEChunkMessage struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+	Data string `json:"data"` // base64-encoded chunk
+}
+
+type SSEEndMessage struct {
 	Type string `json:"type"`
 	ID   string `json:"id"`
 }
