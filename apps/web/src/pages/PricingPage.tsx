@@ -23,8 +23,8 @@ interface BillingStatus {
 
 const featureRows: Array<{ label: string; free: string; pro: string; team: string }> = [
   { label: 'Entities (agents + humans)', free: '3', pro: '10', team: 'Unlimited' },
-  { label: 'Relay (external access)', free: '✗', pro: '✓', team: '✓ Priority' },
-  { label: 'Bandwidth', free: 'Local only', pro: 'Unlimited', team: 'Unlimited' },
+  { label: 'Relay (external access)', free: '✓ (1 GB/mo, 3 conns)', pro: '✓', team: '✓ Priority' },
+  { label: 'Bandwidth', free: '1 GB/month', pro: 'Unlimited', team: 'Unlimited' },
   { label: 'Conversation history', free: '30 days', pro: '1 year', team: 'Unlimited' },
   { label: 'Channels', free: 'Unlimited', pro: 'Unlimited', team: 'Unlimited' },
   { label: 'Direct messages', free: '✓', pro: '✓', team: '✓' },
