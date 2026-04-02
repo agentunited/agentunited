@@ -126,6 +126,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", app.health)
+
+	// Wrap mux with CORS middleware allowing agentunited.ai origins.
+	handler := corsMiddleware(mux)
 	mux.HandleFunc("GET /.well-known/jwks.json", app.jwks)
 	mux.HandleFunc("POST /api/v1/users/register", app.register)
 	mux.HandleFunc("POST /api/v1/users/login", app.login)
@@ -138,7 +141,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/claim/consume", app.claimConsume)
 	mux.HandleFunc("GET /api/v1/workspaces", app.workspaces)
 
-	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		log.Info().Str("addr", srv.Addr).Msg("central service listening")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -931,4 +934,29 @@ func (a *App) account(w http.ResponseWriter, r *http.Request) {
 		"stripe_portal_url":  nil,
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// corsMiddleware adds CORS headers allowing agentunited.ai origins.
+func corsMiddleware(next http.Handler) http.Handler {
+	allowed := map[string]bool{
+		"https://agentunited.ai":     true,
+		"https://app.agentunited.ai": true,
+		"http://localhost:3000":      true,
+		"http://localhost:3001":      true,
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if allowed[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, Origin")
+			w.Header().Set("Access-Control-Max-Age", "300")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
