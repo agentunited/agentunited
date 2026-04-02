@@ -70,6 +70,11 @@ type claimKeyReq struct {
 	ClaimKey string `json:"claim_key"`
 }
 
+type signupReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type forgotPasswordReq struct {
 	Email string `json:"email"`
 }
@@ -126,6 +131,8 @@ func main() {
 	mux.HandleFunc("POST /api/v1/users/login", app.login)
 	mux.HandleFunc("POST /api/v1/users/forgot-password", app.forgotPassword)
 	mux.HandleFunc("POST /api/v1/users/reset-password", app.resetPassword)
+	mux.HandleFunc("POST /api/v1/auth/signup", app.signup)
+	mux.HandleFunc("GET /api/v1/account", app.account)
 	mux.HandleFunc("POST /api/v1/claim/generate", app.claimGenerate)
 	mux.HandleFunc("POST /api/v1/claim/validate", app.claimValidate)
 	mux.HandleFunc("POST /api/v1/claim/consume", app.claimConsume)
@@ -472,6 +479,20 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 	if err != nil {
 		return fmt.Errorf("ensure schema: %w", err)
 	}
+
+	// M9: add new columns to central_users if not already present.
+	migrations := []string{
+		`ALTER TABLE central_users ADD COLUMN IF NOT EXISTS relay_token TEXT UNIQUE`,
+		`ALTER TABLE central_users ADD COLUMN IF NOT EXISTS relay_token_created_at TIMESTAMPTZ`,
+		`ALTER TABLE central_users ADD COLUMN IF NOT EXISTS entity_count_snapshot INT DEFAULT 0`,
+		`ALTER TABLE central_users ADD COLUMN IF NOT EXISTS entity_limit INT DEFAULT 3`,
+		`ALTER TABLE central_users ADD COLUMN IF NOT EXISTS github_oauth_id TEXT`,
+	}
+	for _, m := range migrations {
+		if _, err := db.Exec(ctx, m); err != nil {
+			return fmt.Errorf("migration %q: %w", m, err)
+		}
+	}
 	return nil
 }
 
@@ -760,4 +781,154 @@ func (a *App) resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password updated successfully."})
+}
+
+// base62Alphabet contains URL-safe alphanumeric characters for relay token generation.
+const base62Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+// generateRelayToken returns "rt_" + 32 cryptographically random base62 characters.
+func generateRelayToken() (string, error) {
+	const length = 32
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("rand.Read: %w", err)
+	}
+	out := make([]byte, length)
+	for i, v := range b {
+		out[i] = base62Alphabet[int(v)%len(base62Alphabet)]
+	}
+	return "rt_" + string(out), nil
+}
+
+// entityLimitForPlan returns the entity limit for a given plan.
+func entityLimitForPlan(plan string) int {
+	switch strings.ToLower(strings.TrimSpace(plan)) {
+	case "pro":
+		return 15
+	case "team", "enterprise":
+		return 50
+	default:
+		return 3
+	}
+}
+
+// signup handles POST /api/v1/auth/signup
+// Creates a new central account with relay_token; returns JWT + account data.
+func (a *App) signup(w http.ResponseWriter, r *http.Request) {
+	var req signupReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "Invalid request body.", "code": "invalid_json"})
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+
+	if req.Email == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"error": "Email is required.", "code": "validation_error"})
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"error": "Password must be at least 8 characters.", "code": "validation_error"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "Internal error.", "code": "hash_failed"})
+		return
+	}
+
+	relayToken, err := generateRelayToken()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "Internal error.", "code": "token_gen_failed"})
+		return
+	}
+
+	plan := "free"
+	entityLimit := entityLimitForPlan(plan)
+
+	var u centralUser
+	err = a.db.QueryRow(r.Context(), `
+		INSERT INTO central_users (email, display_name, password_hash, relay_token, relay_token_created_at, entity_limit)
+		VALUES ($1, $1, $2, $3, NOW(), $4)
+		RETURNING id::text, email, display_name, plan
+	`, req.Email, string(hash), relayToken, entityLimit).Scan(&u.ID, &u.Email, &u.DisplayName, &u.Plan)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			writeJSON(w, http.StatusConflict, map[string]any{"error": "An account with this email already exists.", "code": "email_taken"})
+			return
+		}
+		log.Error().Err(err).Str("email", req.Email).Msg("signup insert failed")
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "Internal error.", "code": "register_failed"})
+		return
+	}
+
+	tok, err := a.issueToken(u)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "Internal error.", "code": "token_failed"})
+		return
+	}
+
+	// Set JWT in httpOnly cookie for browser clients (SameSite=Lax, Secure).
+	http.SetCookie(w, &http.Cookie{
+		Name:     "au_session",
+		Value:    tok,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(a.cfg.JWTTTL.Seconds()),
+	})
+
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"user_id":      u.ID,
+		"email":        u.Email,
+		"plan":         u.Plan,
+		"relay_token":  relayToken,
+		"entity_limit": entityLimit,
+		"token":        tok,
+	})
+}
+
+// account handles GET /api/v1/account (JWT required).
+// Returns dashboard state: relay_token, plan, entity usage, email.
+func (a *App) account(w http.ResponseWriter, r *http.Request) {
+	userID, err := a.authUserID(r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "Unauthorized.", "code": "unauthorized"})
+		return
+	}
+
+	var (
+		email              string
+		displayName        string
+		plan               string
+		relayToken         *string
+		entityCountSnapshot int
+		entityLimit        int
+	)
+	err = a.db.QueryRow(r.Context(), `
+		SELECT email, display_name, plan,
+		       relay_token,
+		       COALESCE(entity_count_snapshot, 0),
+		       COALESCE(entity_limit, 3)
+		FROM central_users
+		WHERE id::text = $1
+	`, userID).Scan(&email, &displayName, &plan, &relayToken, &entityCountSnapshot, &entityLimit)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("account lookup failed")
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "Internal error.", "code": "lookup_failed"})
+		return
+	}
+
+	resp := map[string]any{
+		"user_id":            userID,
+		"email":              email,
+		"display_name":       displayName,
+		"plan":               plan,
+		"relay_token":        relayToken,
+		"entity_count":       entityCountSnapshot,
+		"entity_limit":       entityLimit,
+		"stripe_portal_url":  nil,
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
