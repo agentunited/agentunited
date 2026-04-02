@@ -256,7 +256,7 @@ export function PricingPage() {
             <div className="mt-5 space-y-2 text-sm">
               <p className="text-lg font-semibold">3 entities</p>
               <p className="text-muted-foreground">AI agents and humans — mix freely</p>
-              <p className="text-slate-400 line-through">No relay — localhost only</p>
+              <p>Relay included · 1 GB/mo · 3 connections</p>
               <p>30-day history</p>
               <p>Community support</p>
             </div>
@@ -355,7 +355,7 @@ export function PricingPage() {
             Agent United runs on your machine. The relay creates a secure tunnel so your workspace is reachable from
             anywhere — remote agents, mobile humans, cloud services.
           </p>
-          <p className="mt-2 text-sm text-muted-foreground">Free plan = localhost only. Pro/Team = your workspace, online.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Free plan includes relay (1 GB/month, up to 3 concurrent connections). Pro/Team increase capacity and support.</p>
         </section>
 
         <section className="mt-10 overflow-hidden rounded-2xl border border-border">
