@@ -18,11 +18,12 @@ import (
 )
 
 type Client struct {
-	relayURL   string
-	token      string
-	localAPI   string
-	httpClient *http.Client
-	redis      *redis.Client
+	relayURL        string
+	token           string
+	localAPI        string
+	httpClient      *http.Client
+	streamingClient *http.Client // no timeout — for SSE/streaming responses
+	redis           *redis.Client
 
 	writeMu sync.Mutex
 	wsMu    sync.Mutex
@@ -41,6 +42,10 @@ func NewClientWithRedis(relayURL, token, localAPI string, redisClient *redis.Cli
 		redis:    redisClient,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+		},
+		// No timeout for SSE/streaming requests — they are long-lived by design.
+		streamingClient: &http.Client{
+			Timeout: 0,
 		},
 		wsConns: make(map[string]*websocket.Conn),
 	}
@@ -143,6 +148,12 @@ func (c *Client) runSession(ctx context.Context) error {
 	}
 }
 
+// isSSERequest returns true if the request is asking for a Server-Sent Events stream.
+func isSSERequest(headers http.Header) bool {
+	accept := headers.Get("Accept")
+	return strings.Contains(accept, "text/event-stream")
+}
+
 func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req RequestMessage) {
 	decodedBody := []byte{}
 	if req.Body != "" {
@@ -161,6 +172,12 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 	hreq.Header = req.Headers.Clone()
 	hreq.Host = ""
 
+	// Use streaming path for SSE — no timeout, chunk-by-chunk forwarding.
+	if isSSERequest(req.Headers) {
+		c.handleSSERequest(ctx, ws, req, hreq)
+		return
+	}
+
 	hresp, err := c.httpClient.Do(hreq)
 	if err != nil {
 		_ = c.writeJSON(ws, ResponseMessage{Type: TypeResponse, ID: req.ID, Status: 502})
@@ -177,6 +194,48 @@ func (c *Client) handleRequest(ctx context.Context, ws *websocket.Conn, req Requ
 		Body:    base64.StdEncoding.EncodeToString(respBody),
 	}
 	_ = c.writeJSON(ws, resp)
+}
+
+// handleSSERequest proxies a Server-Sent Events stream over the relay WebSocket.
+// It sends TypeSSEStart with headers, then TypeSSEChunk for each chunk, then TypeSSEEnd.
+func (c *Client) handleSSERequest(ctx context.Context, ws *websocket.Conn, req RequestMessage, hreq *http.Request) {
+	hresp, err := c.streamingClient.Do(hreq)
+	if err != nil {
+		_ = c.writeJSON(ws, ResponseMessage{Type: TypeResponse, ID: req.ID, Status: 502})
+		return
+	}
+	defer hresp.Body.Close()
+
+	// Send headers first so the relay server can open the response to the client.
+	if err := c.writeJSON(ws, SSEStartMessage{
+		Type:    TypeSSEStart,
+		ID:      req.ID,
+		Status:  hresp.StatusCode,
+		Headers: hresp.Header,
+	}); err != nil {
+		return
+	}
+
+	buf := make([]byte, 4096)
+	for {
+		n, err := hresp.Body.Read(buf)
+		if n > 0 {
+			chunk := SSEChunkMessage{
+				Type: TypeSSEChunk,
+				ID:   req.ID,
+				Data: base64.StdEncoding.EncodeToString(buf[:n]),
+			}
+			if werr := c.writeJSON(ws, chunk); werr != nil {
+				return
+			}
+		}
+		if err != nil {
+			// EOF or closed — stream ended normally.
+			break
+		}
+	}
+
+	_ = c.writeJSON(ws, SSEEndMessage{Type: TypeSSEEnd, ID: req.ID})
 }
 
 func (c *Client) handleWSOpen(ctx context.Context, ws *websocket.Conn, open WSOpenMessage) {
