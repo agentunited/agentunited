@@ -33,7 +33,7 @@ jobs:
             -derivedDataPath /tmp/derived-data \
             -project apps/ios/AgentUnited.xcodeproj \
             -scheme AgentUnited \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tail -20
 
@@ -46,7 +46,7 @@ jobs:
           for rt, devs in d['devices'].items():
               if 'iOS 26' in rt or 'iOS-26' in rt:
                   for dev in devs:
-                      if 'iPhone 16 Pro' in dev['name'] and dev['isAvailable']:
+                      if 'iPhone 17 Pro' in dev['name'] and dev['isAvailable']:
                           print(dev['udid']); exit()
           for rt, devs in d['devices'].items():
               for dev in devs:
